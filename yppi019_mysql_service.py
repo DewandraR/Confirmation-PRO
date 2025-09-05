@@ -1,4 +1,4 @@
-# yppi019_mysql_service.py  (struktur = file lama, logika = alur baru + PATCH)
+# api.py — yppi019_mysql_service (versi diperbaiki)
 import os, re, json, logging, decimal, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,7 +9,6 @@ import mysql.connector
 from mysql.connector import errorcode
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
 
-# ========== Bootstrap ==========
 load_dotenv()
 app = Flask(__name__)
 CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
@@ -17,7 +16,7 @@ CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("yppi019_service.log"), logging.StreamHandler()]
+    handlers=[logging.FileHandler("yppi019_service.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ HTTP_PORT = int(os.getenv("HTTP_PORT", "5051"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
 
-# ========== MySQL ==========
+# ---------------- MySQL ----------------
 def connect_mysql():
     return mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
@@ -36,7 +35,7 @@ def connect_mysql():
         port=int(os.getenv("DB_PORT", "3306")),
     )
 
-# ========== SAP ==========
+# ---------------- SAP ----------------
 def connect_sap(username: Optional[str] = None, password: Optional[str] = None) -> Connection:
     user = (username or os.getenv("SAP_USERNAME", "auto_email")).strip()
     passwd = (password or os.getenv("SAP_PASSWORD", "11223344")).strip()
@@ -44,11 +43,9 @@ def connect_sap(username: Optional[str] = None, password: Optional[str] = None) 
     sysnr = (os.getenv("SAP_SYSNR", "01") or "").strip()
     client = (os.getenv("SAP_CLIENT", "300") or "").strip()
     lang = (os.getenv("SAP_LANG", "EN") or "").strip()
-
     missing = [k for k, v in {"user":user,"passwd":passwd,"SAP_ASHOST":ashost,"SAP_SYSNR":sysnr,"SAP_CLIENT":client,"SAP_LANG":lang}.items() if not v]
     if missing:
         raise ValueError(f"SAP logon fields empty: {', '.join(missing)}. Check .env")
-
     logger.info("SAP connect -> ashost=%s sysnr=%s client=%s lang=%s user=%s", ashost, sysnr, client, lang, user)
     return Connection(user=user, passwd=passwd, ashost=ashost, sysnr=sysnr, client=client, lang=lang)
 
@@ -59,7 +56,7 @@ def get_credentials_from_headers() -> Tuple[str, str]:
         raise ValueError("SAP credentials not found in headers.")
     return u, p
 
-# ========== Utils ==========
+# ---------------- Utils ----------------
 def parse_num(x: Any) -> Optional[float]:
     if x is None or x == "": return None
     if isinstance(x, (int, float, decimal.Decimal)): return float(x)
@@ -88,7 +85,7 @@ def pad_vornr(v: Any) -> str:
     try: return f"{int(float(s)):04d}"
     except Exception: return s.zfill(4)
 
-# --- PATCH: AUFNR harus 12 digit zero-padded, hanya angka ---
+# AUFNR 12 digit numeric
 def pad_aufnr(v: Any) -> str:
     s = re.sub(r"\D", "", str(v or ""))
     return s.zfill(12) if s else ""
@@ -118,30 +115,30 @@ def normalize_uom(meinh: Any) -> str:
     u = str(meinh or "").strip().upper()
     return "PC" if u == "ST" else u
 
-# ========== DDL ==========
+# ---------------- DDL ----------------
 DDL_DATA = """
 CREATE TABLE IF NOT EXISTS yppi019_data (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  AUFNR   VARCHAR(20) NOT NULL,
-  VORNRX  VARCHAR(10) NULL,
-  PERNR   VARCHAR(20) NULL,
-  ARBPL0  VARCHAR(40) NULL,
-  DISPO   VARCHAR(10) NULL,
-  STEUS   VARCHAR(8)  NULL,
-  WERKS   VARCHAR(10) NULL,
-  CHARG   VARCHAR(20) NULL,
-  MATNRX  VARCHAR(40) NULL,
-  MAKTX   VARCHAR(200) NULL,
-  MEINH   VARCHAR(10) NULL,
+  AUFNR VARCHAR(20) NOT NULL,
+  VORNRX VARCHAR(10) NULL,
+  PERNR VARCHAR(20) NULL,
+  ARBPL0 VARCHAR(40) NULL,
+  DISPO VARCHAR(10) NULL,
+  STEUS VARCHAR(8) NULL,
+  WERKS VARCHAR(10) NULL,
+  CHARG VARCHAR(20) NULL,
+  MATNRX VARCHAR(40) NULL,
+  MAKTX VARCHAR(200) NULL,
+  MEINH VARCHAR(10) NULL,
   QTY_SPK DECIMAL(18,3) NULL,
-  WEMNG   DECIMAL(18,3) NULL,
+  WEMNG DECIMAL(18,3) NULL,
   QTY_SPX DECIMAL(18,3) NULL,
-  LTXA1   VARCHAR(200) NULL,
-  SNAME   VARCHAR(100) NULL,
-  GSTRP   DATE NULL,
-  GLTRP   DATE NULL,
-  ISDZ    VARCHAR(20) NULL,
-  IEDZ    VARCHAR(20) NULL,
+  LTXA1 VARCHAR(200) NULL,
+  SNAME VARCHAR(100) NULL,
+  GSTRP DATE NULL,
+  GLTRP DATE NULL,
+  ISDZ VARCHAR(20) NULL,
+  IEDZ VARCHAR(20) NULL,
   RAW_JSON JSON NOT NULL,
   fetched_at DATETIME NOT NULL,
   UNIQUE KEY uniq_key (AUFNR, VORNRX, CHARG, ARBPL0),
@@ -151,7 +148,6 @@ CREATE TABLE IF NOT EXISTS yppi019_data (
   KEY idx_steus (STEUS)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 """
-
 DDL_CONFIRM = """
 CREATE TABLE IF NOT EXISTS yppi019_confirm_log (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -178,7 +174,7 @@ def ensure_tables():
     finally:
         cur.close(); db.close()
 
-# ========== Persist ==========
+# ---------------- Persist ----------------
 UPSERT = """
 INSERT INTO yppi019_data
  (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,CHARG,MATNRX,MAKTX,MEINH,
@@ -197,10 +193,10 @@ ON DUPLICATE KEY UPDATE
   MAKTX  = VALUES(MAKTX),
   MEINH  = VALUES(MEINH),
   QTY_SPK = VALUES(QTY_SPK),
-  WEMNG   = VALUES(WEMNG),     -- timpa sesuai SAP
-  QTY_SPX = CASE               -- <<< penting: tidak boleh NAIK
+  WEMNG   = VALUES(WEMNG),
+  QTY_SPX = CASE
               WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX
-              WHEN QTY_SPX IS NULL            THEN VALUES(QTY_SPX)
+              WHEN QTY_SPX IS NULL           THEN VALUES(QTY_SPX)
               ELSE LEAST(QTY_SPX, VALUES(QTY_SPX))
             END,
   LTXA1   = VALUES(LTXA1),
@@ -249,106 +245,75 @@ def save_rows(rows: List[Dict[str, Any]]) -> int:
     finally:
         cur.close(); db.close()
 
-# ========== Owner helpers ==========
+# ---------------- Owner helpers ----------------
 def get_existing_pernr_for_aufnr(aufnr: str) -> Optional[str]:
     db = connect_mysql(); cur = db.cursor()
     try:
         cur.execute("""SELECT PERNR FROM yppi019_data
-                       WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>'' LIMIT 1""", (aufnr,))
+                         WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>'' LIMIT 1""", (aufnr,))
         row = cur.fetchone()
         return str(row[0]) if row and row[0] is not None else None
     finally:
         try: cur.close()
         except: pass
-        db.close()
+        connect_mysql().close()
 
 def ensure_owner_for_aufnr_if_empty(aufnr: str, pernr: str) -> None:
     db = connect_mysql(); cur = db.cursor()
     try:
         cur.execute("""SELECT COUNT(*) FROM yppi019_data
-                       WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>''""", (aufnr,))
+                         WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>''""", (aufnr,))
         if (cur.fetchone() or [0])[0] > 0: return
         cur.execute("""UPDATE yppi019_data SET PERNR=%s
-                       WHERE AUFNR=%s AND (PERNR IS NULL OR PERNR='')""", (pernr, aufnr))
+                         WHERE AUFNR=%s AND (PERNR IS NULL OR PERNR='')""", (pernr, aufnr))
         db.commit()
     finally:
         try: cur.close()
         except: pass
         db.close()
 
-# ========== READ from SAP & save ==========
+# ---------------- READ from SAP & save ----------------
 def fetch_one_aufnr(sap: Connection, aufnr: str, pernr: Optional[str], arbpl: Optional[str]) -> List[Dict[str, Any]]:
-    """
-    Baca T_DATA1 dgn urutan aman namun permisif:
-      1) AUFNR + PERNR (tanpa ARBPL)  -> lebih longgar
-      2) AUFNR + ARBPL                -> bila user batasi workcenter
-      3) AUFNR saja                   -> fallback terakhir
-    """
     def _call(args):
         logger.info("Calling %s with %s", RFC_Y, args)
         res = sap.call(RFC_Y, **args)
         rows = [map_tdata1_row(r) for r in (res.get("T_DATA1", []) or [])]
-        # PATCH: log RETURN/T_MESSAGES jika ada
         ret = res.get("RETURN") or res.get("T_MESSAGES") or []
         if ret:
-            try:
-                logger.info("RETURN/MESSAGES: %s", json.dumps(to_jsonable(ret), ensure_ascii=False))
-            except Exception:
-                logger.info("RETURN/MESSAGES: %s", str(ret))
+            try: logger.info("RETURN/MESSAGES: %s", json.dumps(to_jsonable(ret), ensure_ascii=False))
+            except Exception: logger.info("RETURN/MESSAGES: %s", str(ret))
         logger.info("Result %s: %d row(s)", RFC_Y, len(rows))
         return rows
 
     base = {"IV_AUFNR": pad_aufnr(aufnr)}
     combos: List[Dict[str, Any]] = []
-
-    # 1) PERNR lebih dulu (lebih permisif: tanpa ARBPL)
-    if pernr:
-        combos.append({**base, "IV_PERNR": str(pernr)})
-
-    # 2) Tanpa PERNR tapi tetap sempitkan dgn ARBPL bila ada
-    if arbpl:
-        combos.append({**base, "IV_ARBPL": str(arbpl)})
-
-    # 3) AUFNR saja
+    if pernr: combos.append({**base, "IV_PERNR": str(pernr)})
+    if arbpl: combos.append({**base, "IV_ARBPL": str(arbpl)})
     combos.append(base)
 
     logger.info("Fetch combos tried (in order): %s", combos)
-
     rows: List[Dict[str, Any]] = []
     for args in combos:
         try:
             rows = _call(args)
-            if rows:
-                break
+            if rows: break
         except Exception:
             logger.exception("READ failed with args=%s", args)
             continue
-
     if pernr:
-        for r in rows:
-            r["PERNR"] = pernr
+        for r in rows: r["PERNR"] = pernr
     return rows
 
 def sync_from_sap(aufnr: str, username: Optional[str], password: Optional[str],
                   pernr: Optional[str] = None, arbpl: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Authoritative sync:
-      - Panggil SAP
-      - Selalu WIPE semua baris AUFNR di lokal
-      - Jika SAP kirim N row, simpan N row tsb
-      - Jika N=0, biarkan kosong (FE akan tahu bahwa order ini tidak ditemukan/eligible)
-    """
     ensure_tables()
-    sap = None
-    db = None
+    sap = None; db = None
     try:
         sap = connect_sap(username, password)
         rows = fetch_one_aufnr(sap, aufnr, pernr, arbpl)
         n_received = len(rows)
 
-        # --- authoritative replace: HAPUS semua baris AUFNR ini sebelum simpan ---
-        db = connect_mysql()
-        cur = db.cursor()
+        db = connect_mysql(); cur = db.cursor()
         try:
             cur.execute("SELECT COUNT(*) FROM yppi019_data WHERE AUFNR=%s", (aufnr,))
             prev_count = (cur.fetchone() or [0])[0]
@@ -358,27 +323,18 @@ def sync_from_sap(aufnr: str, username: Optional[str], password: Optional[str],
         finally:
             try: cur.close()
             except: pass
-            # jangan tutup db dulu; mungkin kita lanjut insert
 
-        # --- simpan jika ada data baru ---
         saved = 0
         if n_received > 0:
-            saved = save_rows(rows)  # save_rows akan buka koneksi sendiri
+            saved = save_rows(rows)
 
-        # --- tutup koneksi lokal yang sempat dibuka di atas ---
         try:
             if db: db.close()
         except: pass
 
-        return {
-            "ok": True,
-            "received": n_received,
-            "saved": int(saved),
-            "wiped": int(wiped),
-            "prev_count": int(prev_count),
-            "note": ("no data from SAP; local cleared" if n_received == 0 else "replaced with fresh data")
-        }
-
+        return {"ok": True, "received": n_received, "saved": int(saved),
+                "wiped": int(wiped), "prev_count": int(prev_count),
+                "note": ("no data from SAP; local cleared" if n_received == 0 else "replaced with fresh data")}
     except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
         logger.exception("SAP error sync_from_sap")
         return {"ok": False, "error": str(e)}
@@ -389,13 +345,11 @@ def sync_from_sap(aufnr: str, username: Optional[str], password: Optional[str],
         if sap:
             try: sap.close()
             except: pass
-        # safety close
         if db:
             try: db.close()
             except: pass
 
-
-# ========== HTTP endpoints ==========
+# ---------------- HTTP endpoints ----------------
 @app.get("/")
 def root():
     return ("OK - endpoints: GET /api/yppi019 | POST /api/yppi019/sync | "
@@ -415,7 +369,6 @@ def api_login():
 
 @app.get("/api/yppi019")
 def api_get():
-    """Dipakai Laravel /api/yppi019/material → ambil dari MySQL."""
     ensure_tables()
     aufnr  = request.args.get("aufnr")
     vornrx = request.args.get("vornrx")
@@ -453,7 +406,6 @@ def api_sync():
     aufnr = (body.get("aufnr") or "").strip()
     pernr = (body.get("pernr") or "").strip()
     arbpl = (body.get("arbpl") or "").strip() or None
-
     if not aufnr:
         return jsonify({"ok": False, "error": "aufnr wajib diisi"}), 400
     if not pernr:
@@ -470,6 +422,10 @@ def api_sync():
     # 4) tarik terbaru dari SAP
     res = sync_from_sap(aufnr, u, p, pernr, arbpl)
 
+    # 4a) tandai kemungkinan TECO jika sukses tetapi tidak ada baris yang diterima
+    if res.get("ok") and int(res.get("received", 0) or 0) == 0:
+        res["teco_possible"] = True
+
     # 5) pastikan owner terisi kalau kosong
     try:
         ensure_owner_for_aufnr_if_empty(aufnr, pernr)
@@ -481,28 +437,28 @@ def api_sync():
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
 
+
 @app.post("/api/yppi019/sync_bulk")
 def api_sync_bulk():
     try:
         u,p = get_credentials_from_headers()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
-    body       = request.get_json(force=True) or {}
-    aufnr_list = body.get("aufnr_list") or []
-    pernr      = (body.get("pernr") or "").strip()
-    arbpl      = (body.get("arbpl") or "").strip() or None
+    body         = request.get_json(force=True) or {}
+    aufnr_list   = body.get("aufnr_list") or []
+    pernr        = (body.get("pernr") or "").strip()
+    arbpl        = (body.get("arbpl") or "").strip() or None
     if not isinstance(aufnr_list, list) or not aufnr_list:
         return jsonify({"ok": False, "error": "aufnr_list harus berupa list dan tidak boleh kosong"}), 400
     if not pernr:
         return jsonify({"ok": False, "error": "pernr wajib diisi"}), 400
 
-    # pre-check owner
     allowed, errors = [], {}
     db = connect_mysql(); cur = db.cursor()
     try:
         for auf in aufnr_list:
             cur.execute("""SELECT PERNR FROM yppi019_data
-                           WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>'' LIMIT 1""", (auf,))
+                             WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>'' LIMIT 1""", (auf,))
             row = cur.fetchone()
             owner = str(row[0]) if row and row[0] is not None else None
             if owner and owner != pernr: errors[auf] = f"AUFNR {auf} sudah terdaftar oleh PERNR {owner}"
@@ -541,16 +497,14 @@ def http_status_from_sap_error(msg: str) -> int:
     if "NOT AUTHORIZATION" in m: return 403
     return 500
 
-# ========== Alur BARU: confirm (WEMNG+=input, QTY_SPX-=input, guard) ==========
+# ---------------- Alur BARU: confirm (PATCHED) ----------------
 @app.post("/api/yppi019/confirm")
 def api_confirm():
-    # --- header SAP ---
     try:
         u, p = get_credentials_from_headers()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
-    # --- body & normalisasi ---
     b      = request.get_json(force=True) or {}
     aufnr  = str(b.get("aufnr") or "").strip()
     vornr  = pad_vornr(b.get("vornr"))
@@ -572,7 +526,7 @@ def api_confirm():
     except Exception:
         v_stripped = vornr.lstrip("0") or "0"
 
-    # --- Ambil baris yg akan dikonfirmasi (by AUFNR + VORNRX) ---
+    # Ambil baris target
     db = connect_mysql(); cur = db.cursor(dictionary=True)
     try:
         cur.execute(
@@ -603,16 +557,23 @@ def api_confirm():
     finally:
         cur.close(); db.close()
 
-    # --- Panggil SAP (Z_RFC_CONFIRMASI) ---
     meinh_req = normalize_uom(b.get("meinh") or meinh_db)
-    psmng_str = fmt_qty_str(qty_in, decimals=3)
+
+    # >>>>> PATCH UTAMA: format IV_PSMNG untuk SAP
+    integer_units = {"PC", "EA", "PCS", "UNIT"}  # ST sudah dinormalisasi ke PC
+    if meinh_req in integer_units:
+        psmng_str = str(int(round(qty_in)))        # contoh: 1
+    else:
+        psmng_str = f"{qty_in:.3f}".replace(".", ",") # contoh M3: "0,500"
+    logger.info("IV_PSMNG (final) -> %s %s", psmng_str, meinh_req)
+    # <<<<< END PATCH
 
     sap = None
     try:
         sap = connect_sap(u, p)
         sap_ret = sap.call(
             RFC_C,
-            IV_AUFNR=pad_aufnr(aufnr),   # PATCH: gunakan AUFNR zero-padded
+            IV_AUFNR=pad_aufnr(aufnr),
             IV_VORNR=v_padded,
             IV_PERNR=pernr,
             IV_PSMNG=psmng_str,
@@ -622,14 +583,16 @@ def api_confirm():
             IV_BUDAT=budat,
         )
 
-        # --- Log konfirmasi ---
         db = connect_mysql(); cur = db.cursor()
         try:
             cur.execute(
                 "INSERT INTO yppi019_confirm_log (AUFNR,VORNR,PERNR,PSMNG,MEINH,GSTRP,GLTRP,BUDAT,SAP_RETURN,created_at) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (
-                    aufnr, v_padded, pernr, psmng_str, meinh_req,
+                    # ======================================================================================================
+                    # PERUBAHAN: Menggunakan `qty_in` (float) untuk kolom PSMNG di DB, bukan `psmng_str` (string format SAP).
+                    # ======================================================================================================
+                    aufnr, v_padded, pernr, qty_in, meinh_req,
                     parse_date(gstrp), parse_date(gltrp), parse_date(budat),
                     json.dumps(to_jsonable(sap_ret), ensure_ascii=False),
                     datetime.datetime.now(),
@@ -642,14 +605,13 @@ def api_confirm():
             try: db.close()
             except: pass
 
-        # --- UPDATE LOKAL HANYA BARIS YANG TERKONFIRMASI ---
         db = connect_mysql(); cur = db.cursor(dictionary=True)
         try:
             cur.execute(
                 """
                 UPDATE yppi019_data
-                   SET WEMNG   = IFNULL(WEMNG,0) + %s,
-                       QTY_SPX = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
+                   SET WEMNG    = IFNULL(WEMNG,0) + %s,
+                       QTY_SPX  = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
                        fetched_at = NOW()
                  WHERE id=%s
                 """,
@@ -682,7 +644,7 @@ def api_confirm():
             try: sap.close()
             except: pass
 
-# ========== Edit manual QTY_SPX (alias underscore & hyphen) ==========
+# ---------------- Edit manual QTY_SPX ----------------
 @app.post("/api/yppi019/update_qty_spx")
 def api_update_qty_spx():
     ensure_tables()
@@ -696,17 +658,17 @@ def api_update_qty_spx():
     db = connect_mysql(); cur = db.cursor()
     try:
         cur.execute("""UPDATE yppi019_data SET QTY_SPX=%s
-                       WHERE AUFNR=%s AND VORNRX=%s AND CHARG=%s LIMIT 1""",
+                         WHERE AUFNR=%s AND VORNRX=%s AND CHARG=%s LIMIT 1""",
                     (qty, aufnr, vornrx, charg))
         db.commit()
         return jsonify({"ok": True, "updated": cur.rowcount})
     finally:
         cur.close(); db.close()
 
-# alias: pakai dash (biar cocok dgn Laravel yang pakai /update-qty-spx)
+# alias dengan dash
 app.add_url_rule("/api/yppi019/update-qty-spx", view_func=api_update_qty_spx, methods=["POST"])
 
-# ========== Main ==========
+# ---------------- Main ----------------
 if __name__ == "__main__":
     ensure_tables()
     app.run(host=HTTP_HOST, port=HTTP_PORT, debug=True)
