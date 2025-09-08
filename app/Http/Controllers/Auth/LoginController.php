@@ -76,21 +76,27 @@ class LoginController extends Controller
         config(['session.expire_on_close' => true]);
 
         // SAP AUTH via Flask
-        $sapId   = $request->input('sap_id');
-        $sapPass = $request->input('password');
-        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5051/api/sap-login'));
+        $sapId     = $request->input('sap_id');
+        $sapPass   = $request->input('password');
+        $sapAuthUrl= config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5051/api/sap-login'));
 
         try {
-            $resp = Http::timeout(30)->post($sapAuthUrl, [
-                'username' => $sapId,
-                'password' => $sapPass,
-            ]);
+            $resp = Http::timeout(30)
+                ->acceptJson()
+                ->asJson()
+                ->post($sapAuthUrl, [
+                    'username' => $sapId,
+                    'password' => $sapPass,
+                ]);
+
             if (!$resp->successful()) {
-                $msg = $resp->json('error') ?? $resp->json('message') ?? 'Username atau Password SAP tidak valid.';
+                $raw = $resp->json('error') ?? $resp->json('message') ?? $resp->body();
+                $msg = $this->normalizeSapError((string) $raw, $resp->status());
                 return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
             }
         } catch (\Throwable $e) {
-            return back()->withErrors(['login' => 'Tidak dapat terhubung ke layanan otentikasi SAP.'])->onlyInput('sap_id');
+            $msg = $this->normalizeSapError($e->getMessage() ?: 'Network error', 0);
+            return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
         }
 
         // SAP OK -> buat/ambil user lokal TANPA SapUser
@@ -139,5 +145,58 @@ class LoginController extends Controller
            * sin($dLon/2) * sin($dLon/2);
         $c = 2 * atan2(sqrt($a), sqrt(1-$a));
         return $R * $c;
+    }
+
+    /**
+     * Ubah pesan error teknis dari SAP/HTTP jadi pesan manusia.
+     */
+    private function normalizeSapError(string $raw, int $status): string
+    {
+        $t = strtolower($raw);
+
+        // Kasus umum: kredensial salah
+        if (strpos($t, 'rfc_logon_failure') !== false ||
+            strpos($t, 'name or password is incorrect') !== false ||
+            ($status === 401 && strpos($t, 'error') !== false)) {
+            return 'SAP ID atau Password tidak valid.';
+        }
+
+        // User terkunci / must change password / expired
+        if (strpos($t, 'user locked') !== false ||
+            strpos($t, 'password logon no change') !== false ||
+            strpos($t, 'password must be changed') !== false ||
+            strpos($t, 'password expired') !== false) {
+            return 'Akun SAP terkunci atau butuh reset password. Silakan hubungi admin SAP.';
+        }
+
+        // Tidak punya otorisasi
+        if (strpos($t, 'not authorization') !== false ||
+            strpos($t, 'no authorization') !== false ||
+            $status === 403) {
+            return 'Anda tidak memiliki akses untuk login SAP. Hubungi admin SAP untuk otorisasi.';
+        }
+
+        // Masalah komunikasi / jaringan / VPN
+        if (strpos($t, 'rfc_communication_failure') !== false ||
+            strpos($t, 'wsatimedout') !== false ||
+            strpos($t, 'connection timed out') !== false ||
+            strpos($t, 'partner') !== false && strpos($t, 'not reached') !== false) {
+            return 'Tidak dapat terhubung ke server SAP. Pastikan tersambung ke jaringan/VPN perusahaan lalu coba lagi.';
+        }
+
+        // Fallback: kalau ada message=..., ambil bagian kalimatnya
+        if (preg_match('/message\s*=\s*([^\n]+)/i', $raw, $m)) {
+            $hint = trim($m[1]);
+            // Jangan tampilkan log teknis panjang
+            if (stripos($hint, 'name or password') !== false) {
+                return 'SAP ID atau Password tidak valid.';
+            }
+            if ($hint !== '') {
+                return $hint;
+            }
+        }
+
+        // Default sangat generik
+        return 'Gagal login ke SAP. Silakan periksa kredensial dan koneksi jaringan Anda.';
     }
 }
