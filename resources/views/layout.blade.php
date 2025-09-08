@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ $title ?? 'Barcode Scanner App' }}</title>
+  <title>{{ $title ?? 'Konfirmasi PRO App' }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -48,7 +48,7 @@
   <footer class="mt-16 py-8 text-center text-slate-500 text-sm">
     <div class="max-w-2xl mx-auto px-6">
       <div class="border-t border-slate-200 pt-6">
-        <p>&copy; {{ date('Y') }} Barcode Scanner App. All rights reserved.</p>
+        <p>&copy; {{ date('Y') }} Konfirmasi PRO App. All rights reserved.</p>
       </div>
     </div>
   </footer>
