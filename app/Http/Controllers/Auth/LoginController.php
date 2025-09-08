@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use App\Models\User;
 
 class LoginController extends Controller
 {
@@ -16,10 +20,10 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
-        // Validasi form + lokasi dari Blade
+        // Validasi form + lokasi
         $request->validate([
-            'email'    => ['required','email'],
-            'password' => ['required'],
+            'sap_id'   => ['required','string'],
+            'password' => ['required','string'],
             'lat'      => ['required','numeric'],
             'lng'      => ['required','numeric'],
             'acc'      => ['nullable','numeric'],
@@ -29,30 +33,23 @@ class LoginController extends Controller
         $lng = (float) $request->input('lng');
         $acc = (float) $request->input('acc', 9999);
 
-        // Baca daftar kantor dari config
-        $sites = array_values(array_filter(config('office.sites', [])));
+        // Konfigurasi kantor
+        $sites   = array_values(array_filter(config('office.sites', [])));
         $maxAccM = (int) config('office.max_accuracy_m', 300);
 
         if ($maxAccM > 0 && $acc > $maxAccM) {
             return back()->withErrors([
                 'location' => "Akurasi lokasi terlalu rendah (> {$maxAccM} m). Aktifkan GPS/high accuracy dan coba lagi."
-            ])->onlyInput('email');
+            ])->onlyInput('sap_id');
         }
-
         if (empty($sites)) {
-            return back()->withErrors([
-                'location' => 'Konfigurasi kantor belum diatur.'
-            ])->onlyInput('email');
+            return back()->withErrors(['location' => 'Konfigurasi kantor belum diatur.'])->onlyInput('sap_id');
         }
 
-        // Cek jarak ke tiap kantor -> lolos jika ada yang dalam radius
-        $allowed = false;
-        $matched = null;
-        $closest = null;
-
+        // Cek jarak kantor
+        $allowed = false; $matched = null; $closest = null;
         foreach ($sites as $site) {
             if (!isset($site['lat'], $site['lng'], $site['radius_m'])) continue;
-
             $d = $this->haversineMeters($lat, $lng, (float)$site['lat'], (float)$site['lng']);
             if ($closest === null || $d < $closest['distance']) {
                 $closest = ['site' => $site, 'distance' => $d];
@@ -63,7 +60,6 @@ class LoginController extends Controller
                 break;
             }
         }
-
         if (!$allowed) {
             if ($closest) {
                 $nearName   = $closest['site']['name'] ?? ($closest['site']['code'] ?? 'kantor terdekat');
@@ -71,28 +67,57 @@ class LoginController extends Controller
                 $dist       = round($closest['distance']);
                 return back()->withErrors([
                     'location' => "Di luar area kantor. Terdekat: {$nearName} (~{$dist} m, batas {$nearRadius} m)."
-                ])->onlyInput('email');
+                ])->onlyInput('sap_id');
             }
-            return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('email');
+            return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('sap_id');
         }
 
-        // ===== KUNCI: session habis saat browser ditutup + nonaktifkan remember =====
+        // Session habis saat browser ditutup
         config(['session.expire_on_close' => true]);
 
-        $credentials = $request->only('email','password');
-        if (Auth::attempt($credentials, false)) { // <— selalu false
-            $request->session()->regenerate();
+        // SAP AUTH via Flask
+        $sapId   = $request->input('sap_id');
+        $sapPass = $request->input('password');
+        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5051/api/sap-login'));
 
-            // Bersihkan cookie remember jika ada
-            Cookie::queue(Cookie::forget(Auth::getRecallerName()));
-
-            if ($matched) {
-                session(['login_office' => ($matched['site']['name'] ?? $matched['site']['code'] ?? 'unknown')]);
+        try {
+            $resp = Http::timeout(30)->post($sapAuthUrl, [
+                'username' => $sapId,
+                'password' => $sapPass,
+            ]);
+            if (!$resp->successful()) {
+                $msg = $resp->json('error') ?? $resp->json('message') ?? 'Username atau Password SAP tidak valid.';
+                return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
             }
-            return redirect()->intended(route('scan'));
+        } catch (\Throwable $e) {
+            return back()->withErrors(['login' => 'Tidak dapat terhubung ke layanan otentikasi SAP.'])->onlyInput('sap_id');
         }
 
-        return back()->withErrors(['email' => 'Email atau password salah.'])->onlyInput('email');
+        // SAP OK -> buat/ambil user lokal TANPA SapUser
+        $user = User::firstOrCreate(
+            ['email' => $sapId . '@kmi.local'],
+            [
+                'name'     => $sapId,            // nama default = sap_id
+                'password' => Hash::make(Str::random(16)),
+                'role'     => 'user',            // sesuaikan role default jika perlu
+            ]
+        );
+
+        // Simpan kredensial SAP untuk header ke Flask di request berikutnya
+        session([
+            'sap.username' => $sapId,
+            'sap.password' => $sapPass,
+        ]);
+
+        // Bersihkan cookie remember & login
+        Cookie::queue(Cookie::forget(Auth::getRecallerName()));
+        Auth::login($user, false);
+
+        if ($matched) {
+            session(['login_office' => ($matched['site']['name'] ?? $matched['site']['code'] ?? 'unknown')]);
+        }
+
+        return redirect()->intended(route('scan'));
     }
 
     public function destroy(Request $request)
@@ -101,7 +126,6 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         Cookie::queue(Cookie::forget(Auth::getRecallerName()));
-
         return redirect()->route('login');
     }
 

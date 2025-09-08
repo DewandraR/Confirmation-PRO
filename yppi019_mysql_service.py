@@ -1,5 +1,4 @@
-
-# api.py — yppi019_mysql_service (versi dengan auto-prune confirm log)
+# api.py — yppi019_mysql_service (versi dengan login per user SAP ID + api/sap-login)
 import os, re, json, logging, decimal, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,10 +25,10 @@ HTTP_PORT = int(os.getenv("HTTP_PORT", "5051"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
 
-# ======== NEW: konfigurasi retensi log konfirmasi (hari) ========
+# ======== konfigurasi retensi log konfirmasi (hari) ========
 # 0 = simpan log hari ini saja; >0 = simpan N hari ke belakang
 CONFIRM_LOG_KEEP_DAYS = int(os.getenv("CONFIRM_LOG_KEEP_DAYS", "0"))
-# ================================================================
+# ===========================================================
 
 # ---------------- MySQL ----------------
 def connect_mysql():
@@ -43,8 +42,8 @@ def connect_mysql():
 
 # ---------------- SAP ----------------
 def connect_sap(username: Optional[str] = None, password: Optional[str] = None) -> Connection:
-    user = (username or os.getenv("SAP_USERNAME", "auto_email")).strip()
-    passwd = (password or os.getenv("SAP_PASSWORD", "11223344")).strip()
+    user = (username or os.getenv("SAP_USERNAME", "")).strip()
+    passwd = (password or os.getenv("SAP_PASSWORD", "")).strip()
     ashost = (os.getenv("SAP_ASHOST", "192.168.254.154") or "").strip()
     sysnr = (os.getenv("SAP_SYSNR", "01") or "").strip()
     client = (os.getenv("SAP_CLIENT", "300") or "").strip()
@@ -55,12 +54,27 @@ def connect_sap(username: Optional[str] = None, password: Optional[str] = None) 
     logger.info("SAP connect -> ashost=%s sysnr=%s client=%s lang=%s user=%s", ashost, sysnr, client, lang, user)
     return Connection(user=user, passwd=passwd, ashost=ashost, sysnr=sysnr, client=client, lang=lang)
 
-def get_credentials_from_headers() -> Tuple[str, str]:
+# ---------------- Kredensial helper (BARU) ----------------
+def get_credentials_from_request() -> Tuple[str, str]:
+    """
+    Ambil kredensial SAP:
+    1) Prioritas dari header: X-SAP-Username, X-SAP-Password
+    2) Fallback dari JSON body: username/password (atau sap_id/password)
+    """
     u = request.headers.get("X-SAP-Username")
     p = request.headers.get("X-SAP-Password")
-    if not u or not p:
-        raise ValueError("SAP credentials not found in headers.")
-    return u, p
+    if u and p:
+        return u, p
+    try:
+        if request.is_json:
+            body = request.get_json(silent=True) or {}
+            u2 = (body.get("username") or body.get("sap_id") or "").strip()
+            p2 = (body.get("password") or "").strip()
+            if u2 and p2:
+                return u2, p2
+    except Exception:
+        pass
+    raise ValueError("SAP credentials not found (headers or JSON).")
 
 # ---------------- Utils ----------------
 def parse_num(x: Any) -> Optional[float]:
@@ -360,18 +374,34 @@ def sync_from_sap(aufnr: str, username: Optional[str], password: Optional[str],
 def root():
     return ("OK - endpoints: GET /api/yppi019 | POST /api/yppi019/sync | "
             "POST /api/yppi019/sync_bulk | POST /api/yppi019/confirm | "
-            "POST /api/yppi019/update-qty-spx", 200, {"Content-Type":"text/plain"})
+            "POST /api/yppi019/update-qty-spx | POST /api/sap-login", 200, {"Content-Type":"text/plain"})
 
+# (kompatibel) login ping SAP - sekarang pakai header/JSON
 @app.post("/api/yppi019/login")
 def api_login():
     try:
-        u,p = get_credentials_from_headers()
+        u,p = get_credentials_from_request()
         c = connect_sap(u,p); c.ping()
+        try: c.close()
+        except: pass
         return jsonify({"status":"connected"})
     except ValueError as ve:
         return jsonify({"error":str(ve)}), 401
     except Exception as e:
         return jsonify({"error":str(e)}), 401
+
+# === BARU: endpoint login SAP yang akan dipanggil Laravel ===
+@app.post("/api/sap-login")
+def sap_login():
+    try:
+        u, p = get_credentials_from_request()
+        conn = connect_sap(u, p)
+        conn.ping()
+        try: conn.close()
+        except: pass
+        return jsonify({'status': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 401
 
 @app.get("/api/yppi019")
 def api_get():
@@ -401,9 +431,9 @@ def api_get():
 
 @app.post("/api/yppi019/sync")
 def api_sync():
-    # 1) ambil kredensial SAP
+    # 1) ambil kredensial SAP (header/JSON)
     try:
-        u, p = get_credentials_from_headers()
+        u, p = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
@@ -447,7 +477,7 @@ def api_sync():
 @app.post("/api/yppi019/sync_bulk")
 def api_sync_bulk():
     try:
-        u,p = get_credentials_from_headers()
+        u,p = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
     body         = request.get_json(force=True) or {}
@@ -503,7 +533,7 @@ def http_status_from_sap_error(msg: str) -> int:
     if "NOT AUTHORIZATION" in m: return 403
     return 500
 
-# ======== NEW: helper untuk auto-prune confirm log ========
+# ======== auto-prune confirm log ========
 def prune_old_confirm_logs(retain_days: int = CONFIRM_LOG_KEEP_DAYS) -> int:
     """
     Hapus log yppi019_confirm_log yang lama.
@@ -527,13 +557,13 @@ def prune_old_confirm_logs(retain_days: int = CONFIRM_LOG_KEEP_DAYS) -> int:
         except: pass
         try: db.close()
         except: pass
-# ===========================================================
+# =======================================
 
-# ---------------- Alur BARU: confirm (PATCHED) ----------------
+# ---------------- Confirm ----------------
 @app.post("/api/yppi019/confirm")
 def api_confirm():
     try:
-        u, p = get_credentials_from_headers()
+        u, p = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
@@ -552,12 +582,11 @@ def api_confirm():
     if qty_in <= 0:
         return jsonify({"ok": False, "error": "psmng harus > 0"}), 400
 
-    # ======== NEW: panggil prune agar log lama dibersihkan ========
+    # prune log lama (opsional)
     try:
         prune_old_confirm_logs(CONFIRM_LOG_KEEP_DAYS)
     except Exception:
         logger.exception("prune_old_confirm_logs failed (ignored)")
-    # =============================================================
 
     v_padded = vornr
     try:
@@ -598,14 +627,13 @@ def api_confirm():
 
     meinh_req = normalize_uom(b.get("meinh") or meinh_db)
 
-    # >>>>> PATCH UTAMA: format IV_PSMNG untuk SAP
+    # format IV_PSMNG untuk SAP
     integer_units = {"PC", "EA", "PCS", "UNIT"}  # ST sudah dinormalisasi ke PC
     if meinh_req in integer_units:
         psmng_str = str(int(round(qty_in)))        # contoh: 1
     else:
         psmng_str = f"{qty_in:.3f}".replace(".", ",") # contoh M3: "0,500"
     logger.info("IV_PSMNG (final) -> %s %s", psmng_str, meinh_req)
-    # <<<<< END PATCH
 
     sap = None
     try:
