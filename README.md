@@ -14,7 +14,7 @@
 | --------- | ----------------------------------- |
 | Backend   | Laravel (PHP 8+)                    |
 | Frontend  | Blade Template Engine               |
-| Styling   | Tailwind CSS                        |
+| Styling   | Tailwind CSS CDN                        |
 | Data Sync | Python (`yppi019_mysql_service.py`) |
 | Database  | MySQL (`yppi019.sql`)               |
 
@@ -31,7 +31,6 @@
 
    ```bash
    composer install
-   npm install
    ```
 
 3. **Konfigurasi Environment**
@@ -51,19 +50,13 @@
    php artisan db:seed
    ```
 
-5. **Build Asset (jika memakai Vite/Tailwind)**
-
-   ```bash
-   npm run dev
-   ```
-
-6. **Jalankan Server Lokal**
+5. **Jalankan Server Lokal**
 
    ```bash
    php artisan serve
    ```
 
-7. **Jalankan Service Python (Data Sync)**
+6. **Jalankan Service Python (Data Sync)**
    Jalankan pada terminal terpisah:
 
    ```bash
