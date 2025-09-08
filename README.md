@@ -4,9 +4,9 @@
 
 * Geofencing login (pembatasan lokasi saat login)
 * Scan barcode PRO atau input manual
-* Menampilkan data PRO yang di input
-* Konfirmasi kuantitas PRO yang di input
-* Sinkronisasi data melalui Python service
+* Menampilkan data PRO yang diinput
+* Konfirmasi kuantitas PRO yang diinput
+* Sinkronisasi/layanan data melalui Python service
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -14,7 +14,7 @@
 | --------- | ----------------------------------- |
 | Backend   | Laravel (PHP 8+)                    |
 | Frontend  | Blade Template Engine               |
-| Styling   | Tailwind CSS CDN                        |
+| Styling   | Tailwind CSS (CDN)                  |
 | Data Sync | Python (`yppi019_mysql_service.py`) |
 | Database  | MySQL (`yppi019.sql`)               |
 
@@ -27,11 +27,13 @@
    cd konfirmasi_pro
    ```
 
-2. **Install Dependency**
+2. **Install Dependency (PHP)**
 
    ```bash
    composer install
    ```
+
+   > Karena Tailwind menggunakan **CDN** di layout, **tidak perlu `npm install`**.
 
 3. **Konfigurasi Environment**
 
@@ -40,13 +42,15 @@
    php artisan key:generate
    ```
 
+   Sesuaikan kredensial database di `.env` (contoh DB: `yppi019`).
+
 4. **Setting Database (MySQL)**
 
    ```bash
    # Menjalankan migration
    php artisan migrate
 
-   # Menjalankan UserSeeder
+   # Menjalankan UserSeeder (opsional, jika tersedia)
    php artisan db:seed
    ```
 
@@ -62,3 +66,13 @@
    ```bash
    python yppi019_mysql_service.py
    ```
+
+## 🔐 Akun Login
+
+Gunakan akun berikut untuk login:
+
+```
+Email    : user@gmail.com
+Password : 12345
+```
+

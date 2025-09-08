@@ -22,9 +22,9 @@
             <h1 class="text-2xl font-semibold text-slate-800 mb-6 text-center">Masuk</h1>
 
             @if ($errors->any())
-                <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
-                    {{ $errors->first() }}
-                </div>
+            <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+                {{ $errors->first() }}
+            </div>
             @endif
 
             <form method="POST" action="{{ route('login.store') }}" class="space-y-6" id="loginForm">
@@ -74,16 +74,16 @@
                 <div id="geo-msg" class="text-xs text-slate-600"></div>
                 {{-- =================================== --}}
 
-                <div class="flex items-center justify-between">
+                {{-- <div class="flex items-center justify-between">
                     <label class="inline-flex items-center gap-2 text-xs text-slate-600">
                         <input type="checkbox" name="remember" class="rounded border-slate-300 text-green-600 focus:ring-green-500">
                         Ingat saya
                     </label>
-                </div>
+                </div> --}}
 
                 <button type="submit" id="btnLogin"
-                        class="w-full py-2.5 rounded-xl bg-gradient-to-r from-green-700 to-blue-900 text-white font-medium hover:from-green-800 hover:to-blue-900 transition duration-200 disabled:opacity-60"
-                        disabled>
+                    class="w-full py-2.5 rounded-xl bg-gradient-to-r from-green-700 to-blue-900 text-white font-medium hover:from-green-800 hover:to-blue-900 transition duration-200 disabled:opacity-60"
+                    disabled>
                     Masuk
                 </button>
             </form>
@@ -91,56 +91,125 @@
     </div>
 </div>
 
+{{-- ===== Injeksi daftar kantor dari config ke JS ===== --}}
+@php
+$OFFICES = collect(config('office.sites', []))
+->filter() // buang null entry
+->map(function ($s) {
+return [
+'name' => $s['name'] ?? ($s['code'] ?? 'Kantor'),
+'lat' => (float) ($s['lat'] ?? 0),
+'lng' => (float) ($s['lng'] ?? 0),
+'radius_m' => (int) ($s['radius_m'] ?? 0),
+];
+})
+->values()
+->all();
+@endphp
+
 {{-- ===== Script Geolocation ===== --}}
 <script>
-(function () {
-  const btn = document.getElementById('btnLogin');
-  const msg = document.getElementById('geo-msg');
-  const latEl = document.getElementById('lat');
-  const lngEl = document.getElementById('lng');
-  const accEl = document.getElementById('acc');
+    (function() {
+        const btn = document.getElementById('btnLogin');
+        const msg = document.getElementById('geo-msg');
+        const latEl = document.getElementById('lat');
+        const lngEl = document.getElementById('lng');
+        const accEl = document.getElementById('acc');
 
-  const isLocalhost = ['localhost','127.0.0.1','::1'].includes(location.hostname);
-  if (!window.isSecureContext && !isLocalhost) {
-    msg.textContent = 'Lokasi tidak aktif: akses harus HTTPS.';
-    btn.disabled = true;
-    return;
-  }
+        // OFFICES berasal dari config/office.php (sudah diolah di @php di atas)
+        const OFFICES = @json($OFFICES);
 
-  if (!('geolocation' in navigator)) {
-    msg.textContent = 'Perangkat tidak mendukung geolokasi.';
-    btn.disabled = true;
-    return;
-  }
+        // Haversine meter
+        function distMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const toRad = d => d * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
 
-  msg.textContent = 'Meminta lokasi…';
-  btn.disabled = true;
+        function nearestOffice(lat, lng) {
+            if (!Array.isArray(OFFICES) || OFFICES.length === 0) return null;
+            let best = null;
+            for (const s of OFFICES) {
+                if (!s || !s.lat || !s.lng) continue;
+                const d = distMeters(lat, lng, s.lat, s.lng);
+                if (!best || d < best.distance) best = {
+                    ...s,
+                    distance: d
+                };
+            }
+            return best;
+        }
 
-  navigator.geolocation.getCurrentPosition(
-    function (pos) {
-      const { latitude, longitude, accuracy } = pos.coords;
-      latEl.value = latitude;
-      lngEl.value = longitude;
-      accEl.value = Math.round(accuracy || 0);
-      msg.textContent = `Lokasi diperoleh (~${Math.round(accuracy)} m).`;
-      btn.disabled = false; // boleh submit; server tetap memutuskan
-    },
-    function (err) {
-      msg.textContent = 'Tidak bisa mengambil lokasi: ' + (err.message || 'izin ditolak');
-      btn.disabled = true;
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
+        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+        if (!window.isSecureContext && !isLocalhost) {
+            msg.textContent = 'Lokasi tidak aktif: akses harus HTTPS.';
+            btn.disabled = true;
+            return;
+        }
 
-  // Pengaman ekstra: cegah submit bila koordinat kosong
-  document.getElementById('loginForm').addEventListener('submit', function(e){
-    if (!latEl.value || !lngEl.value) {
-      e.preventDefault();
-      msg.textContent = 'Koordinat belum tersedia. Pastikan akses lokasi diizinkan.';
-      btn.disabled = true;
-    }
-  });
-})();
+        if (!('geolocation' in navigator)) {
+            msg.textContent = 'Perangkat tidak mendukung geolokasi.';
+            btn.disabled = true;
+            return;
+        }
+
+        msg.textContent = 'Meminta lokasi…';
+        btn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                const {
+                    latitude,
+                    longitude,
+                    accuracy
+                } = pos.coords;
+                latEl.value = latitude;
+                lngEl.value = longitude;
+                accEl.value = Math.round(accuracy || 0);
+
+                const near = nearestOffice(latitude, longitude);
+                if (near) {
+                    const jarak = Math.round(near.distance);
+                    const batas = near.radius_m || 0;
+                    const dalam = batas ? (near.distance <= batas) : true;
+
+                    // Tampilkan jarak ke kantor TERDEKAT (Semarang / Sidoarjo mana yang lebih dekat)
+                    msg.innerHTML =
+                        `Lokasi diperoleh — Terdekat: <b>${near.name}</b> ` +
+                        `~<b>${jarak} m</b> (batas ${batas} m)` +
+                        (dalam ? '' : ' <span class="text-red-600 font-medium">[di luar area]</span>');
+
+                    // Opsional: nonaktifkan tombol bila di luar radius (server tetap validasi ulang)
+                    btn.disabled = !dalam;
+                } else {
+                    // Fallback
+                    msg.textContent = `Lokasi diperoleh (~${Math.round(accuracy)} m).`;
+                    btn.disabled = false;
+                }
+            },
+            function(err) {
+                msg.textContent = 'Tidak bisa mengambil lokasi: ' + (err.message || 'izin ditolak');
+                btn.disabled = true;
+            }, {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+
+        // Pengaman ekstra: cegah submit bila koordinat kosong
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            if (!latEl.value || !lngEl.value) {
+                e.preventDefault();
+                msg.textContent = 'Koordinat belum tersedia. Pastikan akses lokasi diizinkan.';
+                btn.disabled = true;
+            }
+        });
+    })();
 </script>
 {{-- ============================= --}}
 @endsection

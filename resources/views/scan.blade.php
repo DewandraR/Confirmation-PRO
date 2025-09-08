@@ -17,7 +17,7 @@
 </div>
 
 {{-- Kontainer Form Input Data dengan jarak atas yang disesuaikan --}}
-<div class="px-6 py-12 -mt-8 relative z-10"> {{-- Peningkatan padding atas dan margin-top negatif --}}
+<div class="px-6 py-12 -mt-8 relative z-10">
     <div class="max-w-2xl mx-auto">
         <div class="bg-white rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden">
             {{-- Header form input data --}}
@@ -34,7 +34,6 @@
                     </div>
 
                     {{-- === Tambahan: tombol Logout di sisi kanan header === --}}
-                    {{-- === Logout (besar + konfirmasi) === --}}
                       @auth
                       <button id="openLogoutConfirm"
                           class="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold
@@ -48,9 +47,6 @@
                           Logout
                       </button>
                       @endauth
-                      {{-- === /Logout === --}}
-
-                    {{-- === /Tambahan === --}}
                 </div>
             </div>
 
@@ -277,6 +273,16 @@
     function normalizeAufnr(raw){let s=String(raw||'').replace(/\D/g,'');if(s.length===13){const cd=ean13CheckDigit(s.slice(0,12));if(cd===+s[12]) s=s.slice(0,12);}return s;}
     const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 
+    // ====== Sanitizer pesan error (menghilangkan PERNR) ======
+    function sanitizeErrorMessage(msg){
+        if(msg==null) return '';
+        let s=String(msg);
+        s = s.replace(/\s*oleh\s+PERNR\s+\d+.*$/i, ''); // hapus "oleh PERNR ..."
+        s = s.replace(/[.,;:\s]+$/, '');
+        if(!/[.?!]$/.test(s) && s!=='') s += '.';
+        return s;
+    }
+
     // ========== State / elemen ==========
     const aufnrList=new Set();
     const aufnrListContainer=document.getElementById('aufnr-list-container');
@@ -299,17 +305,22 @@
         aufnrListContainer.appendChild(div);
     }
 
-    // ========== Modal error (tetap) ==========
+    // ========== Modal error ==========
     const errModal=document.getElementById('errorModal');
     function showError(title,msg){
         const t=document.getElementById('errTitle'); const p=document.getElementById('errText');
-        if(t) t.textContent=title||'Terjadi Kesalahan'; if(p) p.textContent=msg||'';
+        if(t) t.textContent=title||'Terjadi Kesalahan';
+        const cleaned = String(msg||'')
+            .split('\n')
+            .map(line => sanitizeErrorMessage(line))
+            .join('\n');
+        if(p) p.textContent=cleaned;
         errModal.classList.remove('hidden'); errModal.classList.add('flex');
     }
     function closeError(){errModal.classList.add('hidden'); errModal.classList.remove('flex');}
     window.closeError=closeError;
 
-    // ====== TECO modal (baru) ======
+    // ====== TECO modal ======
     const tecoModal=document.getElementById('tecoModal');
     const tecoText=document.getElementById('tecoText');
     document.getElementById('tecoOk')?.addEventListener('click',()=>{
@@ -337,10 +348,20 @@
         try{
             const res=await fetch('/api/yppi019/sync',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({aufnr,pernr,force:true})});
             let body; try{body=await res.clone().json();}catch{body=await res.text();}
-            const msg=extractMsg(body); const kind=res.ok?'ok':classifySap(msg);
+            const rawMsg=extractMsg(body);
+            let msg=sanitizeErrorMessage(rawMsg);
+            const kind=res.ok?'ok':classifySap(rawMsg);
+
+            // Custom 409: ganti pesan & sembunyikan prefix
+            if(res.status===409 && /sudah terdaftar/i.test(rawMsg)){
+                msg="PRO mungkin sudah di input oleh NIK Operator lain.\nSilahkan coba lagi atau ganti PRO yang lain.";
+            }
+
             return {ok:res.ok,status:res.status,body,msg,kind,aufnr};
         }catch(e){
-            const msg=String(e); return {ok:false,status:0,body:msg,msg,kind:classifySap(msg),aufnr};
+            const rawMsg=String(e);
+            const msg=sanitizeErrorMessage(rawMsg);
+            return {ok:false,status:0,body:rawMsg,msg,kind:classifySap(rawMsg),aufnr};
         }
     }
 
@@ -351,7 +372,7 @@
         try{
             let res=await fetch(url,{headers:{'Accept':'application/json'}});
             let body; try{body=await res.clone().json();}catch{body=await res.text();}
-            if(!res.ok){ const msg=extractMsg(body); const kind=classifySap(msg); return {ok:false,kind,msg,aufnr}; }
+            if(!res.ok){ const raw=extractMsg(body); const kind=classifySap(raw); return {ok:false,kind,msg:sanitizeErrorMessage(raw),aufnr}; }
             let rows=Array.isArray(body?.T_DATA1)?body.T_DATA1:(Array.isArray(body?.rows)?body.rows:[]);
             if(Array.isArray(rows)&&rows.length>0) return {ok:true,kind:'ok',aufnr};
             await sleep(200);
@@ -360,7 +381,7 @@
             rows=Array.isArray(body?.T_DATA1)?body.T_DATA1:(Array.isArray(body?.rows)?body.rows:[]);
             if(Array.isArray(rows)&&rows.length>0) return {ok:true,kind:'ok',aufnr};
             return {ok:false,kind:'notfound',msg:'Data tidak ditemukan',aufnr};
-        }catch(e){ return {ok:false,kind:'sap',msg:String(e),aufnr}; }
+        }catch(e){ return {ok:false,kind:'sap',msg:sanitizeErrorMessage(String(e)),aufnr}; }
     }
 
     // ========== Submit handler ==========
@@ -379,8 +400,8 @@
             const pernr=(pernrInput?.value||'').trim();
             const aufnrArray=Array.from(aufnrList);
 
-            if(!pernr){ showError('Input belum lengkap','ID (Pernr) wajib diisi.'); pernrInput.focus(); return; }
-            if(!aufnrArray.length){ showError('Input belum lengkap','PRO (AUFNR) wajib diisi / scan.'); aufnrInput?.focus(); return; }
+            if(!pernr){ showError('Input belum lengkap','NIK Operator wajib di isi.'); pernrInput.focus(); return; }
+            if(!aufnrArray.length){ showError('Input belum lengkap','Order Number wajib diisi / scan.'); aufnrInput?.focus(); return; }
 
             // 1) Sync
             const syncResults=await Promise.all(aufnrArray.map(a=>postSync(a,pernr)));
@@ -392,7 +413,13 @@
 
             const failedSync=syncResults.filter(r=>!r.ok);
             if(failedSync.length){
-                const lines=failedSync.map(f=>`• ${f.aufnr}  [${f.status}]  ${f.msg}`);
+                const lines=failedSync.map(f=>{
+                    // Untuk kasus 409 yang sudah kita custom, tampilkan pesan saja (tanpa "AUFNR [409]")
+                    if(f.status===409 && /PRO mungkin sudah di input/i.test(f.msg)){
+                        return f.msg;
+                    }
+                    return `• ${f.aufnr}  [${f.status}]  ${f.msg}`;
+                });
                 const hasAuth=failedSync.some(f=>f.kind==='auth');
                 showError(hasAuth?'Akses SAP ditolak':'Gagal sinkronisasi ke SAP',lines.join('\n'));
                 return;
@@ -402,7 +429,7 @@
             const verResults=await Promise.all(aufnrArray.map(a=>verifyMaterial(a,pernr)));
             const verSapErrs=verResults.filter(v=>!v.ok && v.kind!=='notfound');
             if(verSapErrs.length){
-                const lines=verSapErrs.map(v=>`• ${v.aufnr}  ${v.msg}`);
+                const lines=verSapErrs.map(v=>`• ${v.aufnr}  ${sanitizeErrorMessage(v.msg)}`);
                 const hasAuth=verSapErrs.some(v=>v.kind==='auth');
                 showError(hasAuth?'Akses SAP ditolak':'Gagal ambil data dari SAP',lines.join('\n'));
                 return;

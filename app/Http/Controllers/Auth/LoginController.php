@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 
 class LoginController extends Controller
 {
@@ -47,10 +48,9 @@ class LoginController extends Controller
         // Cek jarak ke tiap kantor -> lolos jika ada yang dalam radius
         $allowed = false;
         $matched = null;
-        $closest = null; // untuk pesan error informatif
+        $closest = null;
 
         foreach ($sites as $site) {
-            // validasi entri site
             if (!isset($site['lat'], $site['lng'], $site['radius_m'])) continue;
 
             $d = $this->haversineMeters($lat, $lng, (float)$site['lat'], (float)$site['lng']);
@@ -65,7 +65,6 @@ class LoginController extends Controller
         }
 
         if (!$allowed) {
-            // Info kantor terdekat untuk memudahkan user
             if ($closest) {
                 $nearName   = $closest['site']['name'] ?? ($closest['site']['code'] ?? 'kantor terdekat');
                 $nearRadius = (int) ($closest['site']['radius_m'] ?? 0);
@@ -77,11 +76,16 @@ class LoginController extends Controller
             return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('email');
         }
 
-        // Lolos geofence -> autentikasi seperti biasa
+        // ===== KUNCI: session habis saat browser ditutup + nonaktifkan remember =====
+        config(['session.expire_on_close' => true]);
+
         $credentials = $request->only('email','password');
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (Auth::attempt($credentials, false)) { // <— selalu false
             $request->session()->regenerate();
-            // (opsional) simpan info kantor yang terdeteksi
+
+            // Bersihkan cookie remember jika ada
+            Cookie::queue(Cookie::forget(Auth::getRecallerName()));
+
             if ($matched) {
                 session(['login_office' => ($matched['site']['name'] ?? $matched['site']['code'] ?? 'unknown')]);
             }
@@ -96,10 +100,11 @@ class LoginController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Cookie::queue(Cookie::forget(Auth::getRecallerName()));
+
         return redirect()->route('login');
     }
 
-    /** Hitung jarak Haversine dalam meter */
     private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
         $R = 6371000.0; // meter

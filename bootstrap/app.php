@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web();
         $middleware->api();
 
+        // Tambahkan middleware custom ke group "web" (untuk routes/web.php kamu)
+        // Middleware ini akan menghapus cookie remember_* dan mencegah auto-login via remember
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\DisableRememberAuth::class,
+        ]);
+
         // (opsional) alias custom bisa ditambahkan di sini
         // $middleware->alias(['auth.admin' => \App\Http\Middleware\AdminOnly::class]);
     })

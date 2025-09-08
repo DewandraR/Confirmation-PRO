@@ -1,4 +1,5 @@
-# api.py — yppi019_mysql_service (versi diperbaiki)
+
+# api.py — yppi019_mysql_service (versi dengan auto-prune confirm log)
 import os, re, json, logging, decimal, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -24,6 +25,11 @@ HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
 HTTP_PORT = int(os.getenv("HTTP_PORT", "5051"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
+
+# ======== NEW: konfigurasi retensi log konfirmasi (hari) ========
+# 0 = simpan log hari ini saja; >0 = simpan N hari ke belakang
+CONFIRM_LOG_KEEP_DAYS = int(os.getenv("CONFIRM_LOG_KEEP_DAYS", "0"))
+# ================================================================
 
 # ---------------- MySQL ----------------
 def connect_mysql():
@@ -497,6 +503,32 @@ def http_status_from_sap_error(msg: str) -> int:
     if "NOT AUTHORIZATION" in m: return 403
     return 500
 
+# ======== NEW: helper untuk auto-prune confirm log ========
+def prune_old_confirm_logs(retain_days: int = CONFIRM_LOG_KEEP_DAYS) -> int:
+    """
+    Hapus log yppi019_confirm_log yang lama.
+    retain_days = 0  -> simpan log HARI INI saja (hapus yang tanggal < hari ini).
+    retain_days > 0  -> simpan N hari ke belakang (hapus yang lebih lama).
+    """
+    ensure_tables()
+    db = connect_mysql(); cur = db.cursor()
+    try:
+        if retain_days <= 0:
+            cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
+        else:
+            cur.execute("DELETE FROM yppi019_confirm_log WHERE created_at < (NOW() - INTERVAL %s DAY)", (retain_days,))
+        deleted = cur.rowcount
+        db.commit()
+        if deleted:
+            logger.info("Pruned %d old confirm logs (retain_days=%s)", deleted, retain_days)
+        return deleted
+    finally:
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
+# ===========================================================
+
 # ---------------- Alur BARU: confirm (PATCHED) ----------------
 @app.post("/api/yppi019/confirm")
 def api_confirm():
@@ -519,6 +551,13 @@ def api_confirm():
         return jsonify({"ok": False, "error": "aufnr, vornr, pernr, budat, psmng wajib"}), 400
     if qty_in <= 0:
         return jsonify({"ok": False, "error": "psmng harus > 0"}), 400
+
+    # ======== NEW: panggil prune agar log lama dibersihkan ========
+    try:
+        prune_old_confirm_logs(CONFIRM_LOG_KEEP_DAYS)
+    except Exception:
+        logger.exception("prune_old_confirm_logs failed (ignored)")
+    # =============================================================
 
     v_padded = vornr
     try:
@@ -589,9 +628,6 @@ def api_confirm():
                 "INSERT INTO yppi019_confirm_log (AUFNR,VORNR,PERNR,PSMNG,MEINH,GSTRP,GLTRP,BUDAT,SAP_RETURN,created_at) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (
-                    # ======================================================================================================
-                    # PERUBAHAN: Menggunakan `qty_in` (float) untuk kolom PSMNG di DB, bukan `psmng_str` (string format SAP).
-                    # ======================================================================================================
                     aufnr, v_padded, pernr, qty_in, meinh_req,
                     parse_date(gstrp), parse_date(gltrp), parse_date(budat),
                     json.dumps(to_jsonable(sap_ret), ensure_ascii=False),
