@@ -245,7 +245,7 @@
 @endsection
 
 @push('head')
-<script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+{{-- HAPUS CDN Quagga (tidak diperlukan lagi) --}}
 <style>
     #reader {
         width: 100%;
@@ -524,10 +524,38 @@
         }catch(e){ console.debug('Torch not supported',e); }
     }
 
-    function openModal(){
+    // === Perubahan utama: tunggu Quagga siap dari Vite sebelum start ===
+    async function waitQuaggaReady(timeoutMs=10000){
+        if (window.Quagga) return true;
+        return await new Promise((resolve)=>{
+            let done=false;
+            const onOk=()=>{ if(done) return; done=true; resolve(true); cleanup(); };
+            const onFail=()=>{ if(done) return; done=true; resolve(false); cleanup(); };
+            const cleanup=()=>{
+                window.removeEventListener('quagga:ready', onOk);
+                window.removeEventListener('quagga:failed', onFail);
+            };
+            window.addEventListener('quagga:ready', onOk, { once:true });
+            window.addEventListener('quagga:failed', onFail, { once:true });
+            setTimeout(()=>onFail(), timeoutMs);
+        });
+    }
+
+    async function openModal(){
         const pernr=(pernrInput?.value||'').trim();
         if(!pernr){ showError('Input belum lengkap','Silakan isi "NIK Operator" terlebih dahulu.'); pernrInput?.focus(); return; }
-        modal.classList.remove('hidden'); modal.classList.add('flex'); startQuagga();
+
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+
+        // Tunggu Quagga dari bundle Vite (resources/js/app.js)
+        const ok = await waitQuaggaReady(12000);
+        if (!ok || !window.Quagga){
+            showError('Scanner tidak siap','Gagal memuat modul Quagga. Coba reload halaman.');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+            return;
+        }
+
+        startQuagga();
     }
     function closeModal(){ stopQuagga(true); modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
@@ -538,25 +566,25 @@
 
 
     // ===== Logout modal handlers =====
-const logoutModal   = document.getElementById('logoutModal');
-const openLogoutBtn = document.getElementById('openLogoutConfirm');
-const logoutCancel  = document.getElementById('logoutCancel');
-const logoutConfirm = document.getElementById('logoutConfirm');
-const logoutForm    = document.getElementById('logoutForm');
+    const logoutModal   = document.getElementById('logoutModal');
+    const openLogoutBtn = document.getElementById('openLogoutConfirm');
+    const logoutCancel  = document.getElementById('logoutCancel');
+    const logoutConfirm = document.getElementById('logoutConfirm');
+    const logoutForm    = document.getElementById('logoutForm');
 
-function openLogoutModal(){
-  logoutModal.classList.remove('hidden');
-  logoutModal.classList.add('flex');
-}
-function closeLogoutModal(){
-  logoutModal.classList.add('hidden');
-  logoutModal.classList.remove('flex');
-}
+    function openLogoutModal(){
+      logoutModal.classList.remove('hidden');
+      logoutModal.classList.add('flex');
+    }
+    function closeLogoutModal(){
+      logoutModal.classList.add('hidden');
+      logoutModal.classList.remove('flex');
+    }
 
-openLogoutBtn?.addEventListener('click', (e)=>{ e.preventDefault(); openLogoutModal(); });
-logoutCancel?.addEventListener('click', closeLogoutModal);
-logoutConfirm?.addEventListener('click', ()=> { logoutForm?.submit(); });
-logoutModal?.addEventListener('click', (e)=>{ if(e.target===logoutModal) closeLogoutModal(); });
+    openLogoutBtn?.addEventListener('click', (e)=>{ e.preventDefault(); openLogoutModal(); });
+    logoutCancel?.addEventListener('click', closeLogoutModal);
+    logoutConfirm?.addEventListener('click', ()=> { logoutForm?.submit(); });
+    logoutModal?.addEventListener('click', (e)=>{ if(e.target===logoutModal) closeLogoutModal(); });
 
 </script>
 @endpush
