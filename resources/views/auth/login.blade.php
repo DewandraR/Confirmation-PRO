@@ -21,11 +21,15 @@
         <div class="p-8 space-y-4">
             <h1 class="text-2xl font-semibold text-slate-800 mb-6 text-center">Masuk</h1>
 
-            @if ($errors->any())
-                <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
-                    {{-- tampilkan prioritas: login/location/email/sap_id --}}
-                    {{ $errors->first('login') ?? $errors->first('location') ?? $errors->first('sap_id') ?? $errors->first() }}
-                </div>
+                        @if ($errors->any())
+            <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+                {{ trim(
+                    $errors->first('login')
+                    ?: $errors->first('location')
+                    ?: $errors->first('sap_id')
+                    ?: $errors->first()
+                ) ?: 'Login SAP gagal. Silakan coba lagi.' }}
+            </div>
             @endif
 
             <form method="POST" action="{{ route('login.store') }}" class="space-y-6" id="loginForm" autocomplete="off">
@@ -42,9 +46,12 @@
                                     </svg>
                                 </div>
                             </div>
-                            <input id="sap_id" name="sap_id" type="text" inputmode="numeric" value="{{ old('sap_id') }}" required autofocus
-                                   class="flex-1 outline-none bg-transparent text-sm placeholder-slate-400 font-medium"
-                                   placeholder="Masukkan SAP ID">
+                            <input id="sap_id" name="sap_id" type="text"
+                                    inputmode="text"
+                                    autocomplete="username"
+                                    autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go"
+                                    class="flex-1 outline-none bg-transparent text-sm placeholder-slate-400 font-medium"
+                                    placeholder="Masukkan SAP ID">
                         </div>
                     </div>
                 </div>

@@ -1,12 +1,11 @@
-# api.py — yppi019_mysql_service (versi dengan login per user SAP ID + api/sap-login)
-import os, re, json, logging, decimal, datetime
+# api.py — yppi019_mysql_service (force per-user SAP credential from request)
+import os, re, json, logging, decimal, datetime, base64
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import mysql.connector
-from mysql.connector import errorcode
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
 
 load_dotenv()
@@ -21,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
-HTTP_PORT = int(os.getenv("HTTP_PORT", "5051"))
+HTTP_PORT = int(os.getenv("HTTP_PORT", "5035"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
 
@@ -42,29 +41,62 @@ def connect_mysql():
 
 # ---------------- SAP ----------------
 def connect_sap(username: Optional[str] = None, password: Optional[str] = None) -> Connection:
-    user = (username or os.getenv("SAP_USERNAME", "")).strip()
-    passwd = (password or os.getenv("SAP_PASSWORD", "")).strip()
+    """
+    Wajib terima username/password dari request.
+    Tidak ada fallback ke .env untuk kredensial user.
+    Host/instansi SAP tetap dari .env.
+    """
+    user = (username or "").strip()
+    passwd = (password or "").strip()
+    if not user or not passwd:
+        raise ValueError("Missing SAP username/password (must be sent via headers or JSON).")
+
     ashost = (os.getenv("SAP_ASHOST", "192.168.254.154") or "").strip()
-    sysnr = (os.getenv("SAP_SYSNR", "01") or "").strip()
+    sysnr  = (os.getenv("SAP_SYSNR", "01") or "").strip()
     client = (os.getenv("SAP_CLIENT", "300") or "").strip()
-    lang = (os.getenv("SAP_LANG", "EN") or "").strip()
-    missing = [k for k, v in {"user":user,"passwd":passwd,"SAP_ASHOST":ashost,"SAP_SYSNR":sysnr,"SAP_CLIENT":client,"SAP_LANG":lang}.items() if not v]
+    lang   = (os.getenv("SAP_LANG", "EN") or "").strip()
+
+    missing = [k for k, v in {
+        "SAP_ASHOST": ashost, "SAP_SYSNR": sysnr, "SAP_CLIENT": client, "SAP_LANG": lang
+    }.items() if not v]
     if missing:
-        raise ValueError(f"SAP logon fields empty: {', '.join(missing)}. Check .env")
-    logger.info("SAP connect -> ashost=%s sysnr=%s client=%s lang=%s user=%s", ashost, sysnr, client, lang, user)
+        raise ValueError(f"SAP connection fields empty: {', '.join(missing)}. Check .env")
+
+    logger.info("SAP connect -> ashost=%s sysnr=%s client=%s lang=%s user=%s",
+                ashost, sysnr, client, lang, user)
     return Connection(user=user, passwd=passwd, ashost=ashost, sysnr=sysnr, client=client, lang=lang)
 
-# ---------------- Kredensial helper (BARU) ----------------
+# ---------------- Kredensial helper ----------------
+def _try_basic_auth_header() -> Optional[Tuple[str, str]]:
+    auth = request.headers.get("Authorization") or ""
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth.split(" ", 1)[1]).decode("utf-8", "ignore")
+            if ":" in decoded:
+                u, p = decoded.split(":", 1)
+                u, p = (u or "").strip(), (p or "").strip()
+                if u and p:
+                    return u, p
+        except Exception:
+            pass
+    return None
+
 def get_credentials_from_request() -> Tuple[str, str]:
     """
-    Ambil kredensial SAP:
-    1) Prioritas dari header: X-SAP-Username, X-SAP-Password
-    2) Fallback dari JSON body: username/password (atau sap_id/password)
+    Ambil kredensial SAP dari request:
+    1) Header: X-SAP-Username, X-SAP-Password
+    2) Header Authorization: Basic base64(user:pass)
+    3) JSON body: username/password atau sap_id/password
     """
-    u = request.headers.get("X-SAP-Username")
-    p = request.headers.get("X-SAP-Password")
+    u = (request.headers.get("X-SAP-Username") or "").strip()
+    p = (request.headers.get("X-SAP-Password") or "").strip()
     if u and p:
         return u, p
+
+    basic = _try_basic_auth_header()
+    if basic:
+        return basic
+
     try:
         if request.is_json:
             body = request.get_json(silent=True) or {}
@@ -74,6 +106,7 @@ def get_credentials_from_request() -> Tuple[str, str]:
                 return u2, p2
     except Exception:
         pass
+
     raise ValueError("SAP credentials not found (headers or JSON).")
 
 # ---------------- Utils ----------------
@@ -192,7 +225,10 @@ def ensure_tables():
         cur.execute(DDL_CONFIRM)
         db.commit()
     finally:
-        cur.close(); db.close()
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
 
 # ---------------- Persist ----------------
 UPSERT = """
@@ -263,7 +299,10 @@ def save_rows(rows: List[Dict[str, Any]]) -> int:
         db.commit()
         return cur.rowcount
     finally:
-        cur.close(); db.close()
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
 
 # ---------------- Owner helpers ----------------
 def get_existing_pernr_for_aufnr(aufnr: str) -> Optional[str]:
@@ -276,7 +315,8 @@ def get_existing_pernr_for_aufnr(aufnr: str) -> Optional[str]:
     finally:
         try: cur.close()
         except: pass
-        connect_mysql().close()
+        try: db.close()
+        except: pass
 
 def ensure_owner_for_aufnr_if_empty(aufnr: str, pernr: str) -> None:
     db = connect_mysql(); cur = db.cursor()
@@ -290,7 +330,8 @@ def ensure_owner_for_aufnr_if_empty(aufnr: str, pernr: str) -> None:
     finally:
         try: cur.close()
         except: pass
-        db.close()
+        try: db.close()
+        except: pass
 
 # ---------------- READ from SAP & save ----------------
 def fetch_one_aufnr(sap: Connection, aufnr: str, pernr: Optional[str], arbpl: Optional[str]) -> List[Dict[str, Any]]:
@@ -376,32 +417,31 @@ def root():
             "POST /api/yppi019/sync_bulk | POST /api/yppi019/confirm | "
             "POST /api/yppi019/update-qty-spx | POST /api/sap-login", 200, {"Content-Type":"text/plain"})
 
-# (kompatibel) login ping SAP - sekarang pakai header/JSON
+# (kompatibel) login ping SAP - pakai header/JSON
 @app.post("/api/yppi019/login")
 def api_login():
     try:
-        u,p = get_credentials_from_request()
-        c = connect_sap(u,p); c.ping()
+        u, p = get_credentials_from_request()
+        c = connect_sap(u, p); c.ping()
         try: c.close()
         except: pass
-        return jsonify({"status":"connected"})
+        return jsonify({"status": "connected"})
     except ValueError as ve:
-        return jsonify({"error":str(ve)}), 401
+        return jsonify({"error": str(ve)}), 401
     except Exception as e:
-        return jsonify({"error":str(e)}), 401
+        return jsonify({"error": str(e)}), 401
 
-# === BARU: endpoint login SAP yang akan dipanggil Laravel ===
+# Endpoint login SAP untuk dipanggil Laravel
 @app.post("/api/sap-login")
 def sap_login():
     try:
         u, p = get_credentials_from_request()
-        conn = connect_sap(u, p)
-        conn.ping()
+        conn = connect_sap(u, p); conn.ping()
         try: conn.close()
         except: pass
-        return jsonify({'status': 'connected'}), 200
+        return jsonify({"status": "connected"}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 401
+        return jsonify({"error": str(e)}), 401
 
 @app.get("/api/yppi019")
 def api_get():
@@ -427,17 +467,20 @@ def api_get():
         cur.execute(sql, tuple(args))
         return jsonify({"ok": True, "rows": to_jsonable(cur.fetchall())})
     finally:
-        cur.close(); db.close()
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
 
 @app.post("/api/yppi019/sync")
 def api_sync():
-    # 1) ambil kredensial SAP (header/JSON)
+    # 1) kredensial SAP dari request
     try:
         u, p = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
-    # 2) ambil body
+    # 2) body
     body  = request.get_json(force=True) or {}
     aufnr = (body.get("aufnr") or "").strip()
     pernr = (body.get("pernr") or "").strip()
@@ -458,7 +501,7 @@ def api_sync():
     # 4) tarik terbaru dari SAP
     res = sync_from_sap(aufnr, u, p, pernr, arbpl)
 
-    # 4a) tandai kemungkinan TECO jika sukses tetapi tidak ada baris yang diterima
+    # 4a) tandai kemungkinan TECO jika sukses tetapi tidak ada baris
     if res.get("ok") and int(res.get("received", 0) or 0) == 0:
         res["teco_possible"] = True
 
@@ -473,17 +516,18 @@ def api_sync():
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
 
-
 @app.post("/api/yppi019/sync_bulk")
 def api_sync_bulk():
     try:
-        u,p = get_credentials_from_request()
+        u, p = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
-    body         = request.get_json(force=True) or {}
-    aufnr_list   = body.get("aufnr_list") or []
-    pernr        = (body.get("pernr") or "").strip()
-    arbpl        = (body.get("arbpl") or "").strip() or None
+
+    body       = request.get_json(force=True) or {}
+    aufnr_list = body.get("aufnr_list") or []
+    pernr      = (body.get("pernr") or "").strip()
+    arbpl      = (body.get("arbpl") or "").strip() or None
+
     if not isinstance(aufnr_list, list) or not aufnr_list:
         return jsonify({"ok": False, "error": "aufnr_list harus berupa list dan tidak boleh kosong"}), 400
     if not pernr:
@@ -497,18 +541,23 @@ def api_sync_bulk():
                              WHERE AUFNR=%s AND PERNR IS NOT NULL AND PERNR<>'' LIMIT 1""", (auf,))
             row = cur.fetchone()
             owner = str(row[0]) if row and row[0] is not None else None
-            if owner and owner != pernr: errors[auf] = f"AUFNR {auf} sudah terdaftar oleh PERNR {owner}"
-            else: allowed.append(auf)
+            if owner and owner != pernr:
+                errors[auf] = f"AUFNR {auf} sudah terdaftar oleh PERNR {owner}"
+            else:
+                allowed.append(auf)
     finally:
         try: cur.close()
         except: pass
-        db.close()
-    if not allowed: return jsonify({"ok": False, "errors": errors}), 409
+        try: db.close()
+        except: pass
+
+    if not allowed:
+        return jsonify({"ok": False, "errors": errors}), 409
 
     total_received = 0; total_saved = 0; succ = []
     sap = None
     try:
-        sap = connect_sap(u,p)
+        sap = connect_sap(u, p)
         for auf in allowed:
             try:
                 rows = fetch_one_aufnr(sap, auf, pernr, arbpl)
@@ -519,7 +568,8 @@ def api_sync_bulk():
                 errors[auf] = str(e); logger.exception("SAP error AUFNR=%s", auf)
             except Exception as e:
                 errors[auf] = str(e); logger.exception("Error AUFNR=%s", auf)
-        ok = len(errors)==0; status = 200 if ok else 207
+
+        ok = len(errors) == 0; status = 200 if ok else 207
         return jsonify({"ok": ok, "received": total_received, "saved": total_saved,
                         "successes": to_jsonable(succ), "errors": errors}), status
     finally:
@@ -535,11 +585,6 @@ def http_status_from_sap_error(msg: str) -> int:
 
 # ======== auto-prune confirm log ========
 def prune_old_confirm_logs(retain_days: int = CONFIRM_LOG_KEEP_DAYS) -> int:
-    """
-    Hapus log yppi019_confirm_log yang lama.
-    retain_days = 0  -> simpan log HARI INI saja (hapus yang tanggal < hari ini).
-    retain_days > 0  -> simpan N hari ke belakang (hapus yang lebih lama).
-    """
     ensure_tables()
     db = connect_mysql(); cur = db.cursor()
     try:
@@ -623,16 +668,19 @@ def api_confirm():
         if qty_in > qty_spx:
             return jsonify({"ok": False, "error": f"Input melebihi QTY_SPX sisa ({qty_spx})."}), 400
     finally:
-        cur.close(); db.close()
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
 
     meinh_req = normalize_uom(b.get("meinh") or meinh_db)
 
     # format IV_PSMNG untuk SAP
-    integer_units = {"PC", "EA", "PCS", "UNIT"}  # ST sudah dinormalisasi ke PC
+    integer_units = {"PC", "EA", "PCS", "UNIT"}  # ST dinormalisasi ke PC
     if meinh_req in integer_units:
-        psmng_str = str(int(round(qty_in)))        # contoh: 1
+        psmng_str = str(int(round(qty_in)))          # contoh: "1"
     else:
-        psmng_str = f"{qty_in:.3f}".replace(".", ",") # contoh M3: "0,500"
+        psmng_str = f"{qty_in:.3f}".replace(".", ",") # contoh: "0,500"
     logger.info("IV_PSMNG (final) -> %s %s", psmng_str, meinh_req)
 
     sap = None
@@ -727,7 +775,10 @@ def api_update_qty_spx():
         db.commit()
         return jsonify({"ok": True, "updated": cur.rowcount})
     finally:
-        cur.close(); db.close()
+        try: cur.close()
+        except: pass
+        try: db.close()
+        except: pass
 
 # alias dengan dash
 app.add_url_rule("/api/yppi019/update-qty-spx", view_func=api_update_qty_spx, methods=["POST"])

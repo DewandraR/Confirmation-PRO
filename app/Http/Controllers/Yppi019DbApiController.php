@@ -12,7 +12,7 @@ class Yppi019DbApiController extends Controller
     private function flaskBase(): string
     {
         // Pastikan env YPPI019_BASE/FLASK_BASE menunjuk ke host:port Flask yang AKTIF
-        return rtrim(env('YPPI019_BASE', env('FLASK_BASE', 'http://127.0.0.1:5051')), '/');
+        return rtrim(env('YPPI019_BASE', env('FLASK_BASE', 'http://127.0.0.1:5035')), '/');
     }
 
     /** VORNR 4 digit: 10 -> "0010" */
@@ -47,13 +47,21 @@ class Yppi019DbApiController extends Controller
     }
 
     private function sapHeaders(): array
-    {
-        return [
-            'X-SAP-Username' => env('SAP_USERNAME'),
-            'X-SAP-Password' => env('SAP_PASSWORD'),
-            'Content-Type'   => 'application/json',
-        ];
+{
+    $u = session('sap.username');
+    $p = session('sap.password');
+
+    // Kalau sesi hilang/expired, hentikan lebih awal.
+    if (!$u || !$p) {
+        abort(440, 'Sesi SAP habis atau belum login. Silakan login ulang.'); // 440 = login timeout (konvensi)
     }
+
+    return [
+        'X-SAP-Username' => $u,
+        'X-SAP-Password' => $p,
+        'Content-Type'   => 'application/json',
+    ];
+}
 
     public function sync(Request $req)
     {

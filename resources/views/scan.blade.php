@@ -155,7 +155,7 @@
                     <h3 class="text-base font-semibold text-white">Scanner Barcode</h3>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" id="toggleTorch" class="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Lampu</button>
+                    {{-- <button type="button" id="toggleTorch" class="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Lampu</button> --}}
                     <button type="button" id="closeScanner" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Tutup</button>
                 </div>
             </div>
@@ -268,6 +268,22 @@
 
 @push('scripts')
 <script>
+
+      const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+  function apiPost(url, payload) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': CSRF,
+        'X-Requested-With': 'XMLHttpRequest',
+    },
+    credentials: 'same-origin', // penting: bawa cookie sesi laravel
+    body: JSON.stringify(payload),
+  });
+}
+
     // ========== Helper normalisasi AUFNR ==========
     function ean13CheckDigit(d12){let s=0,t=0;for(let i=0;i<12;i++){const n=+d12[i];if(i%2===0)s+=n;else t+=n}return(10-((s+3*t)%10))%10}
     function normalizeAufnr(raw){let s=String(raw||'').replace(/\D/g,'');if(s.length===13){const cd=ean13CheckDigit(s.slice(0,12));if(cd===+s[12]) s=s.slice(0,12);}return s;}
@@ -346,7 +362,7 @@
     // ========== Callers ==========
     async function postSync(aufnr,pernr){
         try{
-            const res=await fetch('/api/yppi019/sync',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({aufnr,pernr,force:true})});
+            const res = await apiPost('/api/yppi019/sync', { aufnr, pernr, force:true });
             let body; try{body=await res.clone().json();}catch{body=await res.text();}
             const rawMsg=extractMsg(body);
             let msg=sanitizeErrorMessage(rawMsg);
@@ -370,7 +386,7 @@
         url.searchParams.set('aufnr',aufnr); url.searchParams.set('pernr',pernr);
         url.searchParams.set('limit','1'); url.searchParams.set('auto_sync','1');
         try{
-            let res=await fetch(url,{headers:{'Accept':'application/json'}});
+            let res = await fetch(url, { headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin' });
             let body; try{body=await res.clone().json();}catch{body=await res.text();}
             if(!res.ok){ const raw=extractMsg(body); const kind=classifySap(raw); return {ok:false,kind,msg:sanitizeErrorMessage(raw),aufnr}; }
             let rows=Array.isArray(body?.T_DATA1)?body.T_DATA1:(Array.isArray(body?.rows)?body.rows:[]);
@@ -561,7 +577,9 @@
 
     openBtn.addEventListener('click',openModal);
     closeBtn.addEventListener('click',closeModal);
-    toggleTorchBtn.addEventListener('click',()=>setTorch(!torchOn));
+          if (toggleTorchBtn) {
+        toggleTorchBtn.addEventListener('click', ()=>setTorch(!torchOn));
+      }
     modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
 
 

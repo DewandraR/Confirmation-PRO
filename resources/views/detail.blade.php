@@ -199,6 +199,23 @@
 </style>
 
 <script>
+
+    // === CSRF helpers ===
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+function apiPost(url, payload) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': CSRF,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+}
+
     // ===== Helpers =====
     const padVornr = v => String(parseInt(v || '0', 10)).padStart(4, '0');
     const toYYYYMMDD = (d) => {
@@ -644,14 +661,7 @@
 
                 for (const p of payloads) {
                     try {
-                        const r = await fetch('/api/yppi019/confirm', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify(p)
-                        });
+                        const r = await apiPost('/api/yppi019/confirm', p);
                         const j = await r.json().catch(() => ({}));
                         results.push({
                             status: r.status,
@@ -756,8 +766,9 @@
         cancelButton.addEventListener('click', () => confirmModal.classList.add('hidden'));
         errorOkButton.addEventListener('click', () => errorModal.classList.add('hidden'));
         successOkButton.addEventListener('click', () => {
-            successModal.classList.add('hidden');
-            location.reload(); // Muat ulang halaman setelah sukses
+            // langsung balik ke halaman Scan
+            window.location.href = "{{ route('scan') }}";
+            // atau: window.location.assign("{{ route('scan') }}");
         });
     });
 </script>

@@ -36,9 +36,7 @@ return [
     ],
 
     'yppi019' => [
-        'base'         => env('YPPI019_BASE', 'http://127.0.0.1:5051'),
-        'sap_username' => env('SAP_USERNAME', 'auto_email'),
-        'sap_password' => env('SAP_PASSWORD', '11223344'),
+        'base'         => env('YPPI019_BASE', 'http://127.0.0.1:5035'),
     ],
     
     
