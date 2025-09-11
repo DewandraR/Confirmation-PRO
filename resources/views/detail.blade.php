@@ -58,7 +58,7 @@
                 </div>
             </div>
 
-            {{-- Konten Tabel (tetap) --}}
+            {{-- Konten Tabel --}}
             <div id="loading" class="p-6 text-center">
                 <div class="flex flex-col items-center gap-3">
                     <div class="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
@@ -78,10 +78,10 @@
                             Total: <span id="totalItems">0</span> item(s)
                         </div>
                     </div>
-                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+
+                    <div class="overflow-auto max-h-[70vh] rounded-xl border border-slate-200">
                         <table class="w-full">
-                            {{-- Header Tabel (Satu warna hijau muda dengan transparansi) --}}
-                            <thead class="bg-green-700/90"> {{-- Diubah menjadi warna hijau 500 dengan opacity --}}
+                            <thead class="bg-green-700/90 sticky top-0 z-10">
                                 <tr>
                                     <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 sticky left-0 bg-green-700/90">
                                         <div class="flex items-center justify-center">
@@ -90,7 +90,7 @@
                                             </svg>
                                         </div>
                                     </th>
-                                    <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 w-16">No</th> {{-- Tidak sticky --}}
+                                    <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 w-16">No</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Order Number</th>
                                     <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Qty Input</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">Act Desc</th>
@@ -103,12 +103,13 @@
                                     <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Nama Operator</th>
                                 </tr>
                             </thead>
-                            <tbody id="tableBody" class="bg-white divide-y divide-slate-200"></tbody>
+                            <tbody id="tableBody" class="bg-white divide-y divide-slate-200">
+                            </tbody>
                         </table>
                     </div>
                 </div>
-                {{-- Tombol Konfirmasi (menggunakan warna baru) --}}
-                <div class="px-4 py-3 bg-white border-t border-slate-200 flex justify-end">
+                {{-- Tombol Konfirmasi --}}
+                <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
                     <button id="confirm-button" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors disabled:bg-slate-300 disabled:text-slate-500" disabled>
                         Konfirmasi (<span id="selected-count">0</span>)
                     </button>
@@ -118,10 +119,9 @@
     </div>
 </div>
 
-{{-- Modal Konfirmasi --}}
+{{-- Semua Modal (Confirm, Error, Warning, Success) tidak diubah --}}
 <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-        {{-- Header Modal Konfirmasi (sesuai tema baru) --}}
         <div class="bg-gradient-to-r from-green-700 to-blue-900 px-4 py-3 border-b border-green-600">
             <h4 class="text-lg font-semibold text-white">Konfirmasi Aksi</h4>
         </div>
@@ -136,10 +136,8 @@
     </div>
 </div>
 
-{{-- Modal Error --}}
 <div id="error-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-        {{-- Header Modal Error (sesuai tema baru) --}}
         <div class="bg-gradient-to-r from-red-50 to-red-100 px-4 py-3 border-b border-red-200">
             <h4 class="text-lg font-semibold text-red-800">Terjadi Kesalahan</h4>
         </div>
@@ -152,10 +150,8 @@
     </div>
 </div>
 
-{{-- Modal Peringatan --}}
 <div id="warning-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-        {{-- Header Modal Peringatan (sesuai tema baru) --}}
         <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200">
             <h4 class="text-lg font-semibold text-yellow-800">Peringatan</h4>
         </div>
@@ -168,10 +164,8 @@
     </div>
 </div>
 
-{{-- Modal Sukses --}}
 <div id="success-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-        {{-- Header Modal Sukses (sesuai tema baru) --}}
         <div class="bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 py-3 border-b border-emerald-200">
             <h4 class="text-lg font-semibold text-emerald-800">Berhasil Dikonfirmasi</h4>
         </div>
@@ -193,28 +187,28 @@
         -webkit-appearance: none;
         margin: 0;
     }
+
     input[type="number"] {
         -moz-appearance: textfield;
     }
 </style>
 
 <script>
+    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
-    // === CSRF helpers ===
-const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
-function apiPost(url, payload) {
-  return fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-CSRF-TOKEN': CSRF,
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    credentials: 'same-origin',
-    body: JSON.stringify(payload),
-  });
-}
+    function apiPost(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': CSRF,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        });
+    }
 
     // ===== Helpers =====
     const padVornr = v => String(parseInt(v || '0', 10)).padStart(4, '0');
@@ -231,7 +225,6 @@ function apiPost(url, payload) {
         return s.replace(/\D/g, '');
     };
 
-    // Fungsi untuk mendapatkan nama unit yang lebih deskriptif
     function getUnitName(unit) {
         const u = String(unit || '').toUpperCase();
         switch (u) {
@@ -239,7 +232,7 @@ function apiPost(url, payload) {
             case 'PC':
             case 'PCS':
             case 'EA':
-                return 'PC'; // Menyamakan semua satuan bijian menjadi PC
+                return 'PC';
             case 'M3':
                 return 'Meter Kubik';
             case 'M2':
@@ -247,11 +240,10 @@ function apiPost(url, payload) {
             case 'KG':
                 return 'Kilogram';
             default:
-                return u; // Tampilkan kode asli jika tidak dikenali
+                return u;
         }
     }
 
-    // Ekstrak pesan dari sap_return (untuk error/sukses)
     function collectSapReturnEntries(ret) {
         const entries = [];
         if (!ret || typeof ret !== 'object') return entries;
@@ -267,20 +259,16 @@ function apiPost(url, payload) {
         return entries;
     }
 
-    // TRUE bila sap_return berisi TYPE = E/A (Error/Abort)
     function hasSapError(ret) {
         const entries = collectSapReturnEntries(ret);
-        return entries.some(e => {
-            const t = String(e?.TYPE || '').toUpperCase();
-            return t === 'E' || t === 'A';
-        });
+        return entries.some(e => ['E', 'A'].includes(String(e?.TYPE || '').toUpperCase()));
     }
 
     window.onerror = function(msg, src, line, col) {
         const em = document.getElementById('error-message');
         const mm = document.getElementById('error-modal');
         if (em && mm) {
-            em.textContent = 'Error JS: ' + msg + ` (${line}:${col})`;
+            em.textContent = `Error JS: ${msg} (${line}:${col})`;
             mm.classList.remove('hidden');
         }
         console.error(msg, src, line, col);
@@ -293,9 +281,11 @@ function apiPost(url, payload) {
         const single = p.get('aufnr') || '';
         const IV_PERNR = p.get('pernr') || '';
         const IV_ARBPL = p.get('arbpl') || '';
+        const IV_WERKS = p.get('werks') || '';
 
         function ean13CheckDigit(d12) {
-            let s = 0, t = 0;
+            let s = 0,
+                t = 0;
             for (let i = 0; i < 12; i++) {
                 const n = +d12[i];
                 if (i % 2 === 0) s += n;
@@ -326,34 +316,38 @@ function apiPost(url, payload) {
         const selectAll = document.getElementById('selectAll');
         const confirmButton = document.getElementById('confirm-button');
         const selectedCountSpan = document.getElementById('selected-count');
-
         const confirmModal = document.getElementById('confirm-modal');
         const confirmationList = document.getElementById('confirmation-list');
         const yesButton = document.getElementById('yes-button');
         const cancelButton = document.getElementById('cancel-button');
-
         const errorModal = document.getElementById('error-modal');
         const errorMessage = document.getElementById('error-message');
         const errorOkButton = document.getElementById('error-ok-button');
-
         const warningModal = document.getElementById('warning-modal');
         const warningMessage = document.getElementById('warning-message');
         const warningOkButton = document.getElementById('warning-ok-button');
-
         const successModal = document.getElementById('success-modal');
         const successList = document.getElementById('success-list');
         const successOkButton = document.getElementById('success-ok-button');
 
-        // Tampilkan PERNR atau AUFNR
-        if (headAUFNR) headAUFNR.textContent = IV_PERNR ? String(IV_PERNR) : (AUFNRS.length ? AUFNRS.join(', ') : '-');
+        // Tampilkan PERNR, AUFNR, atau ARBPL
+        if (headAUFNR) {
+            let headText = '-';
+            if (AUFNRS.length > 0) {
+                headText = AUFNRS.join(', ');
+            } else if (IV_ARBPL) {
+                headText = `WC: ${IV_ARBPL}`;
+            }
+            if (IV_PERNR) {
+                headText = `${IV_PERNR} / ${headText}`;
+            }
+            headAUFNR.textContent = headText.replace(/ \/ -$/, ''); // Hapus trailing slash jika tidak ada data utama
+        }
 
         const showError = (message) => {
-            loading.innerHTML = `
-            <div class="flex flex-col items-center gap-3">
+            loading.innerHTML = `<div class="flex flex-col items-center gap-3">
                 <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+                    <svg class="w-5 h-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div class="text-sm text-red-600 font-medium">Error: ${message}</div>
                 <div class="text-xs text-slate-400">Gagal memuat data dari server</div>
@@ -362,33 +356,67 @@ function apiPost(url, payload) {
             content.classList.add('hidden');
         };
 
-        if (!AUFNRS.length) {
-            showError('Tidak ada PRO yang dikirim dari halaman Scan.');
+        if (AUFNRS.length === 0 && !(IV_ARBPL && IV_PERNR && IV_WERKS)) {
+            showError('Parameter tidak lengkap. Harap kembali ke halaman Scan dan isi data dengan benar.');
             return;
         }
 
         // --- Ambil data ---
-        let rowsAll = [], failures = [];
+        let rowsAll = [],
+            failures = [];
         try {
-            const results = await Promise.allSettled(
-                AUFNRS.map(async (aufnr) => {
-                    const url = `/api/yppi019/material?aufnr=${encodeURIComponent(aufnr)}&pernr=${encodeURIComponent(IV_PERNR)}`;
-                    const res = await fetch(url, {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    let json;
-                    try {
-                        json = await res.json();
-                    } catch (e) {
-                        const txt = await res.text().catch(() => '');
-                        throw new Error(`Non-JSON (${res.status}): ${txt.slice(0,200)}`);
+            if (AUFNRS.length > 0) {
+                // Logika jika ada AUFNR
+                const results = await Promise.allSettled(
+                    AUFNRS.map(async (aufnr) => {
+                        // --- PERBAIKAN DIMULAI DI SINI ---
+                        // Bangun URL dasar dengan parameter wajib
+                        let url = `/api/yppi019/material?aufnr=${encodeURIComponent(aufnr)}&pernr=${encodeURIComponent(IV_PERNR)}`;
+
+                        // Tambahkan arbpl dan werks jika ada nilainya
+                        if (IV_ARBPL) {
+                            url += `&arbpl=${encodeURIComponent(IV_ARBPL)}`;
+                        }
+                        if (IV_WERKS) {
+                            url += `&werks=${encodeURIComponent(IV_WERKS)}`;
+                        }
+                        // --- PERBAIKAN SELESAI ---
+
+                        const res = await fetch(url, {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        let json;
+                        try {
+                            json = await res.json();
+                        } catch (e) {
+                            throw new Error(`Non-JSON (${res.status}): ${(await res.text().catch(()=>'')).slice(0,200)}`);
+                        }
+                        if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+                        const t = json.T_DATA1;
+                        return Array.isArray(t) ? t : (t ? [t] : []);
+                    })
+                );
+                results.forEach(r => r.status === 'fulfilled' ? rowsAll = rowsAll.concat(r.value) : failures.push(r.reason?.message || 'unknown'));
+            } else {
+                // Logika baru jika hanya ada ARBPL, WERKS, PERNR
+                const url = `/api/yppi019/material?arbpl=${encodeURIComponent(IV_ARBPL)}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(IV_PERNR)}`;
+                const res = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json'
                     }
-                    if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
-                    const t = json.T_DATA1;
-                    return Array.isArray(t) ? t : (t ? [t] : []);
-                })
-            );
-            results.forEach(r => r.status === 'fulfilled' ? rowsAll = rowsAll.concat(r.value) : failures.push(r.reason?.message || 'unknown'));
+                });
+                let json;
+                try {
+                    json = await res.json();
+                } catch (e) {
+                    throw new Error(`Non-JSON (${res.status}): ${(await res.text().catch(()=>'')).slice(0,200)}`);
+                }
+                if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+                const t = json.T_DATA1;
+                rowsAll = Array.isArray(t) ? t : (t ? [t] : []);
+            }
         } catch (e) {
             errorMessage.textContent = e.message || 'Gagal mengambil data';
             errorModal.classList.remove('hidden');
@@ -421,36 +449,23 @@ function apiPost(url, payload) {
             const maxAllow = Math.max(0, Math.min(qtySPX, sisaSPK));
             const meinh = (r.MEINH || 'ST').toUpperCase();
 
-            return `
-            <tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
-                data-aufnr="${r.AUFNR || ''}"
-                data-vornr="${vornr}"
-                data-pernr="${r.PERNR || IV_PERNR || ''}"
-                data-meinh="${(r.MEINH||'ST')}"
-                data-gstrp="${toYYYYMMDD(r.GSTRP)}"
-                data-gltrp="${toYYYYMMDD(r.GLTRP)}"
+            return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
+                data-aufnr="${r.AUFNR || ''}" data-vornr="${vornr}" data-pernr="${r.PERNR || IV_PERNR || ''}"
+                data-meinh="${r.MEINH||'ST'}" data-gstrp="${toYYYYMMDD(r.GSTRP)}" data-gltrp="${toYYYYMMDD(r.GLTRP)}"
                 data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || '-'}"
-                data-maktx="${(r.MAKTX || '-').replace(/\"/g,'&quot;')}"
-            >
+                data-maktx="${(r.MAKTX || '-').replace(/"/g,'&quot;')}">
                 <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
                     <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
                 </td>
-                <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200"> {{-- Kolom No. TIDAK sticky lagi --}}
+                <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
                     <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${i+1}</div>
                 </td>
                 <td class="px-3 py-3 text-sm font-semibold text-slate-900">${r.AUFNR || '-'}</td>
                 <td class="px-3 py-3 text-sm text-slate-700 text-center">
-                    <input
-                        type="number"
-                        name="QTY_SPX"
-                        class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
-                        value="0" placeholder="0" min="0"
-                        data-max="${maxAllow}"
-                        data-meinh="${(r.MEINH||'ST')}"
-                        step="${meinh==='M3' ? '0.001' : '1'}"
-                        inputmode="${meinh==='M3' ? 'decimal' : 'numeric'}"
-                        title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"
-                    />
+                    <input type="number" name="QTY_SPX" class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
+                        value="0" placeholder="0" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
+                        step="${meinh==='M3' ? '0.001' : '1'}" inputmode="${meinh==='M3' ? 'decimal' : 'numeric'}"
+                        title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"/>
                     <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(meinh)})</div>
                 </td>
                 <td class="px-3 py-3 text-sm text-slate-700">${r.LTXA1 || '-'}</td>
@@ -470,141 +485,95 @@ function apiPost(url, payload) {
             selectedCountSpan.textContent = count;
             confirmButton.disabled = count === 0;
         };
-
         selectAll.addEventListener('change', () => {
             document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = selectAll.checked);
             updateConfirmButtonState();
         });
         document.addEventListener('change', (e) => {
             if (!e.target.classList.contains('row-checkbox')) return;
-            const all = document.querySelectorAll('.row-checkbox');
-            const on = document.querySelectorAll('.row-checkbox:checked');
-            selectAll.checked = all.length === on.length;
+            const all = document.querySelectorAll('.row-checkbox'),
+                on = document.querySelectorAll('.row-checkbox:checked');
+            selectAll.checked = all.length > 0 && all.length === on.length;
             selectAll.indeterminate = on.length > 0 && on.length < all.length;
             updateConfirmButtonState();
         });
         updateConfirmButtonState();
 
         // === Validasi input QTY_SPX ===
-        let pendingResetInput = null;
-        let isWarningOpen = false;
+        let pendingResetInput = null,
+            isWarningOpen = false;
         document.querySelectorAll('input[name="QTY_SPX"]').forEach(input => {
             input.addEventListener('focus', function() {
                 if (this.value === '0') this.value = '';
             });
-
             input.addEventListener('input', function() {
-                const maxAllow = parseFloat(this.dataset.max || '0');
-
-                // biarkan kosong saat user sedang mengetik
                 if (this.value === '' || this.value === '-' || this.value === '.') return;
-
                 const v = parseFloat(String(this.value).replace(',', '.'));
+                const maxAllow = parseFloat(this.dataset.max || '0');
                 if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
-                    // Tampilkan modal peringatan di tengah halaman
                     warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
                     pendingResetInput = this;
                     isWarningOpen = true;
                     warningModal.classList.remove('hidden');
-                    this.blur(); // opsional: hentikan input di belakang modal
+                    this.blur();
                 }
             });
-
             input.addEventListener('blur', function() {
                 if (this.value.trim() === '') this.value = '0';
-
-                const u = (this.dataset.meinh || 'ST').toUpperCase();
-                const maxAllow = parseFloat(this.dataset.max || '0');
                 let v = parseFloat(this.value.replace(',', '.') || '0');
                 if (isNaN(v)) v = 0;
-
-                if (v > maxAllow && !isWarningOpen) {
-                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                    pendingResetInput = this;
-                    isWarningOpen = true;
-                    warningModal.classList.remove('hidden');
+                const maxAllow = parseFloat(this.dataset.max || '0');
+                if (v > maxAllow || v < 0) {
+                    if (!isWarningOpen) {
+                        warningMessage.textContent = v > maxAllow ? `Nilai tidak boleh melebihi batas: ${maxAllow}.` : 'Nilai tidak boleh negatif.';
+                        pendingResetInput = this;
+                        isWarningOpen = true;
+                        warningModal.classList.remove('hidden');
+                    }
                     return;
                 }
-
-                if (v < 0 && !isWarningOpen) {
-                    warningMessage.textContent = 'Nilai tidak boleh negatif.';
-                    pendingResetInput = this;
-                    isWarningOpen = true;
-                    warningModal.classList.remove('hidden');
-                    return;
-                }
-
-                if (v > maxAllow && !isWarningOpen) {
-                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                    pendingResetInput = this;
-                    isWarningOpen = true;
-                    warningModal.classList.remove('hidden');
-                    return;
-                }
-
-                if (v < 0 && !isWarningOpen) {
-                    warningMessage.textContent = 'Nilai tidak boleh negatif.';
-                    pendingResetInput = this;
-                    isWarningOpen = true;
-                    warningModal.classList.remove('hidden');
-                    return;
-                }
-
-                if (u === 'ST') {
-                    v = Math.floor(v);
-                } else if (u === 'M3') {
-                    v = Math.round(v * 1000) / 1000;
-                }
+                const u = (this.dataset.meinh || 'ST').toUpperCase();
+                if (u === 'ST' || u === 'PC' || u === 'PCS' || u === 'EA') v = Math.floor(v);
+                else if (u === 'M3') v = Math.round(v * 1000) / 1000;
                 this.value = String(v);
             });
         });
-
         warningOkButton.addEventListener('click', () => {
             if (pendingResetInput) {
-                pendingResetInput.value = '0'; // RESET KE 0
+                pendingResetInput.value = '0';
                 pendingResetInput = null;
             }
-            isWarningOpen = false; // tutup status modal
+            isWarningOpen = false;
             warningModal.classList.add('hidden');
         });
 
         // === Larang konfirmasi multi-baris untuk PRO yang sama ===
         confirmButton.addEventListener('click', () => {
-            const selected = Array.from(document.querySelectorAll('.row-checkbox:checked'));
-            const items = selected.map(cb => {
+            const items = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => {
                 const row = cb.closest('tr');
-                const qty = parseFloat(row.querySelector('input[name="QTY_SPX"]').value || '0');
-                const max = parseFloat(row.querySelector('input[name="QTY_SPX"]').dataset.max || '0');
+                const qtyInput = row.querySelector('input[name="QTY_SPX"]');
                 return {
                     row,
-                    qty,
-                    max,
+                    qty: parseFloat(qtyInput.value || '0'),
+                    max: parseFloat(qtyInput.dataset.max || '0'),
                     aufnr: row.dataset.aufnr,
                     arbpl0: row.dataset.arbpl0,
                     maktx: row.dataset.maktx
                 };
             });
 
-            const counts = {};
-            for (const it of items) counts[it.aufnr] = (counts[it.aufnr] || 0) + 1;
+            const counts = items.reduce((acc, it) => (acc[it.aufnr] = (acc[it.aufnr] || 0) + 1, acc), {});
             const duplicates = Object.entries(counts).filter(([, n]) => n > 1);
             if (duplicates.length) {
-                const listHTML = duplicates.map(([a, n]) => `<li><span class="font-mono">${a}</span> &times; ${n} baris</li>`).join('');
-                warningMessage.innerHTML =
-                    `Tidak dapat mengonfirmasi secara bersamaan untuk PRO (AUFNR) yang sama.<br><br>
-                    Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${listHTML}</ul><br>
-                    Silakan konfirmasi satu per satu untuk setiap PRO.`;
+                warningMessage.innerHTML = `Tidak dapat mengonfirmasi beberapa baris untuk PRO (AUFNR) yang sama secara bersamaan.<br><br>Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${duplicates.map(([a,n])=>`<li><span class="font-mono">${a}</span> &times; ${n} baris</li>`).join('')}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
                 warningModal.classList.remove('hidden');
                 return;
             }
-
-            const nonPositive = items.find(x => !(x.qty > 0));
-            if (nonPositive) {
+            if (items.some(x => x.qty <= 0)) {
                 warningMessage.textContent = 'Kuantitas konfirmasi harus lebih dari 0.';
                 warningModal.classList.remove('hidden');
                 return;
             }
-
             const invalidMax = items.find(x => x.qty > x.max);
             if (invalidMax) {
                 errorMessage.textContent = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
@@ -612,15 +581,9 @@ function apiPost(url, payload) {
                 return;
             }
 
-            confirmationList.innerHTML = items.map(x => `
-            <li class="flex justify-between items-center text-sm font-semibold text-slate-700">
-                <div class="flex-1 pr-3">
-                    <span class="font-mono">${x.aufnr}</span> /
-                    <span class="font-mono">${x.arbpl0}</span> /
-                    ${x.maktx}
-                </div>
-                <span class="font-mono">${x.qty}</span>
-            </li>`).join('');
+            confirmationList.innerHTML = items.map(x => `<li class="flex justify-between items-center text-sm font-semibold text-slate-700">
+                <div class="flex-1 pr-3"><span class="font-mono">${x.aufnr}</span> / <span class="font-mono">${x.arbpl0}</span> / ${x.maktx}</div>
+                <span class="font-mono">${x.qty}</span></li>`).join('');
             confirmModal.classList.remove('hidden');
         });
 
@@ -632,16 +595,14 @@ function apiPost(url, payload) {
                 confirmModal.classList.add('hidden');
                 return;
             }
-
             const today = toYYYYMMDD();
             const payloads = selected.map(cb => {
                 const row = cb.closest('tr');
-                const qty = parseFloat(row.querySelector('input[name="QTY_SPX"]').value || '0');
                 return {
                     aufnr: row.dataset.aufnr || '',
                     vornr: row.dataset.vornr || '',
                     pernr: row.dataset.pernr || '{{ request("pernr") }}' || '',
-                    psmng: qty,
+                    psmng: parseFloat(row.querySelector('input[name="QTY_SPX"]').value || '0'),
                     meinh: row.dataset.meinh || 'ST',
                     gstrp: today,
                     gltrp: today,
@@ -658,14 +619,12 @@ function apiPost(url, payload) {
             try {
                 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
                 const results = [];
-
                 for (const p of payloads) {
                     try {
                         const r = await apiPost('/api/yppi019/confirm', p);
-                        const j = await r.json().catch(() => ({}));
                         results.push({
                             status: r.status,
-                            json: j,
+                            json: await r.json().catch(() => ({})),
                             payload: p
                         });
                         await sleep(120);
@@ -680,67 +639,38 @@ function apiPost(url, payload) {
                     }
                 }
 
-                const failed = results.filter(r =>
-                    r.status === 0 ||
-                    r.status >= 400 ||
-                    r.json?.ok === false ||
-                    hasSapError(r.json?.sap_return)
-                );
+                const failed = results.filter(r => r.status < 200 || r.status >= 300 || r.json?.ok === false || hasSapError(r.json?.sap_return));
                 const success = results.filter(r => !failed.includes(r));
 
                 if (failed.length) {
                     const lines = failed.map((f, i) => {
-                        const au = f.payload?.aufnr || '-';
-                        const ret = f.json?.sap_return || {};
-                        const entries = collectSapReturnEntries(ret);
-                        const errMsg =
-                            (entries.find(e => {
-                                const t = String(e?.TYPE || '').toUpperCase();
-                                return (t === 'E' || t === 'A') && e?.MESSAGE;
-                            })?.MESSAGE) ||
-                            (entries.find(e => e?.MESSAGE)?.MESSAGE) ||
-                            f.json?.error ||
-                            'Gagal dikonfirmasi.';
-                        return `${i+1}. ${au} — ${errMsg}`;
+                        const entries = collectSapReturnEntries(f.json?.sap_return || {});
+                        const errMsg = (entries.find(e => ['E', 'A'].includes(String(e?.TYPE || '').toUpperCase()) && e?.MESSAGE)?.MESSAGE) ||
+                            (entries.find(e => e?.MESSAGE)?.MESSAGE) || f.json?.error || 'Gagal dikonfirmasi.';
+                        return `${i+1}. ${f.payload?.aufnr || '-'} — ${errMsg}`;
                     }).join('\n');
-
                     errorMessage.innerHTML = `Sebagian/seluruh konfirmasi gagal (${failed.length} item):<br><br>${lines.replace(/\n/g, '<br>')}`;
                     errorModal.classList.remove('hidden');
                 }
-
                 if (success.length) {
-                    const contentHTML = success.map((s, i) => {
-                        const au = s.payload?.aufnr || '-';
-                        const ar = s.payload?._arbpl0 || '-';
-                        const mk = s.payload?._maktx || '-';
-                        const qty = s.payload?.psmng ?? '-';
-
+                    successList.innerHTML = success.map((s, i) => {
+                        const {
+                            aufnr = '-', _arbpl0 = '-', _maktx = '-', psmng = '-'
+                        } = s.payload;
                         const entries = collectSapReturnEntries(s.json?.sap_return || {});
-                        const msgs = (Array.isArray(entries) ? entries : []).map(e => e?.MESSAGE).filter(Boolean);
-                        const msgsHTML = (msgs.length ? msgs : ['Confirmation of order saved'])
-                            .map(m => `<div class="pl-5 text-[12px] text-slate-600">• ${m}</div>`).join('');
-
-                        return `
-                        <li class="space-y-1">
+                        const msgs = (entries.map(e => e?.MESSAGE).filter(Boolean).length ? entries.map(e => e?.MESSAGE).filter(Boolean) : ['Confirmation of order saved']);
+                        const msgsHTML = msgs.map(m => `<div class="pl-5 text-[12px] text-slate-600">• ${m}</div>`).join('');
+                        return `<li class="space-y-1">
                             <div class="flex justify-between items-center text-sm font-semibold text-slate-800">
-                                <div class="flex-1 pr-3">
-                                    <span class="font-mono">${au}</span> /
-                                    <span class="font-mono">${ar}</span> /
-                                    ${mk}
-                                </div>
-                                <span class="font-mono">${qty}</span>
+                                <div class="flex-1 pr-3"><span class="font-mono">${aufnr}</span> / <span class="font-mono">${_arbpl0}</span> / ${_maktx}</div>
+                                <span class="font-mono">${psmng}</span>
                             </div>
-                            ${msgsHTML}
-                        </li>`;
+                            ${msgsHTML}</li>`;
                     }).join('');
-
-                    successList.innerHTML = contentHTML;
                     pendingShowSuccess = () => successModal.classList.remove('hidden');
                 }
 
-                // Refresh tampilan tabel jika ada sukses atau error
                 if (success.length || failed.length) {
-                    // Highlight row yang sukses/gagal
                     selected.forEach(cb => {
                         const row = cb.closest('tr');
                         const isSuccess = success.some(s => s.payload?.aufnr === row.dataset.aufnr);
@@ -749,7 +679,6 @@ function apiPost(url, payload) {
                         else if (isFailed) row.style.backgroundColor = '#fee2e2'; // merah muda
                     });
                 }
-
             } catch (e) {
                 errorMessage.textContent = 'Terjadi kesalahan saat memproses respon: ' + e.message;
                 errorModal.classList.remove('hidden');
@@ -758,7 +687,7 @@ function apiPost(url, payload) {
                 content.classList.remove('hidden');
                 if (pendingShowSuccess) {
                     pendingShowSuccess();
-                    pendingShowSuccess = null; // reset
+                    pendingShowSuccess = null;
                 }
             }
         });
@@ -766,9 +695,7 @@ function apiPost(url, payload) {
         cancelButton.addEventListener('click', () => confirmModal.classList.add('hidden'));
         errorOkButton.addEventListener('click', () => errorModal.classList.add('hidden'));
         successOkButton.addEventListener('click', () => {
-            // langsung balik ke halaman Scan
             window.location.href = "{{ route('scan') }}";
-            // atau: window.location.assign("{{ route('scan') }}");
         });
     });
 </script>

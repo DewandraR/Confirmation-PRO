@@ -47,33 +47,41 @@ class Yppi019DbApiController extends Controller
     }
 
     private function sapHeaders(): array
-{
-    $u = session('sap.username');
-    $p = session('sap.password');
+    {
+        $u = session('sap.username');
+        $p = session('sap.password');
 
-    // Kalau sesi hilang/expired, hentikan lebih awal.
-    if (!$u || !$p) {
-        abort(440, 'Sesi SAP habis atau belum login. Silakan login ulang.'); // 440 = login timeout (konvensi)
+        // Kalau sesi hilang/expired, hentikan lebih awal.
+        if (!$u || !$p) {
+            abort(440, 'Sesi SAP habis atau belum login. Silakan login ulang.'); // 440 = login timeout (konvensi)
+        }
+
+        return [
+            'X-SAP-Username' => $u,
+            'X-SAP-Password' => $p,
+            'Content-Type'   => 'application/json',
+        ];
     }
-
-    return [
-        'X-SAP-Username' => $u,
-        'X-SAP-Password' => $p,
-        'Content-Type'   => 'application/json',
-    ];
-}
 
     public function sync(Request $req)
     {
         $aufnr = trim((string) $req->input('aufnr', ''));
         $pernr = trim((string) $req->input('pernr', ''));
         $arbpl = trim((string) $req->input('arbpl', ''));
+        $werks = trim((string) $req->input('werks', ''));
 
-        if ($aufnr === '') return response()->json(['ok' => false, 'error' => 'aufnr wajib'], 400);
         if ($pernr === '') return response()->json(['ok' => false, 'error' => 'pernr wajib'], 400);
 
-        $body = ['aufnr' => $aufnr, 'pernr' => $pernr];
-        if ($arbpl !== '') $body['arbpl'] = $arbpl;
+        $body = array_filter([
+            'aufnr' => $aufnr,
+            'pernr' => $pernr,
+            'arbpl' => $arbpl,
+            'werks' => $werks,
+        ]);
+
+        if (empty($body['aufnr']) && empty($body['arbpl'])) {
+            return response()->json(['ok' => false, 'error' => 'aufnr atau arbpl wajib'], 400);
+        }
 
         try {
             $res = Http::withHeaders($this->sapHeaders())
@@ -121,47 +129,72 @@ class Yppi019DbApiController extends Controller
         $limit    = (int) $req->query('limit', 100);
         $pernr    = trim((string) $req->query('pernr', ''));
         $arbpl    = $req->query('arbpl');
+        $werks    = $req->query('werks');
         $autoSync = filter_var($req->query('auto_sync', '1'), FILTER_VALIDATE_BOOL);
 
-        if (!$aufnr) return response()->json(['ok' => false, 'error' => 'param aufnr wajib'], 400);
-        if ($pernr === '') return response()->json(['ok' => false, 'error' => 'param pernr wajib'], 400);
+        // Validasi input
+        if (empty($aufnr) && empty($arbpl)) {
+            return response()->json(['ok' => false, 'error' => 'Parameter aufnr atau arbpl wajib diisi'], 400);
+        }
+        if ($pernr === '') {
+            return response()->json(['ok' => false, 'error' => 'Parameter pernr wajib diisi'], 400);
+        }
+        if (!empty($arbpl) && empty($werks)) {
+            return response()->json(['ok' => false, 'error' => 'Jika arbpl diisi, parameter werks wajib diisi'], 400);
+        }
 
         $base = $this->flaskBase();
 
-        $res = Http::acceptJson()->timeout(30)->get($base . '/api/yppi019', [
+        // Kumpulkan semua parameter query yang valid untuk dikirim ke Flask
+        $queryParams = array_filter([
             'aufnr' => $aufnr,
             'pernr' => $pernr,
+            'arbpl' => $arbpl,
+            'werks' => $werks,
             'limit' => $limit,
         ]);
+
+        $res = Http::acceptJson()->timeout(30)->get($base . '/api/yppi019', $queryParams);
         $rows = $res->ok() ? ($res->json('rows') ?? []) : [];
 
-        if ($autoSync && count($rows) === 0) {
-            $payload = ['aufnr' => $aufnr, 'pernr' => $pernr];
-            if (!empty($arbpl)) $payload['arbpl'] = $arbpl;
+        // PERBAIKAN: Tentukan kapan sinkronisasi harus berjalan.
+        // Sync jika (1) data lokal kosong, ATAU (2) ini adalah pencarian berdasarkan Work Center.
+        // Pencarian Work Center harus selalu mengambil data terbaru & terlengkap dari SAP.
+        $isInitialSearch = !empty($aufnr) || !empty($arbpl);
+        $shouldSync = $autoSync && (count($rows) === 0 || $isInitialSearch);
 
-            $sync = Http::withHeaders($this->sapHeaders())
-                ->acceptJson()->timeout(120)
-                ->post($base . '/api/yppi019/sync', $payload);
-
-            if (!$sync->ok() || !($sync->json('ok') ?? false)) {
-                $err = $sync->json('error') ?? $sync->body();
-                return response()->json(['ok' => false, 'error' => 'sync_failed: ' . $err], 502);
-            }
-
-            $res = Http::acceptJson()->timeout(30)->get($base . '/api/yppi019', [
+        if ($shouldSync) {
+            // Kumpulkan payload yang valid untuk proses sinkronisasi
+            $syncPayload = array_filter([
                 'aufnr' => $aufnr,
                 'pernr' => $pernr,
-                'limit' => $limit,
+                'arbpl' => $arbpl,
+                'werks' => $werks,
             ]);
 
-            if (!$res->ok()) {
-                $bodyArr = $res->json();
-                $err = is_array($bodyArr)
-                    ? ($bodyArr['error'] ?? $bodyArr['message'] ?? json_encode($bodyArr))
-                    : $res->body();
-                return response()->json(['ok' => false, 'error' => $err], $res->status());
+            // Lakukan sync hanya jika ada data kunci yang bisa disinkronkan
+            if (!empty($syncPayload['aufnr']) || (!empty($syncPayload['arbpl']) && !empty($syncPayload['werks']))) {
+                $sync = Http::withHeaders($this->sapHeaders())
+                    ->acceptJson()->timeout(120)
+                    ->post($base . '/api/yppi019/sync', $syncPayload);
+
+                if (!$sync->ok() || !($sync->json('ok') ?? false)) {
+                    $err = $sync->json('error') ?? $sync->body();
+                    return response()->json(['ok' => false, 'error' => 'sync_failed: ' . $err], 502);
+                }
+
+                // Ambil data lagi setelah sinkronisasi berhasil
+                $res = Http::acceptJson()->timeout(30)->get($base . '/api/yppi019', $queryParams);
+
+                if (!$res->ok()) {
+                    $bodyArr = $res->json();
+                    $err = is_array($bodyArr)
+                        ? ($bodyArr['error'] ?? $bodyArr['message'] ?? json_encode($bodyArr))
+                        : $res->body();
+                    return response()->json(['ok' => false, 'error' => $err], $res->status());
+                }
+                $rows = $res->json('rows') ?? [];
             }
-            $rows = $res->json('rows') ?? [];
         }
 
         return response()->json([
@@ -169,7 +202,7 @@ class Yppi019DbApiController extends Controller
             'T_DATA1' => $rows,
             'RETURN' => [[
                 'TYPE' => 'S',
-                'MESSAGE' => count($rows) ? 'Loaded from MySQL' : 'No data',
+                'MESSAGE' => count($rows) ? 'Loaded from local DB' : 'No data found',
                 'ID' => '',
                 'NUMBER' => '000',
                 'PARAMETER' => '',
@@ -198,12 +231,6 @@ class Yppi019DbApiController extends Controller
         if (!empty($payload['meinh'])) {
             $payload['meinh'] = $this->mapUnitForSap($payload['meinh']);
         }
-
-        // =========================================================================
-        // PERUBAHAN: Baris di bawah ini dikomentari/dihapus.
-        // Biarkan Flask yang menangani format angka untuk SAP vs Database.
-        // =========================================================================
-        // $payload['psmng'] = $this->formatQtyForSap($payload['psmng'], $payload['meinh'] ?? '');
 
         try {
             $res = Http::withHeaders($this->sapHeaders())

@@ -30,7 +30,7 @@
   <footer class="mt-16 py-8 text-center text-slate-500 text-sm">
     <div class="max-w-2xl mx-auto px-6">
       <div class="border-t border-slate-200 pt-6">
-        <p>&copy; {{ date('Y') }} Konfirmasi PRO App. All rights reserved.</p>
+        <p>&copy; {{ date('Y') }} PT Kayu Mebel Indonesia. All rights reserved.</p>
       </div>
     </div>
   </footer>

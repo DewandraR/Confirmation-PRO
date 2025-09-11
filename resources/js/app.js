@@ -17,3 +17,24 @@ if (needQuagga) {
       window.dispatchEvent(new Event('quagga:failed'));
     });
 }
+
+// === Html5Qrcode (baru)
+const needHtml5 = document.getElementById('qr-reader') || document.getElementById('openQrScanner');
+if (needHtml5) {
+  import('html5-qrcode')
+    .then((mod) => {
+      // sebagian bundler mengekspor named exports
+      const Html5Qrcode = mod.Html5Qrcode ?? mod.default?.Html5Qrcode ?? mod.default;
+      const Html5QrcodeScanner = mod.Html5QrcodeScanner ?? mod.default?.Html5QrcodeScanner;
+
+      // simpan ke global agar script inline (Blade) tetap bisa akses
+      window.Html5Qrcode = Html5Qrcode;
+      window.Html5QrcodeScanner = Html5QrcodeScanner;
+
+      window.dispatchEvent(new Event('html5qrcode:ready'));
+    })
+    .catch(err => {
+      console.error('Gagal memuat html5-qrcode:', err);
+      window.dispatchEvent(new Event('html5qrcode:failed'));
+    });
+}
