@@ -33,6 +33,33 @@ class LoginController extends Controller
         $lng = (float) $request->input('lng');
         $acc = (float) $request->input('acc', 9999);
 
+        // Session habis saat browser ditutup
+        config(['session.expire_on_close' => true]);
+
+        // SAP AUTH via Flask
+        $sapId      = $request->input('sap_id');
+        $sapPass    = $request->input('password');
+        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5035/api/sap-login'));
+
+        try {
+            $resp = Http::timeout(30)
+                ->acceptJson()
+                ->asJson()
+                ->post($sapAuthUrl, [
+                    'username' => $sapId,
+                    'password' => $sapPass,
+                ]);
+
+            if (!$resp->successful()) {
+                $raw = $resp->json('error') ?? $resp->json('message') ?? $resp->body();
+                $msg = $this->normalizeSapError((string) $raw, $resp->status());
+                return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
+            }
+        } catch (\Throwable $e) {
+            $msg = $this->normalizeSapError($e->getMessage() ?: 'Network error', 0);
+            return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
+        }
+
         // Konfigurasi kantor
         $sites   = array_values(array_filter(config('office.sites', [])));
         $maxAccM = (int) config('office.max_accuracy_m', 300);
@@ -72,40 +99,13 @@ class LoginController extends Controller
             return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('sap_id');
         }
 
-        // Session habis saat browser ditutup
-        config(['session.expire_on_close' => true]);
-
-        // SAP AUTH via Flask
-        $sapId     = $request->input('sap_id');
-        $sapPass   = $request->input('password');
-        $sapAuthUrl= config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5035/api/sap-login'));
-
-        try {
-            $resp = Http::timeout(30)
-                ->acceptJson()
-                ->asJson()
-                ->post($sapAuthUrl, [
-                    'username' => $sapId,
-                    'password' => $sapPass,
-                ]);
-
-            if (!$resp->successful()) {
-                $raw = $resp->json('error') ?? $resp->json('message') ?? $resp->body();
-                $msg = $this->normalizeSapError((string) $raw, $resp->status());
-                return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
-            }
-        } catch (\Throwable $e) {
-            $msg = $this->normalizeSapError($e->getMessage() ?: 'Network error', 0);
-            return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
-        }
-
         // SAP OK -> buat/ambil user lokal TANPA SapUser
         $user = User::firstOrCreate(
             ['email' => $sapId . '@kmi.local'],
             [
-                'name'     => $sapId,            // nama default = sap_id
+                'name'     => $sapId,
                 'password' => Hash::make(Str::random(16)),
-                'role'     => 'user',            // sesuaikan role default jika perlu
+                'role'     => 'user',
             ]
         );
 
@@ -149,45 +149,64 @@ class LoginController extends Controller
 
     /**
      * Ubah pesan error teknis dari SAP/HTTP jadi pesan manusia.
+     * Diperketat agar kasus "internet pribadi / SAP unreachable" tidak salah dikira password salah.
      */
     private function normalizeSapError(string $raw, int $status): string
     {
-        $t = strtolower($raw);
+        $t = strtolower($raw ?? '');
 
-        // Kasus umum: kredensial salah
-        if (strpos($t, 'rfc_logon_failure') !== false ||
+        // ----- 1) Koneksi/Jaringan/VPN (gunakan internet perusahaan) -----
+        $networkHints = [
+            'rfc_communication_failure',
+            'wsaetimedout',
+            'connection timed out',
+            'timed out',
+            'partner',      // biasanya "partner 'x.x.x.x:sapdpNN' not reached"
+            'not reached',
+            'name or service not known',
+            'network is unreachable',
+            'connection refused',
+            'could not connect',
+            'ssl', 'certificate verify failed',
+        ];
+        foreach ($networkHints as $h) {
+            if (strpos($t, $h) !== false) {
+                return 'Tidak dapat terhubung ke server SAP. Gunakan internet/Wi-Fi perusahaan atau VPN, lalu coba lagi.';
+            }
+        }
+
+        // ----- 2) Kredensial salah (murni indikasi logon failure), tanpa mengandalkan status 401 saja -----
+        if (
+            strpos($t, 'rfc_logon_failure') !== false ||
             strpos($t, 'name or password is incorrect') !== false ||
-            ($status === 401 && strpos($t, 'error') !== false)) {
+            strpos($t, 'password logon no user') !== false ||
+            strpos($t, 'password incorrect') !== false
+        ) {
             return 'SAP ID atau Password tidak valid.';
         }
 
-        // User terkunci / must change password / expired
-        if (strpos($t, 'user locked') !== false ||
+        // ----- 3) User terkunci / wajib ganti password / expired -----
+        if (
+            strpos($t, 'user locked') !== false ||
             strpos($t, 'password logon no change') !== false ||
             strpos($t, 'password must be changed') !== false ||
-            strpos($t, 'password expired') !== false) {
+            strpos($t, 'password expired') !== false
+        ) {
             return 'Akun SAP terkunci atau butuh reset password. Silakan hubungi admin SAP.';
         }
 
-        // Tidak punya otorisasi
-        if (strpos($t, 'not authorization') !== false ||
+        // ----- 4) Tidak berotorisasi -----
+        if (
+            strpos($t, 'not authorization') !== false ||
             strpos($t, 'no authorization') !== false ||
-            $status === 403) {
+            $status === 403
+        ) {
             return 'Anda tidak memiliki akses untuk login SAP. Hubungi admin SAP untuk otorisasi.';
         }
 
-        // Masalah komunikasi / jaringan / VPN
-        if (strpos($t, 'rfc_communication_failure') !== false ||
-            strpos($t, 'wsatimedout') !== false ||
-            strpos($t, 'connection timed out') !== false ||
-            strpos($t, 'partner') !== false && strpos($t, 'not reached') !== false) {
-            return 'Tidak dapat terhubung ke server SAP. Pastikan tersambung ke jaringan/VPN perusahaan lalu coba lagi.';
-        }
-
-        // Fallback: kalau ada message=..., ambil bagian kalimatnya
-        if (preg_match('/message\s*=\s*([^\n]+)/i', $raw, $m)) {
+        // ----- 5) Fallback ambil "message=..." kalau ada -----
+        if (preg_match('/message\s*=\s*([^\n]+)/i', (string) $raw, $m)) {
             $hint = trim($m[1]);
-            // Jangan tampilkan log teknis panjang
             if (stripos($hint, 'name or password') !== false) {
                 return 'SAP ID atau Password tidak valid.';
             }
@@ -196,7 +215,7 @@ class LoginController extends Controller
             }
         }
 
-        // Default sangat generik
+        // ----- 6) Default generik -----
         return 'Gagal login ke SAP. Silakan periksa kredensial dan koneksi jaringan Anda.';
     }
 }

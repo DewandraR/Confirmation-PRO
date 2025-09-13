@@ -10,9 +10,8 @@ use App\Http\Controllers\Yppi019DbApiController;
 |--------------------------------------------------------------------------
 | Web Routes (punya session)
 |--------------------------------------------------------------------------
-| File ini otomatis berada di middleware "web", jadi session tersedia.
-| Kita taruh SEMUA endpoint YPPI019 di sini (dengan prefix /api) agar
-| bisa membaca session('sap.username') & session('sap.password').
+| Semua endpoint YPPI019 dipasang di middleware "web" agar bisa baca session
+| sap.username / sap.password, tapi tetap pakai prefix /api agar URL FE sama.
 */
 
 // === GUEST (belum login) ===
@@ -28,13 +27,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/detail', [DetailController::class,'show'])->name('detail');
     Route::post('/logout',[LoginController::class, 'destroy'])->name('logout');
 
-    // --- API YPPI019 (tetap pakai prefix /api agar URL front-end tidak berubah)
+    // --- API YPPI019 (prefix /api)
     Route::prefix('api')->group(function () {
         Route::post('/yppi019/sync',           [Yppi019DbApiController::class, 'sync']);
         Route::post('/yppi019/sync_bulk',      [Yppi019DbApiController::class, 'syncBulk']);
         Route::get ('/yppi019/material',       [Yppi019DbApiController::class, 'material']);
         Route::post('/yppi019/confirm',        [Yppi019DbApiController::class, 'confirm']);
         Route::post('/yppi019/update_qty_spx', [Yppi019DbApiController::class, 'updateQtySpx']);
+
+        // ➕ Histori backdate (dipakai modal di detail.blade)
+        Route::post('/yppi019/backdate-log',        [Yppi019DbApiController::class, 'backdateLog']);
+        Route::get ('/yppi019/backdate-history',    [Yppi019DbApiController::class, 'backdateHistory']); // <- tambahkan ini
     });
 });
 

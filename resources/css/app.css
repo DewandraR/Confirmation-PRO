@@ -1,18 +1,16 @@
 /* Tailwind v4 cukup satu import */
 @import "tailwindcss";
 
-/* Pindahkan animasi custom kamu ke CSS biasa */
-@keyframes fadeIn {
-  0% { opacity: 0 }
-  100% { opacity: 1 }
-}
-@keyframes slideUp {
-  0% { transform: translateY(20px); opacity: 0 }
-  100% { transform: translateY(0); opacity: 1 }
-}
+/* Animasi custom */
+@keyframes fadeIn { 0% { opacity: 0 } 100% { opacity: 1 } }
+@keyframes slideUp { 0% { transform: translateY(20px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
 
-/* utilitas kelas untuk meniru yang di config inline lama */
+/* Utilitas animasi */
 .animate-fade-in { animation: fadeIn 0.5s ease-in-out }
 .animate-slide-up { animation: slideUp 0.3s ease-out }
-/* pulse sudah ada di Tailwind (animate-pulse), tapi kamu punya versi lambat: */
 .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4,0,0.6,1) infinite }
+
+/* ---- iOS hardening (boleh di sini juga sebagai backup selain inline style di layout) ---- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+input, select, textarea { font-size: 16px; } /* cegah auto-zoom iOS */
+button { -webkit-tap-highlight-color: rgba(0,0,0,0); }

@@ -1,28 +1,29 @@
 @extends('layout')
 
 @section('content')
-{{-- Bagian header --}}
+{{-- Bagian header (dipadatkan, subjudul tetap tampil) --}}
 <div class="bg-gradient-to-br from-green-700 via-green-800 to-blue-900 relative overflow-hidden">
     <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC41Ij48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
-    <div class="relative px-6 py-16">
-        <div class="max-w-2xl mx-auto text-center">
-            <div class="mb-4">
-                <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-20 h-20 object-contain rounded-xl p-0.5 bg-white">
+    <div class="relative px-4 py-6 md:px-6 md:py-10">
+        <div class="max-w-md mx-auto text-center">
+            <div class="mb-2 md:mb-3">
+                <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-14 h-14 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
             </div>
-            <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Halaman Login</h1>
-            <p class="text-base text-white/80">Silakan masuk menggunakan SAP ID</p>
+            <h1 class="text-lg md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Halaman Login</h1>
+            {{-- Selalu tampil, diperkecil di mobile --}}
+            <p class="text-xs md:text-base text-white/80 leading-tight">Silakan masuk menggunakan SAP ID</p>
         </div>
     </div>
 </div>
 
-{{-- Bagian Form Login --}}
-<div class="px-6 py-10 mt-6">
+{{-- Bagian Form Login (spacing dipadatkan) --}}
+<div class="px-4 py-6 mt-4 md:px-6 md:py-10 md:mt-6">
     <div class="w-full max-w-md mx-auto bg-white rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden">
-        <div class="p-8 space-y-4">
-            <h1 class="text-2xl font-semibold text-slate-800 mb-6 text-center">Masuk</h1>
+        <div class="p-6 md:p-8 space-y-4">
+            <h1 class="text-xl md:text-2xl font-semibold text-slate-800 mb-4 md:mb-6 text-center">Masuk</h1>
 
-                        @if ($errors->any())
-            <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+            @if ($errors->any())
+            <div class="mb-3 md:mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
                 {{ trim(
                     $errors->first('login')
                     ?: $errors->first('location')
@@ -32,7 +33,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('login.store') }}" class="space-y-6" id="loginForm" autocomplete="off">
+            <form method="POST" action="{{ route('login.store') }}" class="space-y-5 md:space-y-6" id="loginForm" autocomplete="off">
                 @csrf
 
                 <div class="space-y-2">
@@ -47,11 +48,11 @@
                                 </div>
                             </div>
                             <input id="sap_id" name="sap_id" type="text"
-                                    inputmode="text"
-                                    autocomplete="username"
-                                    autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go"
-                                    class="flex-1 outline-none bg-transparent text-sm placeholder-slate-400 font-medium"
-                                    placeholder="Masukkan SAP ID">
+                                   inputmode="text"
+                                   autocomplete="username"
+                                   autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go"
+                                   class="flex-1 outline-none bg-transparent text-sm placeholder-slate-400 font-medium"
+                                   placeholder="Masukkan SAP ID">
                         </div>
                     </div>
                 </div>
@@ -91,6 +92,18 @@
             </form>
         </div>
     </div>
+
+    {{-- ===== Tips penggunaan (DITAMBAHKAN) ===== --}}
+    <div class="w-full max-w-md mx-auto mt-3">
+        <div class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+            <div class="font-semibold mb-1">Tips penggunaan:</div>
+            <ul class="list-disc pl-5 space-y-1">
+                <li>Pastikan menggunakan internet/Wi-Fi <span class="font-semibold">perusahaan</span> agar koneksi ke SAP berhasil.</li>
+                <li>Jika lokasi tidak akurat, coba matikan lalu nyalakan kembali Wi-Fi/data seluler, kemudian refresh browser.</li>
+            </ul>
+        </div>
+    </div>
+    {{-- ===== Akhir tips ===== --}}
 </div>
 
 {{-- ===== Injeksi daftar kantor dari config ke JS ===== --}}

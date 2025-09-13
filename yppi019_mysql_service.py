@@ -144,6 +144,30 @@ def ensure_tables():
               KEY idx_aufnr (AUFNR)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
+
+            # ▼▼▼ TAMBAHKAN BLOK BARU INI ▼▼▼
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS yppi019_backdate_log (
+              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+              AUFNR     VARCHAR(20) NOT NULL,
+              VORNR     VARCHAR(10) NULL,
+              PERNR     VARCHAR(20) NULL,
+              QTY       DECIMAL(18,3) NULL,
+              MEINH     VARCHAR(10) NULL,
+              BUDAT     DATE NOT NULL,
+              TODAY     DATE NOT NULL,
+              ARBPL0    VARCHAR(40) NULL,
+              MAKTX     VARCHAR(200) NULL,
+              SAP_RETURN JSON NULL,
+              CONFIRMED_AT DATETIME NULL,
+              CREATED_AT   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              KEY idx_aufnr (AUFNR),
+              KEY idx_budat (BUDAT),
+              KEY idx_pernr (PERNR)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """)
+            # ▲▲▲ END BLOK BARU ▲▲▲
+
             db.commit()
 
 def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -374,6 +398,142 @@ def api_confirm():
     except Exception as e:
         logger.exception("Error api_confirm")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.post("/api/yppi019/backdate-log")
+def api_backdate_log():
+    """
+    Simpan histori backdate (BUDAT ≠ today). Dipanggil FE setelah konfirmasi sukses.
+    Payload (JSON):
+      - aufnr (wajib), vornr, pernr, qty, meinh
+      - budat (wajib, 'YYYYMMDD'), today (wajib, 'YYYYMMDD')
+      - arbpl0, maktx, sap_return (opsional), confirmed_at (ISO8601, opsional)
+    """
+    b = request.get_json(force=True) or {}
+
+    # Wajib
+    for k in ("aufnr", "budat", "today"):
+        if not str(b.get(k) or "").strip():
+            return jsonify({"ok": False, "error": f"missing field: {k}"}), 400
+
+    aufnr   = str(b.get("aufnr")).strip()
+    vornr   = (str(b.get("vornr") or "").strip() or None)
+    pernr   = (str(b.get("pernr") or "").strip() or None)
+    qty     = parse_num(b.get("qty"))
+    meinh   = (str(b.get("meinh") or "").strip() or None)
+    budat_s = str(b.get("budat")).strip()   # 'YYYYMMDD'
+    today_s = str(b.get("today")).strip()   # 'YYYYMMDD'
+    arbpl0  = (str(b.get("arbpl0") or "").strip() or None)
+    maktx   = (str(b.get("maktx") or "").strip() or None)
+    sap_ret = b.get("sap_return")
+    confirmed_at_s = (str(b.get("confirmed_at") or "").strip() or None)
+
+    # --- Parse tanggal di PYTHON (hindari STR_TO_DATE di SQL) ---
+    from datetime import datetime, date
+    try:
+        budat_dt: date = datetime.strptime(budat_s, "%Y%m%d").date()
+        today_dt: date = datetime.strptime(today_s, "%Y%m%d").date()
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid date format (expected YYYYMMDD)"}), 400
+
+    # Guard (FE sudah memblok future-date, tapi kita validasi lagi)
+    if budat_dt > today_dt:
+        return jsonify({"ok": False, "error": "BUDAT cannot be in the future"}), 422
+    if budat_dt == today_dt:
+        # bukan backdate -> tidak disimpan
+        return jsonify({"ok": True, "skipped": True})
+
+    # Parse optional confirmed_at (ISO8601) ke datetime, kalau ada
+    confirmed_dt = None
+    if confirmed_at_s:
+        try:
+            # dukung ...Z
+            confirmed_dt = datetime.fromisoformat(confirmed_at_s.replace("Z", "+00:00"))
+        except Exception:
+            confirmed_dt = None
+
+    try:
+        with connect_mysql() as db:
+            with db.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO yppi019_backdate_log
+                      (AUFNR, VORNR, PERNR, QTY, MEINH, BUDAT, TODAY, ARBPL0, MAKTX, SAP_RETURN, CONFIRMED_AT)
+                    VALUES
+                      (%s,    %s,    %s,    %s,  %s,    %s,   %s,    %s,    %s,    %s,         %s)
+                    """,
+                    (
+                        aufnr, vornr, pernr, qty, meinh,
+                        budat_dt, today_dt,
+                        arbpl0, maktx,
+                        json.dumps(to_jsonable(sap_ret), ensure_ascii=False) if sap_ret is not None else None,
+                        confirmed_dt
+                    ),
+                )
+
+                # ▼▼▼ BARU: Pangkas otomatis, sisakan 50 baris terbaru (global) ▼▼▼
+                # Urutan "terbaru" ditentukan oleh COALESCE(CONFIRMED_AT, CREATED_AT) DESC lalu id DESC.
+                cur.execute("""
+                DELETE b
+                FROM yppi019_backdate_log b
+                JOIN (
+                  SELECT id FROM (
+                    SELECT id
+                    FROM yppi019_backdate_log
+                    ORDER BY COALESCE(CONFIRMED_AT, CREATED_AT) DESC, id DESC
+                    LIMIT 18446744073709551615 OFFSET 50
+                  ) t
+                ) old ON old.id = b.id
+                """)
+                # ▲▲▲ END BARU ▲▲▲
+
+                db.commit()
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        logger.exception("Error api_backdate_log")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# -------- BARU: Endpoint untuk modal Histori Backdate --------
+@app.get("/api/yppi019/backdate-history")
+def api_backdate_history():
+    """
+    Ambil histori backdate terbaru.
+    Query:
+      - pernr (opsional tapi disarankan)
+      - aufnr (opsional; jika dikirim, memfilter 1 PRO)
+      - limit (default 50)
+      - order = 'asc' | 'desc' (default 'desc')
+    """
+    ensure_tables()
+    pernr = (request.args.get("pernr") or "").strip()
+    aufnr = (request.args.get("aufnr") or "").strip()
+    limit = request.args.get("limit", type=int) or 50
+    order = (request.args.get("order") or "desc").lower()
+    order_sql = "ASC" if order == "asc" else "DESC"
+    # batasi limit agar aman
+    limit = max(1, min(int(limit), 500))
+
+    try:
+        with connect_mysql() as db:
+            with db.cursor(dictionary=True) as cur:
+                sql = "SELECT * FROM yppi019_backdate_log"
+                where, args = [], []
+                if pernr:
+                    where.append("PERNR=%s"); args.append(pernr)
+                if aufnr:
+                    where.append("AUFNR=%s"); args.append(aufnr)
+                if where:
+                    sql += " WHERE " + " AND ".join(where)
+                sql += f" ORDER BY COALESCE(CONFIRMED_AT, CREATED_AT) {order_sql} LIMIT %s"
+                args.append(limit)
+                cur.execute(sql, tuple(args))
+                rows = cur.fetchall()
+        return jsonify({"ok": True, "rows": to_jsonable(rows)}), 200
+    except Exception as e:
+        logger.exception("Error api_backdate_history")
+        return jsonify({"ok": False, "error": str(e)}), 500
+# -------- END BARU --------
+
 
 @app.post("/api/yppi019/update_qty_spx")
 def api_update_qty_spx():

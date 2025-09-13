@@ -158,13 +158,10 @@ class Yppi019DbApiController extends Controller
         $rows = $res->ok() ? ($res->json('rows') ?? []) : [];
 
         // PERBAIKAN: Tentukan kapan sinkronisasi harus berjalan.
-        // Sync jika (1) data lokal kosong, ATAU (2) ini adalah pencarian berdasarkan Work Center.
-        // Pencarian Work Center harus selalu mengambil data terbaru & terlengkap dari SAP.
         $isInitialSearch = !empty($aufnr) || !empty($arbpl);
         $shouldSync = $autoSync && (count($rows) === 0 || $isInitialSearch);
 
         if ($shouldSync) {
-            // Kumpulkan payload yang valid untuk proses sinkronisasi
             $syncPayload = array_filter([
                 'aufnr' => $aufnr,
                 'pernr' => $pernr,
@@ -172,7 +169,6 @@ class Yppi019DbApiController extends Controller
                 'werks' => $werks,
             ]);
 
-            // Lakukan sync hanya jika ada data kunci yang bisa disinkronkan
             if (!empty($syncPayload['aufnr']) || (!empty($syncPayload['arbpl']) && !empty($syncPayload['werks']))) {
                 $sync = Http::withHeaders($this->sapHeaders())
                     ->acceptJson()->timeout(120)
@@ -279,6 +275,67 @@ class Yppi019DbApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /** ➕ Proxy untuk simpan histori backdate ke Flask/MySQL (dipanggil saat konfirmasi sukses) */
+    public function backdateLog(Request $req)
+    {
+        // Validasi ringan (biarkan Flask yang enforce lebih detail jika perlu)
+        $payload = $req->validate([
+            'aufnr'        => 'required|string',
+            'vornr'        => 'nullable|string',
+            'pernr'        => 'required|string',
+            'qty'          => 'required|numeric',
+            'meinh'        => 'nullable|string',
+            'budat'        => 'required|string',   // format 'YYYYMMDD' dari FE
+            'today'        => 'required|string',   // format 'YYYYMMDD'
+            'arbpl0'       => 'nullable|string',
+            'maktx'        => 'nullable|string',
+            'sap_return'   => 'nullable',          // biarkan sebagai array/mixed
+            'confirmed_at' => 'nullable|string',   // ISO timestamp dari FE
+        ]);
+
+        // Normalisasi vornr -> 4 digit
+        $payload['vornr'] = $this->padVornr($payload['vornr'] ?? null);
+
+        try {
+            $res = Http::withHeaders($this->sapHeaders())
+                ->acceptJson()->timeout(30)
+                ->post($this->flaskBase() . '/api/yppi019/backdate-log', $payload);
+
+            return response($res->body(), $res->status())
+                ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+        } catch (ConnectionException $e) {
+            return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+        } catch (Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /** ➕ Baru: proxy ambil histori backdate untuk modal FE (TANPA header SAP) */
+    public function backdateHistory(Request $req)
+    {
+        // Param yang dipakai FE: pernr (disarankan), aufnr (opsional), limit (default 50), order (asc|desc)
+        $query = array_filter([
+            'pernr' => trim((string)$req->query('pernr', '')),
+            'aufnr' => trim((string)$req->query('aufnr', '')),
+            'limit' => $req->query('limit', 50),
+            'order' => $req->query('order', 'desc'),
+        ]);
+
+        try {
+            // Endpoint Flask ini hanya baca MySQL, tidak butuh kredensial SAP.
+            $res = Http::acceptJson()
+                ->timeout(30)
+                ->get($this->flaskBase() . '/api/yppi019/backdate-history', $query);
+
+            return response($res->body(), $res->status())
+                ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+        } catch (ConnectionException $e) {
+            return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+        } catch (Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
     }
 }

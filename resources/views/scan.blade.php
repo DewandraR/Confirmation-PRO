@@ -4,40 +4,45 @@
 @section('content')
 {{-- Bagian header dengan gradasi yang disesuaikan --}}
 <div class="bg-gradient-to-br from-green-700 via-green-800 to-blue-900 relative overflow-hidden">
-    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1GU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC41Ij48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
-    <div class="relative px-6 py-8">
+    {{-- perbaiki base64 (sebelumnya korup) --}}
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC41Ij48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
+    <div class="relative px-4 py-8 md:px-6">
         <div class="max-w-2xl mx-auto text-center">
             {{-- LOGO PERUSAHAAN --}}
-            <div class="mb-4">
-                <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-20 h-20 object-contain rounded-xl p-0.5 bg-white">
+            <div class="mb-3">
+                <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-16 h-16 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
             </div>
-            <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Konfirmasi PRO</h1>
-            <p class="text-base text-white opacity-80">Pindai barcode atau masukkan data secara manual</p>
+            <h1 class="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO</h1>
+            <p class="text-sm md:text-base text-white/80 leading-tight">Pindai barcode atau masukkan data secara manual</p>
         </div>
     </div>
 </div>
 
 {{-- Kontainer Form Input Data dengan jarak atas yang disesuaikan --}}
-<div class="px-6 py-12 -mt-8 relative z-10">
+<div class="px-4 py-10 -mt-6 relative z-10 md:px-6">
     <div class="max-w-2xl mx-auto">
         <div class="bg-white rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden">
             {{-- Header form input data --}}
             <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
-                        <svg class="w-4 h-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-800">Form Input Data</h2>
-                        <p class="text-xs text-slate-600">Lengkapi informasi di bawah ini</p>
+                {{-- wrap + gap agar aman di 414px --}}
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
+                            <svg class="w-4 h-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="text-base md:text-lg font-semibold text-slate-800 leading-tight">Form Input Data</h2>
+                            <p class="text-[11px] text-slate-600 leading-tight">Lengkapi informasi di bawah ini</p>
+                        </div>
+
                     </div>
 
                     {{-- Tombol Logout --}}
                     @auth
                     <button id="openLogoutConfirm"
-                        class="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold
+                        class="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-semibold
                                bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md
                                hover:shadow-lg hover:from-red-700 hover:to-rose-800 active:scale-[0.98] transition">
                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -55,19 +60,31 @@
             <div class="p-5">
                 <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get">
 
-                    <!-- Work Center & Plant (match Order Number style) -->
+                    <!-- Work Center & Plant (match PRO style) -->
 <div class="space-y-2">
-  <div class="flex items-center gap-2">
-    <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center">
+  <div class="flex items-center gap-2 flex-wrap">
+    <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
       <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              d="M15 11a3 3 0 11-6 0 3 3 0 006 0z" />
       </svg>
     </div>
     <label class="text-xs font-medium text-slate-700">Work Center & Plant</label>
-    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">Optional</span>
+    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
+
+    {{-- ⬇️ Tombol Histori Backdate (baru) --}}
+    <button type="button" id="openBackdateHistory"
+            class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                   bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
+                   hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition"
+            title="Lihat histori backdate">
+      <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z"/>
+      </svg>
+      Histori Backdate
+    </button>
   </div>
 
   <div class="relative group">
@@ -75,7 +92,7 @@
     <div class="w-full rounded-xl shadow-sm border-2 border-gray-300
                 group-focus-within:border-emerald-500
                 group-hover:border-gray-400 transition-colors duration-200
-                px-3 py-1.5 flex items-center gap-2">
+                px-3 py-1.5 flex items-center gap-2 flex-wrap">
 
       <!-- ikon kiri -->
       <div class="flex-shrink-0">
@@ -90,14 +107,14 @@
 
       <!-- input WC -->
       <input id="IV_ARBPL" name="arbpl"
-             class="flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium group-focus-within:placeholder-slate-400"
+             class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
              placeholder="Masukkan atau pindai QR Work Center" />
 
       <!-- select Plant: transparan agar menyatu di shell -->
-      <div class="relative min-w-[120px] flex items-center">
+      <div class="relative flex items-center shrink-0">
         <select id="IV_WERKS" name="werks"
-                class="w-full bg-transparent outline-none text-xs font-medium text-slate-700
-                       appearance-none pr-6 group-focus-within:text-slate-700 text-right">
+                class="bg-transparent outline-none text-xs font-medium text-slate-700
+                       appearance-none pr-6 text-right">
           <option value="">Pilih Plant</option>
           <option value="1000">1000</option>
           <option value="1200">1200</option>
@@ -105,14 +122,14 @@
           <option value="3000">3000</option>
         </select>
         <!-- caret custom -->
-        <svg class="w-4 h-4 text-emerald-600 pointer-events-none absolute right-0 top-1/2 transform -translate-y-1/2" xmlns="http://www.w3.org/2000/svg"
+        <svg class="w-4 h-4 text-emerald-600 pointer-events-none absolute right-0 top-1/2 -translate-y-1/2" xmlns="http://www.w3.org/2000/svg"
              viewBox="0 0 24 24" fill="currentColor">
           <path d="M7 10l5 5 5-5H7z"/>
         </svg>
       </div>
-      <!-- tombol kamera: sama gradient dengan Order Number -->
+      <!-- tombol kamera: sama gradient dengan PRO -->
       <button type="button" id="openQrScanner"
-              class="p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
+              class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
                      hover:from-green-700 hover:to-blue-900 transition-all duration-200
                      shadow-md hover:shadow-lg hover:scale-105"
               title="Buka QR Scanner">
@@ -133,17 +150,17 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
                                 <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
                                 </svg>
                             </div>
-                            <label class="text-xs font-medium text-slate-700">Order Number</label>
-                            <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">Optional</span>
+                            <label class="text-xs font-medium text-slate-700">PRO</label>
+                            <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
                         </div>
                         <div class="relative group">
-                            <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
+                            <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2 flex-wrap">
                                 <div class="flex-shrink-0">
                                     <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
                                         <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,8 +168,8 @@
                                         </svg>
                                     </div>
                                 </div>
-                                <input id="IV_AUFNR" name="aufnr" class="flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan atau pindai barcode PRO" />
-                                <button type="button" id="openScanner" class="group p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900 hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105" title="Buka kamera">
+                                <input id="IV_AUFNR" name="aufnr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan atau pindai barcode PRO" />
+                                <button type="button" id="openScanner" class="shrink-0 group p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900 hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105" title="Buka kamera">
                                     <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" />
                                     </svg>
@@ -164,14 +181,14 @@
                     <div id="aufnr-list-container" class="space-y-1"></div>
 
                     <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-5 h-5 bg-yellow-400 rounded-lg flex items-center justify-center">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="w-5 h-5 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
                                 <svg class="w-3 h-3 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
                             <label class="text-xs font-medium text-slate-700">NIK Operator</label>
-                            <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Required</span>
+                            <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
                         </div>
                         <div class="relative group">
                             <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
@@ -182,7 +199,7 @@
                                         </svg>
                                     </div>
                                 </div>
-                                <input id="IV_PERNR" name="pernr" class="flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan NIK Operator" />
+                                <input id="IV_PERNR" name="pernr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan NIK Operator" />
                             </div>
                         </div>
                     </div>
@@ -210,8 +227,8 @@
                     <h3 class="text-base font-semibold text-slate-800 mb-1">Tips Penggunaan</h3>
                     <ul class="text-xs text-slate-600 space-y-0.5">
                         <li>• Field <b>NIK Operator</b> wajib diisi.</li>
-                        <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>Order Number</b>, ATAU ketiganya.</li>
-                        <li>• Posisikan barcode di area tengah kamera dan hindari pantulan cahaya.</li>
+                        <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
+                        <li>• Posisikan Barcode dan QR Code di area tengah kamera dan hindari pantulan cahaya.</li>
                     </ul>
                 </div>
             </div>
@@ -270,18 +287,28 @@
         </div>
     </div>
 </div>
+
 <div id="tecoModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 z-[60] p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div class="bg-green-500 px-5 py-3">
-            <h3 class="text-sm font-semibold text-white">PRO kemungkinan sudah TECO</h3>
-        </div>
-        <div class="p-5 space-y-3">
-            <p class="text-xs text-slate-700">PRO berikut tidak memiliki akses untuk saat ini. Kemungkinan statusnya <b>TECO</b>.</p>
-            <pre id="tecoText" class="text-xs text-slate-800 whitespace-pre-wrap"></pre>
-            <div class="flex justify-end"><button id="tecoOk" type="button" class="px-4 py-1.5 text-sm rounded-lg bg-green-500 text-white hover:bg-green-600">OK</button></div>
-        </div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="bg-yellow-500 px-5 py-3">
+      <h3 class="text-sm font-semibold text-white">Data Tidak Ditemukan</h3>
     </div>
+    <div class="p-5 space-y-3">
+      <p class="text-xs text-slate-700">
+        Data berikut tidak ditemukan atau tidak tersedia untuk saat ini.
+        Silakan periksa kembali PRO / Work Center / Plant / NIK.
+      </p>
+      <pre id="tecoText" class="text-xs text-slate-800 whitespace-pre-wrap"></pre>
+      <div class="flex justify-end">
+        <button id="tecoOk" type="button"
+          class="px-4 py-1.5 text-sm rounded-lg bg-yellow-500 text-white hover:bg-yellow-600">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+
 <div id="logoutModal" class="fixed inset-0 hidden items-center justify-center bg-black/60 z-[70] p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
         <div class="bg-red-600 px-5 py-3">
@@ -289,11 +316,58 @@
         </div>
         <div class="p-5 space-y-4">
             <p class="text-sm text-slate-700">Kamu yakin ingin keluar?</p>
-            <div class="flex justify-end gap-2"><button id="logoutCancel" type="button" class="px-4 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">Tidak</button><button id="logoutConfirm" type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Logout</button></div>
+            <div class="flex justify-end gap-2"><button id="logoutCancel" type="button" class="px-4 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">Tidak</button><button id="logoutConfirm" type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Keluar</button></div>
         </div>
     </div>
 </div>
 <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
+
+{{-- ⬇️ Modal Histori Backdate (baru, global tanpa filter) --}}
+<div id="historyModal" class="fixed inset-0 hidden items-center justify-center bg-black/60 z-[65] p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden">
+    <div class="bg-gradient-to-r from-green-700 to-blue-900 px-5 py-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold text-white">Histori Backdate</h3>
+        <button id="historyClose" type="button"
+                class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">
+          Tutup
+        </button>
+      </div>
+      <div id="historyMeta" class="text-[11px] text-white/80 mt-1">
+        Semua operator • Maks 50 data terbaru
+      </div>
+    </div>
+
+    <div class="p-4">
+      <div class="overflow-auto max-h-[65vh] border border-slate-200 rounded-xl">
+        <table class="min-w-full text-[12px]">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr>
+              
+              <th class="px-3 py-2 text-left font-semibold border-b w-[190px]">PRO / Activity</th>
+              <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">NIK Operator</th>
+              <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Qty (UoM)</th>
+              <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Posting Date</th>
+              <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Work Center</th>
+              <th class="px-3 py-2 text-left font-semibold border-b">Material Desc</th>
+            </tr>
+          </thead>
+          <tbody id="historyList"></tbody>
+        </table>
+
+        <div id="historyLoading" class="py-10 text-center text-sm text-slate-500">Memuat…</div>
+        <div id="historyEmpty" class="hidden py-10 text-center text-sm text-slate-500">Belum ada histori backdate.</div>
+      </div>
+
+      <div class="mt-3 flex justify-end">
+        <button id="historyOk" type="button"
+                class="px-4 py-1.5 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 @endsection
 
 @push('head')
@@ -306,25 +380,26 @@
         border-radius: 12px;
         overflow: hidden;
         background: #000;
-
-        /* PERBAIKAN: Paksa kontainer untuk memiliki rasio aspek 16:9 */
         position: relative;
         aspect-ratio: 16 / 9;
     }
-
     #reader video,
     #reader canvas,
     #qr-reader video,
     #qr-reader canvas {
-        /* PERBAIKAN: Buat video mengisi kontainer secara absolut */
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         object-fit: cover;
-        /* 'cover' akan bekerja dengan baik sekarang */
     }
+
+    /* Dropdown kustom */
+    .dropdown-enter { opacity: 0; transform: scale(0.97); }
+    .dropdown-enter-active { opacity: 1; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
+    .dropdown-leave-active { opacity: 0; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
+    .dd-opt-focus { background-color: rgb(240 253 244); }
+    .dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
+    .hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
 </style>
 @endpush
 
@@ -351,7 +426,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return (10 - ((s + 3 * t) % 10)) % 10;
   }
-
   function normalizeAufnr(raw) {
     let s = String(raw || '').replace(/\D/g, '');
     if (s.length === 13) {
@@ -360,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return s;
   }
-
   function addAufnrToList(aufnr) {
     aufnr = normalizeAufnr(aufnr);
     if (aufnr.length < 1 || aufnrList.has(aufnr)) return;
@@ -395,7 +468,50 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // =================================================================
-  // ===== FORM HANDLER (dengan PRE-CHECK API)
+  // === PATCH: helper sinkron + TECO modal
+  // =================================================================
+  async function ajaxSync(payload) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': CSRF,
+    };
+    if (window.SAP_AUTH) headers['Authorization'] = window.SAP_AUTH; // opsional
+
+    const res = await fetch('/api/yppi019/sync', {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+
+    const rawText = await res.text().catch(() => '');
+    let json = {};
+    try { json = rawText ? JSON.parse(rawText) : {}; } catch (_) { json = { _raw: rawText }; }
+
+    if (res.status === 404) {
+      return { ok: false, teco: !!json.teco_possible, msg: json.message || 'Data Tidak Ditemukan', raw: json };
+    }
+    if (!res.ok) {
+      const msg = json?.error || json?.message || `HTTP ${res.status} ${res.statusText}${rawText ? ` — ${rawText.slice(0,200)}` : ''}`;
+      console.error('SYNC ERROR', { status: res.status, body: json, rawText });
+      throw new Error(msg);
+    }
+    return { ok: true, received: Number(json?.received || json?.count || 0), raw: json };
+  }
+
+  function showTeco(listOrText) {
+    const m = document.getElementById('tecoModal');
+    const t = document.getElementById('tecoText');
+    const okBtn = document.getElementById('tecoOk');
+    const text = Array.isArray(listOrText) ? listOrText.join(', ') : String(listOrText || '');
+    if (t) t.textContent = text;
+    m?.classList.remove('hidden'); m?.classList.add('flex');
+    okBtn?.addEventListener('click', () => { m?.classList.add('hidden'); m?.classList.remove('flex'); }, { once:true });
+  }
+
+  // =================================================================
+  // ===== FORM HANDLER (preflight → /api/yppi019/sync)
   // =================================================================
   const form = document.getElementById('main-form');
 
@@ -407,43 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function preflightCheck({ pernr, aufnrArray, arbpl, werks }) {
-    const hasAufnr = aufnrArray.length > 0;
-    const hasWc = !!arbpl;
-
-    // helper fetch -> array rows
-    async function fetchRows(url) {
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      let json;
-      try { json = await res.json(); }
-      catch {
-        // jika non-JSON, anggap tak ada data
-        return [];
-      }
-      const t = json?.T_DATA1;
-      return Array.isArray(t) ? t : (t ? [t] : []);
-    }
-
-    if (hasAufnr) {
-      const checks = await Promise.allSettled(
-        aufnrArray.map(aufnr => {
-          let url = `/api/yppi019/material?aufnr=${encodeURIComponent(aufnr)}&pernr=${encodeURIComponent(pernr)}`;
-          if (hasWc) {
-            url += `&arbpl=${encodeURIComponent(arbpl)}&werks=${encodeURIComponent(werks)}`;
-          }
-          return fetchRows(url);
-        })
-      );
-      const rowsAll = checks.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-      return rowsAll.length > 0;
-    } else {
-      // hanya WC + Plant
-      const url = `/api/yppi019/material?arbpl=${encodeURIComponent(arbpl)}&werks=${encodeURIComponent(werks)}&pernr=${encodeURIComponent(pernr)}`;
-      const rows = await fetchRows(url);
-      return rows.length > 0;
-    }
-  }
-
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -453,52 +532,64 @@ document.addEventListener('DOMContentLoaded', () => {
       const arbpl = arbplInput?.value.trim() || '';
       const werks = werksInput?.value.trim() || '';
 
-      // Validasi awal
-      if (!pernr) {
-        showError('Input Belum Lengkap', 'NIK Operator wajib diisi.');
-        return pernrInput?.focus();
-      }
+      if (!pernr) { showError('Input Belum Lengkap', 'NIK Operator wajib diisi.'); return pernrInput?.focus(); }
       const hasAufnr = aufnrArray.length > 0;
       const hasWc = arbpl !== '';
-      if (!hasAufnr && !hasWc) {
-        showError('Input Tidak Lengkap', 'Anda harus mengisi "Work Center" atau "Order Number".');
-        return arbplInput?.focus();
-      }
-      if (hasWc && werks === '') {
-        showError('Input Tidak Lengkap', 'Jika "Work Center" diisi, maka "Plant" wajib dipilih.');
-        return werksInput?.focus();
-      }
+      if (!hasAufnr && !hasWc) { showError('Input Tidak Lengkap', 'Anda harus mengisi "Work Center" atau "PRO".'); return arbplInput?.focus(); }
+      if (hasWc && werks === '') { showError('Input Tidak Lengkap', 'Jika "Work Center" diisi, maka "Plant" wajib dipilih.'); return werksInput?.focus(); }
 
-      // Tombol busy state
       const submitBtn = form.querySelector('button[type="submit"], button:not([type])');
       const setBusy = (b) => {
         if (!submitBtn) return;
-        if (b) {
-          submitBtn.dataset._txt = submitBtn.innerHTML;
-          submitBtn.innerHTML = 'Memeriksa data...';
-          submitBtn.disabled = true;
-        } else {
-          submitBtn.innerHTML = submitBtn.dataset._txt || 'Kirim Data';
-          submitBtn.disabled = false;
-        }
+        if (b) { submitBtn.dataset._txt = submitBtn.innerHTML; submitBtn.innerHTML = 'Memeriksa data...'; submitBtn.disabled = true; }
+        else { submitBtn.innerHTML = submitBtn.dataset._txt || 'Kirim Data'; submitBtn.disabled = false; }
       };
 
       setBusy(true);
       try {
-        const found = await preflightCheck({ pernr, aufnrArray, arbpl, werks });
-        if (!found) {
-          showError('Data Tidak Ditemukan', 'Data yang anda masukkan tidak sesuai. Periksa kembali NIK operator / Work Center / Plant / Order Number.');
-          return; // tetap di halaman /scan
-        }
+        const basePayload = { pernr };
+        if (hasWc) { basePayload.arbpl = arbpl; basePayload.werks = werks; }
 
-        // Lanjut redirect ke /detail
-        const to = new URL(form.action, location.origin);
-        to.searchParams.set('pernr', pernr);
-        if (hasAufnr) to.searchParams.set('aufnrs', aufnrArray.join(','));
-        if (hasWc) { to.searchParams.set('arbpl', arbpl); to.searchParams.set('werks', werks); }
-        location.href = to.toString();
+        if (hasAufnr) {
+          const results = await Promise.allSettled(aufnrArray.map(aufnr => ajaxSync({ ...basePayload, aufnr })));
+
+          const okAufnrs = [];
+          let adaTeco = false;
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') {
+              if (r.value.ok) okAufnrs.push(aufnrArray[i]);
+              if (!r.value.ok && r.value.teco) adaTeco = true;
+            }
+          });
+
+          if (okAufnrs.length === 0) {
+            if (adaTeco) showTeco(aufnrArray);
+            else showError('Data Tidak Ditemukan', 'PRO/WC tidak mengembalikan data dari SAP. Periksa NIK/WORK CENTER/PLANT/PRO.');
+            return;
+          }
+
+          const to = new URL(form.action, location.origin);
+          to.searchParams.set('pernr', pernr);
+          to.searchParams.set('aufnrs', okAufnrs.join(','));
+          if (hasWc) { to.searchParams.set('arbpl', arbpl); to.searchParams.set('werks', werks); }
+          location.href = to.toString();
+          return;
+        } else {
+          const r = await ajaxSync(basePayload);
+          if (!r.ok) {
+            if (r.teco) showTeco(`${arbpl} - ${werks}`);
+            else showError('Data Tidak Ditemukan', r.msg || 'WC/Plant tidak mengembalikan data.');
+            return;
+          }
+          const to = new URL(form.action, location.origin);
+          to.searchParams.set('pernr', pernr);
+          to.searchParams.set('arbpl', arbpl);
+          to.searchParams.set('werks', werks);
+          location.href = to.toString();
+          return;
+        }
       } catch (err) {
-        showError('Gagal Mengecek Data', err?.message || 'Terjadi kesalahan saat memeriksa data.');
+        showError('Gagal Sinkron', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
       } finally {
         setBusy(false);
       }
@@ -555,48 +646,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reader) reader.innerHTML = '';
 
     Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: reader,
-        constraints: { facingMode: "environment" }
-      },
+      inputStream: { name: "Live", type: "LiveStream", target: reader, constraints: { facingMode: "environment" } },
       locator: { patchSize: "medium", halfSample: true },
       decoder: { readers: ["code_128_reader", "ean_reader"] },
       numOfWorkers: navigator.hardwareConcurrency || 4,
     }, (err) => {
-      if (err) {
-        console.error(err);
-        showError('Gagal memulai kamera', err?.message || err);
-        return;
-      }
+      if (err) { console.error(err); showError('Gagal memulai kamera', err?.message || err); return; }
       Quagga.start();
       quaggaRunning = true;
       try { currentTrack = Quagga.CameraAccess.getActiveStream()?.getVideoTracks?.()[0] || null; } catch(_) {}
       onDet = (res) => {
         if (committing) return;
         const code = normalizeAufnr(res?.codeResult?.code || '');
-        if (code) {
-          committing = true;
-          addAufnrToList(code);
-          closeModal();
-        }
+        if (code) { committing = true; addAufnrToList(code); closeModal(); }
       };
       Quagga.onDetected(onDet);
     });
   }
 
-  function openModal() {
-    modal?.classList.remove('hidden');
-    modal?.classList.add('flex');
-    startQuagga();
-  }
-
-  function closeModal() {
-    stopQuagga(true);
-    modal?.classList.add('hidden');
-    modal?.classList.remove('flex');
-  }
+  function openModal() { modal?.classList.remove('hidden'); modal?.classList.add('flex'); startQuagga(); }
+  function closeModal() { stopQuagga(true); modal?.classList.add('hidden'); modal?.classList.remove('flex'); }
 
   if (openBtn)        openBtn.addEventListener('click', openModal);
   if (closeBtn)       closeBtn.addEventListener('click', closeModal);
@@ -612,59 +681,31 @@ document.addEventListener('DOMContentLoaded', () => {
   let html5QrCode = null;
 
   async function startQrScanner() {
-    // cek tetap dipertahankan: bila user klik sangat cepat & lib belum siap
     if (typeof Html5Qrcode === 'undefined') {
       showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
       closeQrModal();
       return;
     }
     if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
-    const onScanSuccess = (decodedText) => {
-      if (arbplInput) arbplInput.value = decodedText;
-      closeQrModal();
-    };
+    const onScanSuccess = (decodedText) => { if (arbplInput) arbplInput.value = decodedText; closeQrModal(); };
     try {
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        onScanSuccess
-      );
+      await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess);
     } catch (err) {
       showError("Gagal Kamera", "Tidak dapat mengakses kamera.");
       closeQrModal();
     }
   }
-
   async function stopQrScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-      try { await html5QrCode.stop(); } catch (_) {}
-    }
+    if (html5QrCode && html5QrCode.isScanning) { try { await html5QrCode.stop(); } catch (_) {} }
   }
+  function openQrModal() { qrModal?.classList.remove('hidden'); qrModal?.classList.add('flex'); startQrScanner(); }
+  function closeQrModal() { stopQrScanner(); qrModal?.classList.add('hidden'); qrModal?.classList.remove('flex'); }
 
-  function openQrModal() {
-    qrModal?.classList.remove('hidden');
-    qrModal?.classList.add('flex');
-    startQrScanner();
-  }
-
-  function closeQrModal() {
-    stopQrScanner();
-    qrModal?.classList.add('hidden');
-    qrModal?.classList.remove('flex');
-  }
-
-  // >>> Perubahan: tunggu sampai html5-qrcode siap dari app.js
   if (openQrBtn) {
     openQrBtn.addEventListener('click', () => {
       if (!window.Html5Qrcode) {
-        const onReady = () => {
-          window.removeEventListener('html5qrcode:ready', onReady);
-          openQrModal();
-        };
-        const onFailed = () => {
-          window.removeEventListener('html5qrcode:failed', onFailed);
-          showError('Scanner QR tidak tersedia', 'Gagal memuat library html5-qrcode.');
-        };
+        const onReady = () => { window.removeEventListener('html5qrcode:ready', onReady); openQrModal(); };
+        const onFailed = () => { window.removeEventListener('html5qrcode:failed', onFailed); showError('Scanner QR tidak tersedia', 'Gagal memuat library html5-qrcode.'); };
         window.addEventListener('html5qrcode:ready', onReady, { once: true });
         window.addEventListener('html5qrcode:failed', onFailed, { once: true });
         return;
@@ -672,7 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
       openQrModal();
     });
   }
-
   if (closeQrBtn) closeQrBtn.addEventListener('click', closeQrModal);
   if (qrModal)    qrModal.addEventListener('click', e => { if (e.target === qrModal) closeQrModal(); });
 
@@ -698,192 +738,247 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutForm?.submit();
   });
 
-}); // end DOMContentLoaded
-</script>
-@endpush
+  // =================================================================
+  // ===== DROPDOWN KUSTOM PLANT (tidak mengubah yang lama)
+  // =================================================================
+  (function () {
+    const select = document.getElementById('IV_WERKS');
+    if (!select) return;
 
+    const camBtn = document.getElementById('openQrScanner');
+    if (camBtn) camBtn.style.marginLeft = '-4px';
 
+    select.classList.add('hidden-native-select');
+    const oldCaret = select.nextElementSibling;
+    if (oldCaret && oldCaret.tagName?.toLowerCase() === 'svg') oldCaret.style.display = 'none';
 
-{{-- ========================================================= --}}
-{{-- === PENAMBAHAN: STYLE DROPDOWN KUSTOM (TIDAK MENGUBAH YANG LAMA) === --}}
-@push('head')
-<style>
-/* animasi open/close */
-.dropdown-enter { opacity: 0; transform: scale(0.97); }
-.dropdown-enter-active { opacity: 1; transform: scale(1); transition: opacity .12s ease, transform .12s ease; }
-.dropdown-leave-active { opacity: 0; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
+    const host = select.parentElement;
+    host.classList.remove('flex');
+    host.classList.add('block','relative','min-w-[120px]','w-[120px]');
 
-/* fokus saat navigasi keyboard */
-.dd-opt-focus { background-color: rgb(240 253 244); } /* emerald-50 */
-.dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
-
-/* sembunyikan native select tanpa ganggu layout */
-.hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
-</style>
-@endpush
-
-
-{{-- ========================================================= --}}
-{{-- === PENAMBAHAN: SCRIPT DROPDOWN KUSTOM (TIDAK MENGUBAH YANG LAMA) === --}}
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-/**
- * Dropdown kustom untuk <select id="IV_WERKS">
- * - Select asli tetap dipakai submit/validasi.
- * - Trigger pendek, caret custom, item rata tengah.
- */
-(function () {
-  const select = document.getElementById('IV_WERKS');
-  if (!select) return;
-
-  // Geser tombol kamera kiri sedikit agar sejajar
-  const camBtn = document.getElementById('openQrScanner');
-  if (camBtn) camBtn.style.marginLeft = '-4px';
-
-  // Sembunyikan select & caret lama
-  select.classList.add('hidden-native-select');
-  const oldCaret = select.nextElementSibling;
-  if (oldCaret && oldCaret.tagName?.toLowerCase() === 'svg') oldCaret.style.display = 'none';
-
-  // Host untuk trigger & menu
-  const host = select.parentElement;
-  host.classList.remove('flex');
-  host.classList.add('block','relative','min-w-[120px]','w-[120px]');
-
-  // Trigger
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.id = 'plantTrigger';
-  trigger.setAttribute('aria-haspopup','listbox');
-  trigger.setAttribute('aria-expanded','false');
-  trigger.className = [
-    'w-full','text-center',
-    'px-1','py-0','h-5','leading-[18px]',
-    'text-[11px]','font-semibold',
-    'relative','-top-[1px]',
-    'outline-none','bg-transparent','rounded-lg',
-    'focus:ring-2','focus:ring-emerald-500','select-none'
-  ].join(' ');
-
-  const label = document.createElement('span');
-  label.id = 'plantLabel';
-  label.className = 'relative -top-px';
-  label.textContent = select.value ? select.value : 'Pilih Plant';
-  trigger.appendChild(label);
-
-  // Caret baru
-  const caret = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  caret.setAttribute('viewBox','0 0 24 24');
-  caret.setAttribute('fill','currentColor');
-  caret.classList.add('w-4','h-4','text-emerald-600','pointer-events-none','absolute','right-0','top-1/2','-translate-y-1/2');
-
-  caret.innerHTML = '<path d="M7 10l5 5 5-5H7z"/>';
-  host.appendChild(trigger);
-  host.appendChild(caret);
-
-  // Menu
-  const menu = document.createElement('div');
-  menu.id = 'plantMenu';
-  menu.className = 'dropdown-enter invisible opacity-0 scale-95 absolute right-0 mt-1 z-30 w-44 bg-white rounded-xl shadow-2xl ring-1 ring-slate-200 overflow-hidden';
-  menu.setAttribute('role','listbox');
-  menu.tabIndex = -1;
-
-  const header = document.createElement('div');
-  header.className = 'px-3 py-2 text-[10px] font-semibold tracking-wider text-slate-500 bg-slate-50';
-  header.textContent = 'Pilih Plant';
-
-  const ul = document.createElement('ul');
-  ul.className = 'dd-scroll text-xs';
-
-  const makeItem = (text, value) => {
-    const li = document.createElement('li');
-    li.dataset.value = value;
-    li.setAttribute('role','option');
-    li.className = 'dd-opt relative px-3 py-2 cursor-pointer hover:bg-emerald-50 hover:text-emerald-700';
-    li.innerHTML = `
-      <span class="block w-full text-center">${text}</span>
-      <span class="check absolute right-3 top-1/2 -translate-y-1/2 ${select.value===value?'':'hidden'}">✓</span>
-    `;
-    return li;
-  };
-
-  const nativeOptions = Array.from(select.querySelectorAll('option')).filter(o => o.value !== '');
-  nativeOptions.forEach(o => ul.appendChild(makeItem(o.textContent.trim(), o.value)));
-
-  menu.appendChild(header);
-  menu.appendChild(ul);
-  host.appendChild(menu);
-
-  // Interaksi
-  let open = false, activeIdx = -1;
-  const items = () => Array.from(menu.querySelectorAll('.dd-opt'));
-
-  function showMenu(){
-    if (open) return;
-    open = true;
-    trigger.setAttribute('aria-expanded','true');
-    menu.classList.remove('invisible','opacity-0','scale-95','dropdown-enter');
-    menu.classList.add('dropdown-enter-active');
-    const cur = items().findIndex(li => li.dataset.value === select.value);
-    setActive(cur >= 0 ? cur : 0);
-    setTimeout(() => menu.classList.remove('dropdown-enter-active'), 130);
-    setTimeout(() => document.addEventListener('click', clickAway, { once:true }), 0);
-    menu.focus({preventScroll:true});
-  }
-  function hideMenu(){
-    if (!open) return;
-    open = false;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.id = 'plantTrigger';
+    trigger.setAttribute('aria-haspopup','listbox');
     trigger.setAttribute('aria-expanded','false');
-    menu.classList.add('dropdown-leave-active');
-    setTimeout(() => {
-      menu.classList.add('invisible','opacity-0','scale-95');
-      menu.classList.remove('dropdown-leave-active');
-    }, 130);
-    activeIdx = -1;
+    trigger.className = [
+      'w-full','text-center','px-1','py-0','h-5','leading-[18px]',
+      'text-[11px]','font-semibold','relative','-top-[1px]',
+      'outline-none','bg-transparent','rounded-lg','focus:ring-2','focus:ring-emerald-500','select-none'
+    ].join(' ');
+
+    const label = document.createElement('span');
+    label.id = 'plantLabel';
+    label.className = 'relative -top-px';
+    label.textContent = select.value ? select.value : 'Pilih Plant';
+    trigger.appendChild(label);
+
+    const caret = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    caret.setAttribute('viewBox','0 0 24 24');
+    caret.setAttribute('fill','currentColor');
+    caret.classList.add('w-4','h-4','text-emerald-600','pointer-events-none','absolute','right-0','top-1/2','-translate-y-1/2');
+
+    caret.innerHTML = '<path d="M7 10l5 5 5-5H7z"/>';
+    host.appendChild(trigger);
+    host.appendChild(caret);
+
+    const menu = document.createElement('div');
+    menu.id = 'plantMenu';
+    menu.className = 'dropdown-enter invisible opacity-0 scale-95 absolute right-0 mt-1 z-30 w-44 bg-white rounded-xl shadow-2xl ring-1 ring-slate-200 overflow-hidden';
+    menu.setAttribute('role','listbox');
+    menu.tabIndex = -1;
+
+    const header = document.createElement('div');
+    header.className = 'px-3 py-2 text-[10px] font-semibold tracking-wider text-slate-500 bg-slate-50';
+    header.textContent = 'Pilih Plant';
+
+    const ul = document.createElement('ul');
+    ul.className = 'dd-scroll text-xs';
+
+    const makeItem = (text, value) => {
+      const li = document.createElement('li');
+      li.dataset.value = value;
+      li.setAttribute('role','option');
+      li.className = 'dd-opt relative px-3 py-2 cursor-pointer hover:bg-emerald-50 hover:text-emerald-700';
+      li.innerHTML = `
+        <span class="block w-full text-center">${text}</span>
+        <span class="check absolute right-3 top-1/2 -translate-y-1/2 ${select.value===value?'':'hidden'}">✓</span>
+      `;
+      return li;
+    };
+
+    const nativeOptions = Array.from(select.querySelectorAll('option')).filter(o => o.value !== '');
+    nativeOptions.forEach(o => ul.appendChild(makeItem(o.textContent.trim(), o.value)));
+
+    menu.appendChild(header);
+    menu.appendChild(ul);
+    host.appendChild(menu);
+
+    let open = false, activeIdx = -1;
+    const items = () => Array.from(menu.querySelectorAll('.dd-opt'));
+
+    function showMenu(){
+      if (open) return;
+      open = true;
+      trigger.setAttribute('aria-expanded','true');
+      menu.classList.remove('invisible','opacity-0','scale-95','dropdown-enter');
+      menu.classList.add('dropdown-enter-active');
+      const cur = items().findIndex(li => li.dataset.value === select.value);
+      setActive(cur >= 0 ? cur : 0);
+      setTimeout(() => menu.classList.remove('dropdown-enter-active'), 130);
+      setTimeout(() => document.addEventListener('click', clickAway, { once:true }), 0);
+      menu.focus({preventScroll:true});
+    }
+    function hideMenu(){
+      if (!open) return;
+      open = false;
+      trigger.setAttribute('aria-expanded','false');
+      menu.classList.add('dropdown-leave-active');
+      setTimeout(() => {
+        menu.classList.add('invisible','opacity-0','scale-95');
+        menu.classList.remove('dropdown-leave-active');
+      }, 130);
+      activeIdx = -1;
+    }
+    function clickAway(e){ if (!menu.contains(e.target) && e.target !== trigger) hideMenu(); }
+    function setActive(i){
+      const arr = items();
+      arr.forEach((li,idx)=> li.classList.toggle('dd-opt-focus', idx===i));
+      activeIdx = i;
+      arr[i]?.scrollIntoView({block:'nearest'});
+    }
+    function choose(li){
+      const val = li.dataset.value || '';
+      select.value = val;
+      label.textContent = val || 'Pilih Plant';
+      items().forEach(o => o.querySelector('.check')?.classList.add('hidden'));
+      li.querySelector('.check')?.classList.remove('hidden');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      select.dispatchEvent(new Event('input',  { bubbles: true }));
+      hideMenu();
+    }
+
+    trigger.addEventListener('click', () => (open ? hideMenu() : showMenu()));
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showMenu(); }
+    });
+
+    items().forEach((li, i) => {
+      li.addEventListener('mouseenter', () => setActive(i));
+      li.addEventListener('click', () => choose(li));
+    });
+
+    menu.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') return hideMenu();
+      if (e.key === 'Enter')  { e.preventDefault(); if (activeIdx>=0) choose(items()[activeIdx]); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(items().length-1, activeIdx+1)); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(Math.max(0, activeIdx-1)); }
+      if (e.key === 'Tab') hideMenu();
+    });
+
+  })(); // dropdown IIFE
+
+  // =================================================================
+  // ===== HISTORI BACKDATE (GLOBAL TANPA FILTER)
+  // =================================================================
+  const historyModal   = document.getElementById('historyModal');
+  const historyBtn     = document.getElementById('openBackdateHistory');
+  const historyClose   = document.getElementById('historyClose');
+  const historyOk      = document.getElementById('historyOk');
+  const historyList    = document.getElementById('historyList');
+  const historyMeta    = document.getElementById('historyMeta');
+  const historyEmpty   = document.getElementById('historyEmpty');
+  const historyLoading = document.getElementById('historyLoading');
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+function fmtYMD(v){
+  if (!v) return '-';
+  const s = String(v);
+  let d = null;
+
+  // sumber 'YYYYMMDD'
+  if (/^\d{8}$/.test(s)) d = new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T00:00:00`);
+  // sumber 'YYYY-MM-DD'
+  else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
+  else return s;
+
+  return new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d); // contoh: 10/09/2025
+}
+
+function fmtDateTime(v){
+  if(!v) return '-';
+  let d = new Date(v);
+  if (isNaN(d)) {
+    const s = String(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
+    else return s;
   }
-  function clickAway(e){ if (!menu.contains(e.target) && e.target !== trigger) hideMenu(); }
-  function setActive(i){
-    const arr = items();
-    arr.forEach((li,idx)=> li.classList.toggle('dd-opt-focus', idx===i));
-    activeIdx = i;
-    arr[i]?.scrollIntoView({block:'nearest'});
+  const tgl = new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
+  const jam = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  return `${tgl} ${jam}`; // contoh: 12/09/2025 14:09:28
+}
+
+
+  function openHistoryModalScan(){
+    if (!historyModal) return;
+    historyList.innerHTML = '';
+    historyEmpty.classList.add('hidden');
+    historyLoading.classList.remove('hidden');
+    historyMeta.textContent = 'Semua operator • Maks 50 data terbaru';
+
+    historyModal.classList.remove('hidden'); historyModal.classList.add('flex');
+
+    fetch('/api/yppi019/backdate-history?limit=50&order=desc', {
+      headers: { 'Accept':'application/json' },
+      credentials: 'include'
+    })
+    .then(r => r.json().catch(()=>({})))
+    .then(js => {
+      const rows = Array.isArray(js.rows) ? js.rows : [];
+      historyLoading.classList.add('hidden');
+
+      if (!rows.length) { historyEmpty.classList.remove('hidden'); return; }
+
+      historyList.innerHTML = rows.map(r => {
+        
+        const auf   = r.AUFNR || r.aufnr || '-';
+        const vor   = r.VORNR || r.vornr || '-';
+        const qty   = r.QTY   || r.qty   || '-';
+        const me    = (r.MEINH || r.meinh || '-') || '';
+        const bud   = fmtYMD(r.BUDAT || r.budat || '-');
+        const wc    = r.ARBPL0|| r.arbpl0|| '-';
+        const mkx   = r.MAKTX || r.maktx || '-';
+        const nik   = r.PERNR || r.pernr || r.NIK || r.nik || '-';
+
+        return `<tr class="odd:bg-white even:bg-slate-50">
+          
+          <td class="px-3 py-2 border-b font-mono">${auf} / ${vor}</td>
+          <td class="px-3 py-2 border-b font-mono">${nik}</td>
+          <td class="px-3 py-2 border-b font-mono">${qty} ${me}</td>
+          <td class="px-3 py-2 border-b">${bud}</td>
+          <td class="px-3 py-2 border-b">${wc}</td>
+          <td class="px-3 py-2 border-b">${mkx}</td>
+        </tr>`;
+      }).join('');
+    })
+    .catch(err => {
+      historyLoading.classList.add('hidden');
+      historyEmpty.classList.remove('hidden');
+      historyEmpty.textContent = 'Gagal memuat: ' + (err?.message || err);
+    });
   }
-  function choose(li){
-    const val = li.dataset.value || '';
-    select.value = val;
 
-    // Tampilkan nilai terpilih di trigger (atau 'Pilih Plant' jika kosong)
-    label.textContent = val || 'Pilih Plant';
-
-    items().forEach(o => o.querySelector('.check')?.classList.add('hidden'));
-    li.querySelector('.check')?.classList.remove('hidden');
-
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    select.dispatchEvent(new Event('input',  { bubbles: true }));
-
-    hideMenu();
+  function closeHistoryModal(){
+    historyModal?.classList.add('hidden');
+    historyModal?.classList.remove('flex');
   }
 
-  trigger.addEventListener('click', () => (open ? hideMenu() : showMenu()));
-  trigger.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showMenu(); }
-  });
+  historyBtn?.addEventListener('click', openHistoryModalScan);
+  historyClose?.addEventListener('click', closeHistoryModal);
+  historyOk?.addEventListener('click', closeHistoryModal);
+  historyModal?.addEventListener('click', e => { if (e.target === historyModal) closeHistoryModal(); });
 
-  items().forEach((li, i) => {
-    li.addEventListener('mouseenter', () => setActive(i));
-    li.addEventListener('click', () => choose(li));
-  });
-
-  menu.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') return hideMenu();
-    if (e.key === 'Enter')  { e.preventDefault(); if (activeIdx>=0) choose(items()[activeIdx]); }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(items().length-1, activeIdx+1)); }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(Math.max(0, activeIdx-1)); }
-    if (e.key === 'Tab') hideMenu();
-  });
-
-})(); // IIFE
-}); // DOMContentLoaded
+}); // end DOMContentLoaded
 </script>
 @endpush
