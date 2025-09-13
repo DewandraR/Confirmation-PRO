@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 05, 2025 at 08:35 AM
+-- Generation Time: Sep 13, 2025 at 05:21 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.16
 
@@ -166,7 +166,38 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`) VALUES
-(7, 'User', 'user@gmail.com', NULL, '$2y$12$86wxB.Xd5G/Tb8DwqFvX.eQJa/RDSPS8pKWLVUVFq32bzDbanQx1O', NULL, '2025-09-05 00:49:03', '2025-09-05 00:49:03');
+(7, 'User', 'user@gmail.com', NULL, '$2y$12$86wxB.Xd5G/Tb8DwqFvX.eQJa/RDSPS8pKWLVUVFq32bzDbanQx1O', NULL, '2025-09-05 00:49:03', '2025-09-05 00:49:03'),
+(9, 'abaper01', 'abaper01@kmi.local', NULL, '$2y$12$y/0KeQmj3fwlwyzFVnFk2.VtNm3JyQSJ4o9ZCWe5XZeyzLInUbd5y', NULL, '2025-09-08 03:21:18', '2025-09-08 03:21:18'),
+(11, 'auto_email', 'auto_email@kmi.local', NULL, '$2y$12$nnTyVyvZhKzAWm7cdj7Z6eiOxvJmeMw3U9WB157Lh47Tez2psDCTq', NULL, '2025-09-12 22:07:50', '2025-09-12 22:07:50');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `yppi019_backdate_log`
+--
+
+CREATE TABLE `yppi019_backdate_log` (
+  `id` bigint NOT NULL,
+  `AUFNR` varchar(20) NOT NULL,
+  `VORNR` varchar(10) DEFAULT NULL,
+  `PERNR` varchar(20) DEFAULT NULL,
+  `QTY` decimal(18,3) DEFAULT NULL,
+  `MEINH` varchar(10) DEFAULT NULL,
+  `BUDAT` date NOT NULL,
+  `TODAY` date NOT NULL,
+  `ARBPL0` varchar(40) DEFAULT NULL,
+  `MAKTX` varchar(200) DEFAULT NULL,
+  `SAP_RETURN` json DEFAULT NULL,
+  `CONFIRMED_AT` datetime DEFAULT NULL,
+  `CREATED_AT` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `yppi019_backdate_log`
+--
+
+INSERT INTO `yppi019_backdate_log` (`id`, `AUFNR`, `VORNR`, `PERNR`, `QTY`, `MEINH`, `BUDAT`, `TODAY`, `ARBPL0`, `MAKTX`, `SAP_RETURN`, `CONFIRMED_AT`, `CREATED_AT`) VALUES
+(1, '155000072353', '0020', '10006149', 1.000, 'ST', '2025-09-10', '2025-09-12', 'WC031', 'LMT BOARD WHITE OAK 18X500X1300 L 41', '{\"EV_MSG\": null, \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": null, \"ROW\": 0, \"TYPE\": null, \"FIELD\": null, \"LOG_NO\": null, \"NUMBER\": \"000\", \"SYSTEM\": null, \"MESSAGE\": null, \"PARAMETER\": null, \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": null, \"MESSAGE_V2\": null, \"MESSAGE_V3\": null, \"MESSAGE_V4\": null}, {\"ID\": null, \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": null, \"LOG_NO\": null, \"NUMBER\": \"000\", \"SYSTEM\": null, \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": null, \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": null, \"MESSAGE_V2\": null, \"MESSAGE_V3\": null, \"MESSAGE_V4\": null}]}', '2025-09-12 07:09:27', '2025-09-12 14:09:28');
 
 -- --------------------------------------------------------
 
@@ -193,25 +224,9 @@ CREATE TABLE `yppi019_confirm_log` (
 --
 
 INSERT INTO `yppi019_confirm_log` (`id`, `AUFNR`, `VORNR`, `PERNR`, `PSMNG`, `MEINH`, `GSTRP`, `GLTRP`, `BUDAT`, `SAP_RETURN`, `created_at`) VALUES
-(7, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-02', '2025-09-02', '2025-09-02', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-02 10:15:24'),
-(8, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-02', '2025-09-02', '2025-09-02', '{\"EV_MSG\": \"System status TECO is active (ORD 155000072353)\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"00000000000000000001 confirmations are incorrect. For details see parameter DETAIL_RETURN\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"System status TECO is active (ORD 155000072353)\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-02 17:00:07'),
-(9, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"Order 155000072353 is already being processed by ABAPER01\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"00000000000000000001 confirmations are incorrect. For details see parameter DETAIL_RETURN\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Order 155000072353 is already being processed by ABAPER01\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 08:00:58'),
-(10, '155000072353', '0010', '10006149', 2, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"Order 155000072353 is already being processed by ABAPER01\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"00000000000000000001 confirmations are incorrect. For details see parameter DETAIL_RETURN\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Order 155000072353 is already being processed by ABAPER01\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 08:06:41'),
-(11, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 08:09:50'),
-(12, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 09:10:45'),
-(13, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 11:06:18'),
-(14, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 11:34:38'),
-(15, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 11:50:17'),
-(16, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:02:38'),
-(17, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:03:16'),
-(18, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"Order 155000072353 is already being processed by AUTO_EMAIL\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"00000000000000000001 confirmations are incorrect. For details see parameter DETAIL_RETURN\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Order 155000072353 is already being processed by AUTO_EMAIL\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:03:19'),
-(19, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:09:30'),
-(20, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:10:40'),
-(21, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"Order 155000072353 is already being processed by AUTO_EMAIL\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"00000000000000000001 confirmations are incorrect. For details see parameter DETAIL_RETURN\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Order 155000072353 is already being processed by AUTO_EMAIL\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 12:10:41'),
-(22, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 14:29:50'),
-(23, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 15:01:21'),
-(24, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 15:11:55'),
-(25, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-03', '2025-09-03', '2025-09-03', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-03 15:40:38');
+(26, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-11', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 11:33:27'),
+(27, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-10', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 13:52:17'),
+(28, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-10', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 14:09:27');
 
 -- --------------------------------------------------------
 
@@ -250,9 +265,7 @@ CREATE TABLE `yppi019_data` (
 --
 
 INSERT INTO `yppi019_data` (`id`, `AUFNR`, `VORNRX`, `PERNR`, `ARBPL0`, `DISPO`, `STEUS`, `WERKS`, `CHARG`, `MATNRX`, `MAKTX`, `MEINH`, `QTY_SPK`, `WEMNG`, `QTY_SPX`, `LTXA1`, `SNAME`, `GSTRP`, `GLTRP`, `ISDZ`, `IEDZ`, `RAW_JSON`, `fetched_at`) VALUES
-(166, '226100072691', '0010', '10006149', 'WC767', 'C11', 'ZP01', '2000', '0000074270', '20266100', 'SUB ASSY TOP EXT', 'ST', 2.000, 0.000, 2.000, 'PALANG KUDA TOP GROUP', 'MOCHAMAD FATANY RASIS', '2025-09-05', '2025-09-05', '', '', '{\"IEDZ\": \"\", \"ISDZ\": \"\", \"AUFNR\": \"226100072691\", \"CHARG\": \"0000074270\", \"DISPO\": \"C11\", \"GLTRP\": \"05.09.2025\", \"GSTRP\": \"05.09.2025\", \"LTXA1\": \"PALANG KUDA TOP GROUP\", \"MAKTX\": \"SUB ASSY TOP EXT\", \"MANDT\": \"\", \"MEINH\": \"ST\", \"PERNR\": \"10006149\", \"SNAME\": \"MOCHAMAD FATANY RASIS\", \"STEUS\": \"ZP01\", \"WEMNG\": 0.0, \"WERKS\": \"2000\", \"ARBPL0\": \"WC767\", \"MATNRX\": \"20266100\", \"VORNRX\": \"10\", \"QTY_SPK\": 2.0, \"QTY_SPX\": 2.0}', '2025-09-05 08:00:53'),
-(168, '226100072690', '0010', '10006149', 'WC767', 'C11', 'ZP01', '2000', '0000074269', '20266099', 'SUB ASSY TOP TABLE', 'ST', 4.000, 0.000, 4.000, 'PALANG KUDA TOP GROUP', 'MOCHAMAD FATANY RASIS', '2025-09-05', '2025-09-05', '', '', '{\"IEDZ\": \"\", \"ISDZ\": \"\", \"AUFNR\": \"226100072690\", \"CHARG\": \"0000074269\", \"DISPO\": \"C11\", \"GLTRP\": \"05.09.2025\", \"GSTRP\": \"05.09.2025\", \"LTXA1\": \"PALANG KUDA TOP GROUP\", \"MAKTX\": \"SUB ASSY TOP TABLE\", \"MANDT\": \"\", \"MEINH\": \"ST\", \"PERNR\": \"10006149\", \"SNAME\": \"MOCHAMAD FATANY RASIS\", \"STEUS\": \"ZP01\", \"WEMNG\": 0.0, \"WERKS\": \"2000\", \"ARBPL0\": \"WC767\", \"MATNRX\": \"20266099\", \"VORNRX\": \"10\", \"QTY_SPK\": 4.0, \"QTY_SPX\": 4.0}', '2025-09-05 08:02:51'),
-(179, '361000015582', '0010', '10006149', 'WC223', 'MF3', 'ZP01', '3000', '4300019090', '90009702', 'MTL FERRULE F.024 VG 54X54X79MM PMR', 'ST', 36.000, 20.000, 16.000, 'MF POWDER COATING', 'MOCHAMAD FATANY RASIS', '2025-09-05', '2025-09-05', '', '', '{\"IEDZ\": \"\", \"ISDZ\": \"\", \"AUFNR\": \"361000015582\", \"CHARG\": \"4300019090\", \"DISPO\": \"MF3\", \"GLTRP\": \"05.09.2025\", \"GSTRP\": \"05.09.2025\", \"LTXA1\": \"MF POWDER COATING\", \"MAKTX\": \"MTL FERRULE F.024 VG 54X54X79MM PMR\", \"MANDT\": \"\", \"MEINH\": \"ST\", \"PERNR\": \"10006149\", \"SNAME\": \"MOCHAMAD FATANY RASIS\", \"STEUS\": \"ZP01\", \"WEMNG\": 20.0, \"WERKS\": \"3000\", \"ARBPL0\": \"WC223\", \"MATNRX\": \"90009702\", \"VORNRX\": \"10\", \"QTY_SPK\": 36.0, \"QTY_SPX\": 16.0}', '2025-09-05 11:29:51');
+(2992, '361000015582', '0010', '10006149', 'WC223', 'MF3', 'ZP01', '3000', '4300019090', '90009702', 'MTL FERRULE F.024 VG 54X54X79MM PMR', 'ST', 36.000, 20.000, 16.000, 'MF POWDER COATING', 'MOCHAMAD FATANY RASIS', '2025-09-13', '2025-09-13', '', '', '{\"IEDZ\": \"\", \"ISDZ\": \"\", \"AUFNR\": \"361000015582\", \"CHARG\": \"4300019090\", \"DISPO\": \"MF3\", \"GLTRP\": \"13.09.2025\", \"GSTRP\": \"13.09.2025\", \"LTXA1\": \"MF POWDER COATING\", \"MAKTX\": \"MTL FERRULE F.024 VG 54X54X79MM PMR\", \"MANDT\": \"\", \"MEINH\": \"ST\", \"PERNR\": \"10006149\", \"SNAME\": \"MOCHAMAD FATANY RASIS\", \"STEUS\": \"ZP01\", \"WEMNG\": 20.0, \"WERKS\": \"3000\", \"ARBPL0\": \"WC223\", \"MATNRX\": \"90009702\", \"VORNRX\": \"10\", \"QTY_SPK\": 36.0, \"QTY_SPX\": 16.0}', '2025-09-13 12:12:02');
 
 --
 -- Indexes for dumped tables
@@ -318,6 +331,15 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `users_email_unique` (`email`);
 
 --
+-- Indexes for table `yppi019_backdate_log`
+--
+ALTER TABLE `yppi019_backdate_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_aufnr` (`AUFNR`),
+  ADD KEY `idx_budat` (`BUDAT`),
+  ADD KEY `idx_pernr` (`PERNR`);
+
+--
 -- Indexes for table `yppi019_confirm_log`
 --
 ALTER TABLE `yppi019_confirm_log`
@@ -360,19 +382,25 @@ ALTER TABLE `migrations`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT for table `yppi019_backdate_log`
+--
+ALTER TABLE `yppi019_backdate_log`
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `yppi019_confirm_log`
 --
 ALTER TABLE `yppi019_confirm_log`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `yppi019_data`
 --
 ALTER TABLE `yppi019_data`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=180;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2993;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
