@@ -71,14 +71,14 @@
               d="M15 11a3 3 0 11-6 0 3 3 0 006 0z" />
       </svg>
     </div>
-    <label class="text-xs font-medium text-slate-700">Work Center & Plant</label>
-    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
+    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Work Center & Plant</label>
+    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0 whitespace-nowrap">Optional</span>
 
     {{-- ⬇️ Tombol Histori Backdate (baru) --}}
     <button type="button" id="openBackdateHistory"
             class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
                    bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
-                   hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition"
+                   hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition min-w-[130px] justify-center"
             title="Lihat histori backdate">
       <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z"/>
@@ -391,6 +391,8 @@
         top: 0; left: 0;
         width: 100%; height: 100%;
         object-fit: cover;
+        /* iOS: cegah fullscreen otomatis */
+        -webkit-touch-callout: none;
     }
 
     /* Dropdown kustom */
@@ -426,17 +428,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return (10 - ((s + 3 * t) % 10)) % 10;
   }
-  function normalizeAufnr(raw) {
-    let s = String(raw || '').replace(/\D/g, '');
-    if (s.length === 13) {
-      const cd = ean13CheckDigit(s.slice(0, 12));
-      if (cd === +s[12]) s = s.slice(0, 12);
+
+  // HANYA normalisasi kalau formatnya EAN; untuk Code128 biarkan apa adanya
+  function isLikelyEANFormat(fmt){ return /^ean(_\d+)?$/i.test(String(fmt||'')); }
+
+  function normalizeByFormat(raw, fmt) {
+    const s = String(raw || '');
+    if (isLikelyEANFormat(fmt)) {
+      let digits = s.replace(/\D/g, '');
+      if (digits.length === 13) {
+        const cd = ean13CheckDigit(digits.slice(0, 12));
+        if (cd === +digits[12]) digits = digits.slice(0, 12);
+      }
+      return digits;
     }
-    return s;
+    return s.trim();
   }
+
   function addAufnrToList(aufnr) {
-    aufnr = normalizeAufnr(aufnr);
-    if (aufnr.length < 1 || aufnrList.has(aufnr)) return;
+    if (!aufnr || aufnrList.has(aufnr)) return;
     aufnrList.add(aufnr);
     const div = document.createElement('div');
     div.className = 'px-3 py-1.5 bg-slate-100 rounded-xl flex items-center justify-between text-xs font-medium text-slate-700 transition-all duration-200 hover:bg-slate-200';
@@ -517,8 +527,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (aufnrInput) {
     aufnrInput.addEventListener('change', (e) => {
-      const code = normalizeAufnr(e.target.value);
-      if (code.length > 0) addAufnrToList(code);
+      const val = String(e.target.value || '').trim();
+      if (val.length > 0) addAufnrToList(val);
       e.target.value = '';
     });
   }
@@ -636,6 +646,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // konfirmasi dua kali bacaan sama agar anti false-positive
+  let lastCode = null, lastAt = 0;
+  function stableCommit(raw, fmt) {
+    const now = Date.now();
+    const cur = normalizeByFormat(raw, fmt);
+    // validasi pola (sesuaikan jika perlu)
+    const valid = /^[A-Za-z0-9\-\/\.]{6,20}$/.test(cur);
+    if (!valid) return false;
+    if (cur === lastCode && (now - lastAt) < 800) {
+      addAufnrToList(cur);
+      return true;
+    }
+    lastCode = cur; lastAt = now;
+    return false;
+  }
+
   function startQuagga() {
     if (typeof Quagga === 'undefined') {
       showError('Scanner tidak tersedia', 'Library Quagga belum dimuat.');
@@ -643,13 +669,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     stopQuagga(true);
     committing = false;
+    lastCode = null; lastAt = 0;
     if (reader) reader.innerHTML = '';
 
     Quagga.init({
-      inputStream: { name: "Live", type: "LiveStream", target: reader, constraints: { facingMode: "environment" } },
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: reader,
+        constraints: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          aspectRatio: { ideal: 1.777 }
+        }
+      },
       locator: { patchSize: "medium", halfSample: true },
-      decoder: { readers: ["code_128_reader", "ean_reader"] },
-      numOfWorkers: navigator.hardwareConcurrency || 4,
+      decoder: { readers: ["code_128_reader", "ean_reader", "ean_8_reader"] },
+      locate: true,
+      numOfWorkers: navigator.hardwareConcurrency || 2,
     }, (err) => {
       if (err) { console.error(err); showError('Gagal memulai kamera', err?.message || err); return; }
       Quagga.start();
@@ -657,10 +695,22 @@ document.addEventListener('DOMContentLoaded', () => {
       try { currentTrack = Quagga.CameraAccess.getActiveStream()?.getVideoTracks?.()[0] || null; } catch(_) {}
       onDet = (res) => {
         if (committing) return;
-        const code = normalizeAufnr(res?.codeResult?.code || '');
-        if (code) { committing = true; addAufnrToList(code); closeModal(); }
+        const raw = res?.codeResult?.code || '';
+        const fmt = res?.codeResult?.format || '';
+        if (!raw) return;
+        if (stableCommit(raw, fmt)) { committing = true; closeModal(); }
       };
       Quagga.onDetected(onDet);
+
+      // paksa playsinline di iOS
+      setTimeout(() => {
+        const video = reader?.querySelector('video');
+        if (video) {
+          video.setAttribute('playsinline','true');
+          video.setAttribute('autoplay','true');
+          video.setAttribute('muted','true');
+        }
+      }, 200);
     });
   }
 
@@ -680,18 +730,46 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeQrBtn= document.getElementById('closeQrScanner');
   let html5QrCode = null;
 
+  async function pickBackCameraId() {
+    try {
+      const cams = await Html5Qrcode.getCameras();
+      if (!Array.isArray(cams) || !cams.length) return null;
+      const back = cams.find(c => /back|rear|belakang/i.test(c.label));
+      return (back || cams[cams.length - 1]).id;
+    } catch { return null; }
+  }
+
   async function startQrScanner() {
     if (typeof Html5Qrcode === 'undefined') {
       showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
       closeQrModal();
       return;
     }
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader", { verbose:false });
     const onScanSuccess = (decodedText) => { if (arbplInput) arbplInput.value = decodedText; closeQrModal(); };
+
+    const opts = {
+      fps: 10,
+      qrbox: { width: 220, height: 220 },
+      disableFlip: true
+    };
+
     try {
-      await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess);
+      const backId = await pickBackCameraId();
+      if (backId) await html5QrCode.start({ deviceId: { exact: backId } }, opts, onScanSuccess);
+      else        await html5QrCode.start({ facingMode: "environment" }, opts, onScanSuccess);
+
+      const v = document.querySelector('#qr-reader video');
+      if (v) {
+        v.setAttribute('playsinline','true');
+        v.setAttribute('autoplay','true');
+        v.setAttribute('muted','true');
+      }
     } catch (err) {
-      showError("Gagal Kamera", "Tidak dapat mengakses kamera.");
+      const msg = (err && err.message) ? err.message : String(err);
+      showError("Gagal Kamera", msg.includes('NotAllowedError')
+        ? "Akses kamera ditolak. Buka Settings > Safari > Camera: Allow."
+        : "Tidak dapat mengakses kamera. Coba refresh atau cek izin kamera.");
       closeQrModal();
     }
   }
