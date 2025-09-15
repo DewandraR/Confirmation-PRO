@@ -227,6 +227,7 @@
             <li>• Field <b>NIK Operator</b> wajib diisi.</li>
             <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
             <li>• Posisikan Barcode dan QR Code di area tengah kamera dan hindari pantulan cahaya.</li>
+            <li>• Untuk User IOS jika kamera tidak bisa scan, harap inputkan kode Work Center secara manual.</li>
           </ul>
         </div>
       </div>
