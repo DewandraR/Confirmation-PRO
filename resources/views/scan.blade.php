@@ -4,71 +4,70 @@
 @section('content')
 {{-- Bagian header dengan gradasi yang disesuaikan --}}
 <div class="bg-gradient-to-br from-green-700 via-green-800 to-blue-900 relative overflow-hidden">
-    {{-- perbaiki base64 (sebelumnya korup) --}}
-    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC41Ij48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
-    <div class="relative px-4 py-8 md:px-6">
-        <div class="max-w-2xl mx-auto text-center">
-            {{-- LOGO PERUSAHAAN --}}
-            <div class="mb-3">
-                <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-16 h-16 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
-            </div>
-            <h1 class="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO</h1>
-            <p class="text-sm md:text-base text-white/80 leading-tight">Pindai barcode atau masukkan data secara manual</p>
-        </div>
+  {{-- perbaiki base64 (sebelumnya korup) --}}
+  <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC41Ij48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
+  <div class="relative px-4 py-8 md:px-6">
+    <div class="max-w-2xl mx-auto text-center">
+      {{-- LOGO PERUSAHAAN --}}
+      <div class="mb-3">
+        <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-16 h-16 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
+      </div>
+      <h1 class="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO</h1>
+      <p class="text-sm md:text-base text-white/80 leading-tight">Pindai barcode atau masukkan data secara manual</p>
     </div>
+  </div>
 </div>
 
 {{-- Kontainer Form Input Data dengan jarak atas yang disesuaikan --}}
 <div class="px-4 py-10 -mt-6 relative z-10 md:px-6">
-    <div class="max-w-2xl mx-auto">
-        <div class="bg-white rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden">
-            {{-- Header form input data --}}
-            <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
-                {{-- wrap + gap agar aman di 414px --}}
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
-                            <svg class="w-4 h-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <h2 class="text-base md:text-lg font-semibold text-slate-800 leading-tight">Form Input Data</h2>
-                            <p class="text-[11px] text-slate-600 leading-tight">Lengkapi informasi di bawah ini</p>
-                        </div>
-
-                    </div>
-
-                    {{-- Tombol Logout --}}
-                    @auth
-                    <button id="openLogoutConfirm"
-                        class="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-semibold
-                               bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md
-                               hover:shadow-lg hover:from-red-700 hover:to-rose-800 active:scale-[0.98] transition">
-                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
-                        Logout
-                    </button>
-                    @endauth
-                </div>
+  <div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden">
+      {{-- Header form input data --}}
+      <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+        {{-- wrap + gap agar aman di 414px --}}
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
+              <svg class="w-4 h-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
+            <div class="min-w-0">
+              <h2 class="text-base md:text-lg font-semibold text-slate-800 leading-tight">Form Input Data</h2>
+              <p class="text-[11px] text-slate-600 leading-tight">Lengkapi informasi di bawah ini</p>
+            </div>
+          </div>
 
-            {{-- Isi form input data --}}
-            <div class="p-5">
-                <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get">
+          {{-- Tombol Logout --}}
+          @auth
+          <button id="openLogoutConfirm"
+            class="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-semibold
+                   bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md
+                   hover:shadow-lg hover:from-red-700 hover:to-rose-800 active:scale-[0.98] transition">
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+            Logout
+          </button>
+          @endauth
+        </div>
+      </div>
 
-                    <!-- Work Center & Plant (match PRO style) -->
+      {{-- Isi form input data --}}
+      <div class="p-5">
+        <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get">
+
+<!-- Work Center & Plant (match PRO style) -->
 <div class="space-y-2">
-  <div class="flex items-center gap-2 flex-wrap">
+  <div class="flex items-center gap-2 flex-wrap ios-nowrap-row">
     <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
       <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 006 0z" />
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     </div>
     <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Work Center & Plant</label>
@@ -142,150 +141,149 @@
   </div>
 </div>
 
+          <div class="flex items-center text-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="flex-shrink mx-4 text-xs text-slate-400 font-medium">ATAU</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+          </div>
 
-                    <div class="flex items-center text-center">
-                        <div class="flex-grow border-t border-slate-200"></div>
-                        <span class="flex-shrink mx-4 text-xs text-slate-400 font-medium">ATAU</span>
-                        <div class="flex-grow border-t border-slate-200"></div>
-                    </div>
-
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
-                                <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
-                                </svg>
-                            </div>
-                            <label class="text-xs font-medium text-slate-700">PRO</label>
-                            <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
-                        </div>
-                        <div class="relative group">
-                            <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2 flex-wrap">
-                                <div class="flex-shrink-0">
-                                    <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <input id="IV_AUFNR" name="aufnr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan atau pindai barcode PRO" />
-                                <button type="button" id="openScanner" class="shrink-0 group p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900 hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105" title="Buka kamera">
-                                    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="aufnr-list-container" class="space-y-1"></div>
-
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <div class="w-5 h-5 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
-                                <svg class="w-3 h-3 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
-                            <label class="text-xs font-medium text-slate-700">NIK Operator</label>
-                            <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
-                        </div>
-                        <div class="relative group">
-                            <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
-                                <div class="flex-shrink-0">
-                                    <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <input id="IV_PERNR" name="pernr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan NIK Operator" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pt-3">
-                        <button class="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-green-700 to-blue-900 hover:from-green-800 hover:to-blue-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                            <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            Kirim Data
-                        </button>
-                    </div>
-                </form>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
+                </svg>
+              </div>
+              <label class="text-xs font-medium text-slate-700">PRO</label>
+              <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
             </div>
-        </div>
-
-        <div class="mt-6 bg-gradient-to-r from-slate-50 to-green-50 rounded-xl p-4 border border-slate-200">
-            <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-green-500 rounded-lg flex-shrink-0 flex items-center justify-center">
-                    <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div class="relative group">
+              <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2 flex-wrap">
+                <div class="flex-shrink-0">
+                  <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
+                  </div>
                 </div>
-                <div>
-                    <h3 class="text-base font-semibold text-slate-800 mb-1">Tips Penggunaan</h3>
-                    <ul class="text-xs text-slate-600 space-y-0.5">
-                        <li>• Field <b>NIK Operator</b> wajib diisi.</li>
-                        <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
-                        <li>• Posisikan Barcode dan QR Code di area tengah kamera dan hindari pantulan cahaya.</li>
-                    </ul>
-                </div>
+                <input id="IV_AUFNR" name="aufnr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan atau pindai barcode PRO" />
+                <button type="button" id="openScanner" class="shrink-0 group p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900 hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105" title="Buka kamera">
+                  <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
+                  </svg>
+                </button>
+              </div>
             </div>
-        </div>
+          </div>
+
+          <div id="aufnr-list-container" class="space-y-1"></div>
+
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="w-5 h-5 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-3 h-3 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <label class="text-xs font-medium text-slate-700">NIK Operator</label>
+              <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
+            </div>
+            <div class="relative group">
+              <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
+                <div class="flex-shrink-0">
+                  <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </div>
+                <input id="IV_PERNR" name="pernr" class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium" placeholder="Masukkan NIK Operator" />
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3">
+            <button class="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-green-700 to-blue-900 hover:from-green-800 hover:to-blue-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
+              <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Kirim Data
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
+
+    <div class="mt-6 bg-gradient-to-r from-slate-50 to-green-50 rounded-xl p-4 border border-slate-200">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 bg-green-500 rounded-lg flex-shrink-0 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-800 mb-1">Tips Penggunaan</h3>
+          <ul class="text-xs text-slate-600 space-y-0.5">
+            <li>• Field <b>NIK Operator</b> wajib diisi.</li>
+            <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
+            <li>• Posisikan Barcode dan QR Code di area tengah kamera dan hindari pantulan cahaya.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {{-- MODALS --}}
 <div id="scannerModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 backdrop-blur-sm z-50 p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
-        <div class="bg-gradient-to-r from-green-700 to-blue-900 px-5 py-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center"><svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
-                        </svg></div>
-                    <h3 class="text-base font-semibold text-white">Scanner Barcode</h3>
-                </div>
-                <div class="flex items-center gap-2"><button type="button" id="toggleTorch" class="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Lampu</button><button type="button" id="closeScanner" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Tutup</button></div>
-            </div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
+    <div class="bg-gradient-to-r from-green-700 to-blue-900 px-5 py-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center"><svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
+            </svg></div>
+          <h3 class="text-base font-semibold text-white">Scanner Barcode</h3>
         </div>
-        <div class="p-4">
-            <div id="reader" class="rounded-xl overflow-hidden bg-black shadow-inner"></div>
-            <div class="mt-3 p-3 bg-green-50 rounded-xl border border-green-200">
-                <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center"><svg class="w-3 h-3 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg></div>
-                    <p class="text-xs text-green-800 font-medium">Arahkan kamera ke barcode PRO (AUFNR) dengan jelas</p>
-                </div>
-            </div>
-        </div>
+        <div class="flex items-center gap-2"><button type="button" id="toggleTorch" class="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Lampu</button><button type="button" id="closeScanner" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Tutup</button></div>
+      </div>
     </div>
+    <div class="p-4">
+      <div id="reader" class="rounded-xl overflow-hidden bg-black shadow-inner"></div>
+      <div class="mt-3 p-3 bg-green-50 rounded-xl border border-green-200">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center"><svg class="w-3 h-3 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg></div>
+          <p class="text-xs text-green-800 font-medium">Arahkan kamera ke barcode PRO (AUFNR) dengan jelas</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <div id="qrScannerModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 backdrop-blur-sm z-50 p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-700 to-indigo-900 px-5 py-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold text-white">Scanner QR Work Center</h3><button type="button" id="closeQrScanner" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Tutup</button>
-            </div>
-        </div>
-        <div class="p-4">
-            <div id="qr-reader" class="rounded-xl overflow-hidden bg-black shadow-inner border-4 border-slate-200"></div>
-            <p class="mt-3 text-center text-xs text-slate-600">Arahkan kamera ke QR Code Work Center.</p>
-        </div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
+    <div class="bg-gradient-to-r from-blue-700 to-indigo-900 px-5 py-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold text-white">Scanner QR Work Center</h3><button type="button" id="closeQrScanner" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg transition-colors">Tutup</button>
+      </div>
     </div>
+    <div class="p-4">
+      <div id="qr-reader" class="rounded-xl overflow-hidden bg-black shadow-inner border-4 border-slate-200"></div>
+      <p class="mt-3 text-center text-xs text-slate-600">Arahkan kamera ke QR Code Work Center.</p>
+    </div>
+  </div>
 </div>
 <div id="errorModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 z-[60] p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div class="bg-red-600 px-5 py-3">
-            <h3 class="text-sm font-semibold text-white" id="errTitle">Terjadi Kesalahan</h3>
-        </div>
-        <div class="p-5 space-y-3">
-            <pre id="errText" class="text-xs text-slate-700 whitespace-pre-wrap"></pre>
-            <div class="flex justify-end"><button type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700" onclick="closeError()">OK</button></div>
-        </div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="bg-red-600 px-5 py-3">
+      <h3 class="text-sm font-semibold text-white" id="errTitle">Terjadi Kesalahan</h3>
     </div>
+    <div class="p-5 space-y-3">
+      <pre id="errText" class="text-xs text-slate-700 whitespace-pre-wrap"></pre>
+      <div class="flex justify-end"><button type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700" onclick="closeError()">OK</button></div>
+    </div>
+  </div>
 </div>
 
 <div id="tecoModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 z-[60] p-4">
@@ -310,15 +308,15 @@
 </div>
 
 <div id="logoutModal" class="fixed inset-0 hidden items-center justify-center bg-black/60 z-[70] p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div class="bg-red-600 px-5 py-3">
-            <h3 class="text-sm font-semibold text-white">Konfirmasi Logout</h3>
-        </div>
-        <div class="p-5 space-y-4">
-            <p class="text-sm text-slate-700">Kamu yakin ingin keluar?</p>
-            <div class="flex justify-end gap-2"><button id="logoutCancel" type="button" class="px-4 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">Tidak</button><button id="logoutConfirm" type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Keluar</button></div>
-        </div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+    <div class="bg-red-600 px-5 py-3">
+      <h3 class="text-sm font-semibold text-white">Konfirmasi Logout</h3>
     </div>
+    <div class="p-5 space-y-4">
+      <p class="text-sm text-slate-700">Kamu yakin ingin keluar?</p>
+      <div class="flex justify-end gap-2"><button id="logoutCancel" type="button" class="px-4 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">Tidak</button><button id="logoutConfirm" type="button" class="px-4 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Keluar</button></div>
+    </div>
+  </div>
 </div>
 <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
 
@@ -343,7 +341,6 @@
         <table class="min-w-full text-[12px]">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
-              
               <th class="px-3 py-2 text-left font-semibold border-b w-[190px]">PRO / Activity</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">NIK Operator</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Qty (UoM)</th>
@@ -372,36 +369,45 @@
 
 @push('head')
 <style>
-    #reader,
-    #qr-reader {
-        width: 100%;
-        max-width: 520px;
-        margin: 0 auto;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #000;
-        position: relative;
-        aspect-ratio: 16 / 9;
-    }
-    #reader video,
-    #reader canvas,
-    #qr-reader video,
-    #qr-reader canvas {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        object-fit: cover;
-        /* iOS: cegah fullscreen otomatis */
-        -webkit-touch-callout: none;
-    }
+  #reader,
+  #qr-reader {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    position: relative;
+    aspect-ratio: 16 / 9;
+  }
+  #reader video, #reader canvas,
+  #qr-reader video, #qr-reader canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    -webkit-touch-callout: none; /* iOS: cegah fullscreen otomatis */
+  }
 
-    /* Dropdown kustom */
-    .dropdown-enter { opacity: 0; transform: scale(0.97); }
-    .dropdown-enter-active { opacity: 1; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
-    .dropdown-leave-active { opacity: 0; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
-    .dd-opt-focus { background-color: rgb(240 253 244); }
-    .dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
-    .hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
+  /* =============== iPhone layout helper =============== */
+  /* Pada perangkat iOS kecil, paksa baris title Work Center & tombol agar tidak turun */
+  @supports (-webkit-touch-callout: none) {
+    .ios-nowrap-row { flex-wrap: nowrap !important; }
+    .ios-nowrap-row > * { white-space: nowrap; }
+    #openBackdateHistory { min-width: 132px; }
+  }
+  @media (max-width: 430px) {
+    .ios-nowrap-row { flex-wrap: nowrap; }
+    #openBackdateHistory { min-width: 132px; }
+  }
+
+  /* Dropdown kustom */
+  .dropdown-enter { opacity: 0; transform: scale(0.97); }
+  .dropdown-enter-active { opacity: 1; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
+  .dropdown-leave-active { opacity: 0; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
+  .dd-opt-focus { background-color: rgb(240 253 244); }
+  .dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
 </style>
 @endpush
 
@@ -651,7 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function stableCommit(raw, fmt) {
     const now = Date.now();
     const cur = normalizeByFormat(raw, fmt);
-    // validasi pola (sesuaikan jika perlu)
     const valid = /^[A-Za-z0-9\-\/\.]{6,20}$/.test(cur);
     if (!valid) return false;
     if (cur === lastCode && (now - lastAt) < 800) {
@@ -739,40 +744,81 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { return null; }
   }
 
+  function qrboxSizer(vw, vh) {
+    // buat kotak 70–82% dari sisi terpendek, dibatasi 240–380px
+    const side = Math.min(vw, vh);
+    const target = Math.round(side * (side < 420 ? 0.82 : 0.72));
+    return { width: Math.max(240, Math.min(380, target)),
+             height: Math.max(240, Math.min(380, target)) };
+  }
+
   async function startQrScanner() {
     if (typeof Html5Qrcode === 'undefined') {
       showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
       closeQrModal();
       return;
     }
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader", { verbose:false });
+    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader", { verbose: false });
     const onScanSuccess = (decodedText) => { if (arbplInput) arbplInput.value = decodedText; closeQrModal(); };
 
-    const opts = {
-      fps: 10,
-      qrbox: { width: 220, height: 220 },
-      disableFlip: true
-    };
-
+    // Ubah konfigurasi scanner untuk kompatibilitas iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
     try {
-      const backId = await pickBackCameraId();
-      if (backId) await html5QrCode.start({ deviceId: { exact: backId } }, opts, onScanSuccess);
-      else        await html5QrCode.start({ facingMode: "environment" }, opts, onScanSuccess);
-
-      const v = document.querySelector('#qr-reader video');
-      if (v) {
-        v.setAttribute('playsinline','true');
-        v.setAttribute('autoplay','true');
-        v.setAttribute('muted','true');
+      if (isIOS) {
+        // Strategi khusus untuk iOS
+        await html5QrCode.start({ facingMode: "environment" }, {
+          fps: 10,
+          qrbox: (vw, vh) => qrboxSizer(vw, vh),
+          disableFlip: true,
+          aspectRatio: 1.777778,
+          experimentalFeatures: { 
+            useBarCodeDetectorIfSupported: false  // Nonaktifkan untuk iOS
+          }
+        }, onScanSuccess);
+      } else {
+        // Strategi untuk Android/lainnya
+        const opts = {
+          fps: 12,
+          qrbox: (vw, vh) => qrboxSizer(vw, vh),
+          disableFlip: true,
+          rememberLastUsedCamera: true,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        };
+        
+        const backId = await pickBackCameraId();
+        if (backId) await html5QrCode.start({ deviceId: { exact: backId } }, opts, onScanSuccess);
+        else await html5QrCode.start({ facingMode: "environment" }, opts, onScanSuccess);
       }
+
+      // Penting: Aplikasikan atribut playsinline & autoplay dengan interval
+      // untuk mengatasi masalah iOS yang kadang tidak merender video dengan benar
+      const applyVideoAttributes = () => {
+        const v = document.querySelector('#qr-reader video');
+        if (v) {
+          v.setAttribute('playsinline', 'true');
+          v.setAttribute('autoplay', 'true');
+          v.setAttribute('muted', 'true');
+          v.style.width = '100%';
+          v.style.height = '100%';
+          v.style.objectFit = 'cover';
+        }
+      };
+      
+      // Apply attributes immediately and again after a short delay to ensure they stick
+      applyVideoAttributes();
+      setTimeout(applyVideoAttributes, 300);
+      setTimeout(applyVideoAttributes, 1000);
+      
     } catch (err) {
       const msg = (err && err.message) ? err.message : String(err);
       showError("Gagal Kamera", msg.includes('NotAllowedError')
         ? "Akses kamera ditolak. Buka Settings > Safari > Camera: Allow."
-        : "Tidak dapat mengakses kamera. Coba refresh atau cek izin kamera.");
+        : "Tidak dapat memulai pemindaian. Coba refresh / pastikan QR cukup besar & fokus.");
       closeQrModal();
     }
   }
+  
   async function stopQrScanner() {
     if (html5QrCode && html5QrCode.isScanning) { try { await html5QrCode.stop(); } catch (_) {} }
   }
@@ -911,7 +957,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!open) return;
       open = false;
       trigger.setAttribute('aria-expanded','false');
-      menu.classList.add('dropdown-leave-active');
+      menu.classList.
+      add('dropdown-leave-active');
       setTimeout(() => {
         menu.classList.add('invisible','opacity-0','scale-95');
         menu.classList.remove('dropdown-leave-active');
@@ -970,33 +1017,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function pad2(n){ return String(n).padStart(2,'0'); }
 
-function fmtYMD(v){
-  if (!v) return '-';
-  const s = String(v);
-  let d = null;
-
-  // sumber 'YYYYMMDD'
-  if (/^\d{8}$/.test(s)) d = new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T00:00:00`);
-  // sumber 'YYYY-MM-DD'
-  else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
-  else return s;
-
-  return new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d); // contoh: 10/09/2025
-}
-
-function fmtDateTime(v){
-  if(!v) return '-';
-  let d = new Date(v);
-  if (isNaN(d)) {
+  function fmtYMD(v){
+    if (!v) return '-';
     const s = String(v);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
-    else return s;
-  }
-  const tgl = new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
-  const jam = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-  return `${tgl} ${jam}`; // contoh: 12/09/2025 14:09:28
-}
+    let d = null;
 
+    if (/^\d{8}$/.test(s)) d = new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T00:00:00`);
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
+    else return s;
+
+    return new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
+  }
+
+  function fmtDateTime(v){
+    if(!v) return '-';
+    let d = new Date(v);
+    if (isNaN(d)) {
+      const s = String(v);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d = new Date(`${s}T00:00:00`);
+      else return s;
+    }
+    const tgl = new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
+    const jam = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    return `${tgl} ${jam}`;
+  }
 
   function openHistoryModalScan(){
     if (!historyModal) return;
@@ -1019,7 +1063,6 @@ function fmtDateTime(v){
       if (!rows.length) { historyEmpty.classList.remove('hidden'); return; }
 
       historyList.innerHTML = rows.map(r => {
-        
         const auf   = r.AUFNR || r.aufnr || '-';
         const vor   = r.VORNR || r.vornr || '-';
         const qty   = r.QTY   || r.qty   || '-';
@@ -1030,7 +1073,6 @@ function fmtDateTime(v){
         const nik   = r.PERNR || r.pernr || r.NIK || r.nik || '-';
 
         return `<tr class="odd:bg-white even:bg-slate-50">
-          
           <td class="px-3 py-2 border-b font-mono">${auf} / ${vor}</td>
           <td class="px-3 py-2 border-b font-mono">${nik}</td>
           <td class="px-3 py-2 border-b font-mono">${qty} ${me}</td>
