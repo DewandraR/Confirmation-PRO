@@ -98,8 +98,9 @@
         <div class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
             <div class="font-semibold mb-1">Tips penggunaan:</div>
             <ul class="list-disc pl-5 space-y-1">
-                <li>Pastikan menggunakan internet/Wi-Fi <span class="font-semibold">perusahaan</span> agar koneksi ke SAP berhasil.</li>
-                <li>Jika lokasi tidak akurat, coba matikan lalu nyalakan kembali Wi-Fi/data seluler, kemudian refresh browser.</li>
+                <li>Pastikan <b>menghidupkan dan mengizinkan lokasi</b> saat mengakses halaman ini.</li>
+                <li>Jika lokasi tidak akurat, <b>coba matikan lalu nyalakan kembali Wi-Fi/data seluler</b>, kemudian refresh browser.</li>
+                <li>Pastikan menggunakan <b>internet/Wi-Fi yang stabil</b> agar login berhasil.</li>   
             </ul>
         </div>
     </div>

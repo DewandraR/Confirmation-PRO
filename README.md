@@ -3,6 +3,7 @@
 ## 🚀 Fitur Utama
 
 * Geofencing login (pembatasan lokasi saat login)
+* Scan QR Code Work center dan pilih plant atau input manual
 * Scan barcode PRO atau input manual
 * Menampilkan data PRO yang diinput
 * Konfirmasi kuantitas PRO yang diinput

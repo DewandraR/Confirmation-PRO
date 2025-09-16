@@ -95,14 +95,14 @@
 
       <!-- ikon kiri -->
       <div class="flex-shrink-0">
-        <div class="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center group-focus-within:bg-white">
-          <svg class="w-3 h-3 text-emerald-600 group-focus-within:text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-          </svg>
-        </div>
-      </div>
+  <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+    <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+    </svg>
+  </div>
+</div>
 
       <!-- input WC -->
       <input id="IV_ARBPL" name="arbpl"
@@ -224,10 +224,11 @@
         <div>
           <h3 class="text-base font-semibold text-slate-800 mb-1">Tips Penggunaan</h3>
           <ul class="text-xs text-slate-600 space-y-0.5">
+            <li>• Pastikan untuk <b>menghidupkan dan mengizinkan kamera di browser anda</b>, saat akan melakukan scan.</li>
             <li>• Field <b>NIK Operator</b> wajib diisi.</li>
             <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
-            <li>• Posisikan Barcode dan QR Code di area tengah kamera dan hindari pantulan cahaya.</li>
-            <li>• Untuk User IOS jika kamera tidak bisa scan, harap inputkan kode Work Center secara manual.</li>
+            <li>• Posisikan <b>Barcode</b> dan <b>QR Code</b> di area tengah kamera dan hindari pantulan cahaya.</li>
+            <li>• Untuk pengguna <b>iOS</b> jika kamera Work Center tidak berfungsi, harap inputkan kode secara manual.</li>
           </ul>
         </div>
       </div>
@@ -728,118 +729,119 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggleTorchBtn) toggleTorchBtn.addEventListener('click', () => setTorch(!torchOn));
   if (modal)          modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
-  // =================================================================
-  // ===== SCANNER QR (Html5Qrcode) & MODAL
-  // =================================================================
-  const qrModal   = document.getElementById('qrScannerModal');
-  const openQrBtn = document.getElementById('openQrScanner');
-  const closeQrBtn= document.getElementById('closeQrScanner');
-  let html5QrCode = null;
+// =================================================================
+// ===== FUNGSI BANTU UNTUK SCANNER QR
+// =================================================================
+async function getBestCameraId() {
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras || cameras.length === 0) return null;
+    
+    // Cari kamera belakang
+    const backCamera = cameras.find(cam => 
+      /back|rear|belakang/i.test(cam.label) || 
+      /environment/i.test(cam.label)
+    );
+    if (backCamera) return backCamera.id;
+    
+    // Jika tidak ada, gunakan kamera pertama (biasanya kamera depan di laptop)
+    return cameras[0].id;
 
-  async function pickBackCameraId() {
-    try {
-      const cams = await Html5Qrcode.getCameras();
-      if (!Array.isArray(cams) || !cams.length) return null;
-      const back = cams.find(c => /back|rear|belakang/i.test(c.label));
-      return (back || cams[cams.length - 1]).id;
-    } catch { return null; }
+  } catch (err) {
+    console.error("Gagal mendapatkan daftar kamera:", err);
+    return null;
   }
+}
 
-  function qrboxSizer(vw, vh) {
-    // buat kotak 70–82% dari sisi terpendek, dibatasi 240–380px
-    const side = Math.min(vw, vh);
-    const target = Math.round(side * (side < 420 ? 0.82 : 0.72));
-    return { width: Math.max(240, Math.min(380, target)),
-             height: Math.max(240, Math.min(380, target)) };
+function qrboxSizer(vw, vh) {
+  const side = Math.min(vw, vh);
+  const target = Math.round(side * (side < 420 ? 0.82 : 0.72));
+  return { width: Math.max(240, Math.min(380, target)),
+           height: Math.max(240, Math.min(380, target)) };
+}
+
+// =================================================================
+// ===== SCANNER QR (Html5Qrcode) & MODAL
+// =================================================================
+const qrModal   = document.getElementById('qrScannerModal');
+const openQrBtn = document.getElementById('openQrScanner');
+const closeQrBtn= document.getElementById('closeQrScanner');
+let html5QrCode = null;
+
+async function startQrScanner() {
+  if (typeof Html5Qrcode === 'undefined') {
+    showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
+    closeQrModal();
+    return;
   }
+  if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader", { verbose: false });
+  const onScanSuccess = (decodedText) => { if (arbplInput) arbplInput.value = decodedText; closeQrModal(); };
 
-  async function startQrScanner() {
-    if (typeof Html5Qrcode === 'undefined') {
-      showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  
+  try {
+    const cameraId = await getBestCameraId();
+    if (!cameraId) {
+      showError('Gagal Kamera', 'Tidak ada kamera yang terdeteksi.');
       closeQrModal();
       return;
     }
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader", { verbose: false });
-    const onScanSuccess = (decodedText) => { if (arbplInput) arbplInput.value = decodedText; closeQrModal(); };
 
-    // Ubah konfigurasi scanner untuk kompatibilitas iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const opts = {
+      fps: 10,
+      qrbox: (vw, vh) => qrboxSizer(vw, vh),
+      disableFlip: true,
+      aspectRatio: 1.777778,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: !isIOS }
+    };
     
-    try {
-      if (isIOS) {
-        // Strategi khusus untuk iOS
-        await html5QrCode.start({ facingMode: "environment" }, {
-          fps: 10,
-          qrbox: (vw, vh) => qrboxSizer(vw, vh),
-          disableFlip: true,
-          aspectRatio: 1.777778,
-          experimentalFeatures: { 
-            useBarCodeDetectorIfSupported: false  // Nonaktifkan untuk iOS
-          }
-        }, onScanSuccess);
-      } else {
-        // Strategi untuk Android/lainnya
-        const opts = {
-          fps: 12,
-          qrbox: (vw, vh) => qrboxSizer(vw, vh),
-          disableFlip: true,
-          rememberLastUsedCamera: true,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-        };
-        
-        const backId = await pickBackCameraId();
-        if (backId) await html5QrCode.start({ deviceId: { exact: backId } }, opts, onScanSuccess);
-        else await html5QrCode.start({ facingMode: "environment" }, opts, onScanSuccess);
-      }
+    await html5QrCode.start({ deviceId: { exact: cameraId } }, opts, onScanSuccess);
 
-      // Penting: Aplikasikan atribut playsinline & autoplay dengan interval
-      // untuk mengatasi masalah iOS yang kadang tidak merender video dengan benar
-      const applyVideoAttributes = () => {
-        const v = document.querySelector('#qr-reader video');
-        if (v) {
-          v.setAttribute('playsinline', 'true');
-          v.setAttribute('autoplay', 'true');
-          v.setAttribute('muted', 'true');
-          v.style.width = '100%';
-          v.style.height = '100%';
-          v.style.objectFit = 'cover';
-        }
-      };
-      
-      // Apply attributes immediately and again after a short delay to ensure they stick
-      applyVideoAttributes();
-      setTimeout(applyVideoAttributes, 300);
-      setTimeout(applyVideoAttributes, 1000);
-      
-    } catch (err) {
-      const msg = (err && err.message) ? err.message : String(err);
-      showError("Gagal Kamera", msg.includes('NotAllowedError')
-        ? "Akses kamera ditolak. Buka Settings > Safari > Camera: Allow."
-        : "Tidak dapat memulai pemindaian. Coba refresh / pastikan QR cukup besar & fokus.");
-      closeQrModal();
-    }
+    const applyVideoAttributes = () => {
+      const v = document.querySelector('#qr-reader video');
+      if (v) {
+        v.setAttribute('playsinline', 'true');
+        v.setAttribute('autoplay', 'true');
+        v.setAttribute('muted', 'true');
+        v.style.width = '100%';
+        v.style.height = '100%';
+        v.style.objectFit = 'cover';
+      }
+    };
+    
+    applyVideoAttributes();
+    setTimeout(applyVideoAttributes, 300);
+    setTimeout(applyVideoAttributes, 1000);
+    
+  } catch (err) {
+    const msg = (err && err.message) ? err.message : String(err);
+    showError("Gagal Kamera", msg.includes('NotAllowedError')
+      ? "Akses kamera ditolak. Berikan izin di pengaturan peramban atau sistem operasi."
+      : "Tidak dapat memulai pemindaian. Pastikan tidak ada aplikasi lain yang menggunakan kamera.");
+    closeQrModal();
   }
+}
   
-  async function stopQrScanner() {
-    if (html5QrCode && html5QrCode.isScanning) { try { await html5QrCode.stop(); } catch (_) {} }
-  }
-  function openQrModal() { qrModal?.classList.remove('hidden'); qrModal?.classList.add('flex'); startQrScanner(); }
-  function closeQrModal() { stopQrScanner(); qrModal?.classList.add('hidden'); qrModal?.classList.remove('flex'); }
+async function stopQrScanner() {
+  if (html5QrCode && html5QrCode.isScanning) { try { await html5QrCode.stop(); } catch (_) {} }
+}
+function openQrModal() { qrModal?.classList.remove('hidden'); qrModal?.classList.add('flex'); startQrScanner(); }
+function closeQrModal() { stopQrScanner(); qrModal?.classList.add('hidden'); qrModal?.classList.remove('flex'); }
 
-  if (openQrBtn) {
-    openQrBtn.addEventListener('click', () => {
-      if (!window.Html5Qrcode) {
-        const onReady = () => { window.removeEventListener('html5qrcode:ready', onReady); openQrModal(); };
-        const onFailed = () => { window.removeEventListener('html5qrcode:failed', onFailed); showError('Scanner QR tidak tersedia', 'Gagal memuat library html5-qrcode.'); };
-        window.addEventListener('html5qrcode:ready', onReady, { once: true });
-        window.addEventListener('html5qrcode:failed', onFailed, { once: true });
-        return;
-      }
-      openQrModal();
-    });
-  }
-  if (closeQrBtn) closeQrBtn.addEventListener('click', closeQrModal);
-  if (qrModal)    qrModal.addEventListener('click', e => { if (e.target === qrModal) closeQrModal(); });
+if (openQrBtn) {
+  openQrBtn.addEventListener('click', () => {
+    if (!window.Html5Qrcode) {
+      const onReady = () => { window.removeEventListener('html5qrcode:ready', onReady); openQrModal(); };
+      const onFailed = () => { window.removeEventListener('html5qrcode:failed', onFailed); showError('Scanner QR tidak tersedia', 'Gagal memuat library html5-qrcode.'); };
+      window.addEventListener('html5qrcode:ready', onReady, { once: true });
+      window.addEventListener('html5qrcode:failed', onFailed, { once: true });
+      return;
+    }
+    openQrModal();
+  });
+}
+if (closeQrBtn) closeQrBtn.addEventListener('click', closeQrModal);
+if (qrModal)    qrModal.addEventListener('click', e => { if (e.target === qrModal) closeQrModal(); });
 
   // =================================================================
   // ===== LOGOUT
