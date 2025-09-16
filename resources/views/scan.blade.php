@@ -780,7 +780,6 @@ async function startQrScanner() {
   }
 
   const onScanSuccess = (decodedText) => {
-    // Normalisasi hasil scan untuk memastikan format yang benar
     const normalizedText = decodedText.trim().replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase();
     if (arbplInput && normalizedText.length > 0) {
       arbplInput.value = normalizedText;
@@ -797,14 +796,11 @@ async function startQrScanner() {
     }
 
     const config = {
-      fps: 15, // Tingkatkan FPS untuk respons lebih cepat
+      fps: 15,
       qrbox: (vw, vh) => qrboxSizer(vw, vh),
       disableFlip: true,
-      // Hapus `aspectRatio` untuk memungkinkan library menyesuaikan
-      // Hapus `experimentalFeatures` untuk menghindari konflik, biarkan library yang menangani
     };
     
-    // Periksa apakah kamera sudah running sebelumnya, jika ya, hentikan dulu
     if (html5QrCode.isScanning) {
         await html5QrCode.stop();
     }
@@ -814,12 +810,10 @@ async function startQrScanner() {
       config, 
       onScanSuccess, 
       (error) => {
-        // Log error dari pemindaian (tidak ditampilkan ke user)
         console.warn('Pemindaian error:', error);
       }
     );
 
-    // Pastikan video memiliki atribut yang benar untuk iOS
     const applyVideoAttributes = () => {
       const v = document.querySelector('#qr-reader video');
       if (v) {
@@ -852,7 +846,6 @@ async function stopQrScanner() {
 function openQrModal() {
   qrModal?.classList.remove('hidden'); 
   qrModal?.classList.add('flex');
-  // Tambahkan sedikit delay sebelum memulai scanner
   setTimeout(startQrScanner, 200);
 }
 function closeQrModal() { 
@@ -863,7 +856,6 @@ function closeQrModal() {
 
 if (openQrBtn) {
   openQrBtn.addEventListener('click', () => {
-    // Memastikan library sudah dimuat
     if (!window.Html5Qrcode) {
       showError('Scanner QR tidak tersedia', 'Library html5-qrcode belum dimuat.');
       return;
