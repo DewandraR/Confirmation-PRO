@@ -788,22 +788,31 @@ async function startQrScanner() {
   };
 
   try {
+    const cameraId = await getBestCameraId();
+    if (!cameraId) {
+      showError('Gagal Kamera', 'Tidak ada kamera yang terdeteksi.');
+      closeQrModal();
+      return;
+    }
+
     const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
+      fps: 15,
+      qrbox: (vw, vh) => qrboxSizer(vw, vh),
       disableFlip: true,
-      videoConstraints: {
-        facingMode: "environment" // Gunakan 'environment' untuk kamera belakang
-      }
     };
     
     if (html5QrCode.isScanning) {
         await html5QrCode.stop();
     }
 
-    // UBAH BARIS INI
-    // Sekarang, Anda tidak lagi perlu memanggil getBestCameraId()
-    await html5QrCode.start(config.videoConstraints, config, onScanSuccess);
+    await html5QrCode.start(
+      { deviceId: { exact: cameraId } }, 
+      config, 
+      onScanSuccess, 
+      (error) => {
+        console.warn('Pemindaian error:', error);
+      }
+    );
 
     const applyVideoAttributes = () => {
       const v = document.querySelector('#qr-reader video');
