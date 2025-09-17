@@ -795,24 +795,32 @@ async function startQrScanner() {
       return;
     }
 
-    const config = {
-      fps: 15,
-      qrbox: (vw, vh) => qrboxSizer(vw, vh),
-      disableFlip: true,
-    };
+    // Ubah menjadi konfigurasi yang lebih sederhana dan tangguh untuk iOS
+const config = {
+    fps: 10, // Kurangi FPS untuk mengurangi beban proses
+    qrbox: { width: 250, height: 250 }, // Gunakan ukuran statis untuk menghindari masalah kalkulasi
+    disableFlip: true,
+    // Tambahkan konfigurasi video spesifik
+    videoConstraints: {
+        facingMode: "environment" // Pastikan menggunakan kamera belakang
+    }
+};
     
     if (html5QrCode.isScanning) {
         await html5QrCode.stop();
     }
 
-    await html5QrCode.start(
-      { deviceId: { exact: cameraId } }, 
-      config, 
-      onScanSuccess, 
-      (error) => {
-        console.warn('Pemindaian error:', error);
-      }
-    );
+    // Temukan bagian `startQrScanner` di script Anda
+await html5QrCode.start(
+  { deviceId: { exact: cameraId } },  
+  config,  
+  onScanSuccess,  
+  (error) => { 
+    console.warn('Pemindaian error:', error); 
+    // Tambahkan alert atau pesan ke pengguna di sini
+    console.error('Html5-qrcode error:', error);
+  }
+);
 
     const applyVideoAttributes = () => {
       const v = document.querySelector('#qr-reader video');
