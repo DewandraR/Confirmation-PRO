@@ -38,3 +38,25 @@ if (needHtml5) {
       window.dispatchEvent(new Event('html5qrcode:failed'));
     });
 }
+
+// === jsQR (baru)
+// Deteksi halaman yang membutuhkan scanner QR Work Center
+const needJsQR = document.getElementById('qr-reader') || document.getElementById('openQrScanner');
+
+if (needJsQR) {
+    import('jsqr')
+        .then((mod) => {
+            // jsqr diekspor sebagai default
+            const jsQR = mod.default;
+
+            // Expose ke global agar script inline di Blade bisa pakai window.jsQR
+            window.jsQR = jsQR;
+
+            // Beri sinyal ke script view kalau sudah siap
+            window.dispatchEvent(new Event('jsqr:ready'));
+        })
+        .catch(err => {
+            console.error('Gagal memuat jsQR:', err);
+            window.dispatchEvent(new Event('jsqr:failed'));
+        });
+}
