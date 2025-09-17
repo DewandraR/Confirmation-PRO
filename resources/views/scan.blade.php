@@ -739,6 +739,7 @@ async function getBestCameraId() {
     const cameras = await Html5Qrcode.getCameras();
     if (!cameras || cameras.length === 0) return null;
     
+    // Prioritaskan kamera belakang yang ada
     const backCamera = cameras.find(cam => 
       /back|rear|belakang|environment/i.test(cam.label)
     );
@@ -751,10 +752,9 @@ async function getBestCameraId() {
 
 function qrboxSizer(vw, vh) {
   const side = Math.min(vw, vh);
-  // Menggunakan 70% dari sisi yang lebih kecil untuk kotak pemindaian
-  const target = Math.round(side * 0.7);
+  // Ubah faktor pengali untuk membuat kotak lebih besar, misal dari 0.7 menjadi 0.8
+  const target = Math.round(side * 0.8);
   return { 
-    // Menetapkan batas minimum dan maksimum untuk stabilitas
     width: Math.max(300, Math.min(500, target)),
     height: Math.max(300, Math.min(500, target)) 
   };
@@ -780,8 +780,6 @@ async function startQrScanner() {
   }
 
   const onScanSuccess = (decodedText) => {
-    // Menormalisasi teks: hapus karakter non-alfanumerik, kecuali spasi.
-    // Menangani perbedaan format QR Code yang mungkin terjadi.
     const normalizedText = decodedText.trim().replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase();
     if (arbplInput && normalizedText.length > 0) {
       arbplInput.value = normalizedText;
@@ -801,17 +799,10 @@ async function startQrScanner() {
       fps: 15,
       qrbox: (vw, vh) => qrboxSizer(vw, vh),
       disableFlip: true,
-      // Menambahkan konfigurasi tambahan untuk resolusi yang disukai iOS
-      videoConstraints: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
     };
     
-    // Menghentikan scanner jika sudah berjalan
     if (html5QrCode.isScanning) {
-      await html5QrCode.stop();
+        await html5QrCode.stop();
     }
 
     await html5QrCode.start(
@@ -823,17 +814,16 @@ async function startQrScanner() {
       }
     );
 
-    // Menunggu video element dimuat sebelum menerapkan playsinline
-    setTimeout(() => {
+    const applyVideoAttributes = () => {
       const v = document.querySelector('#qr-reader video');
       if (v) {
         v.setAttribute('playsinline', 'true');
-        // Pastikan style CSS diaplikasikan dengan benar
         v.style.width = '100%';
         v.style.height = '100%';
         v.style.objectFit = 'cover';
       }
-    }, 200);
+    };
+    applyVideoAttributes();
 
   } catch (err) {
     const msg = (err && err.message) ? err.message : String(err);
