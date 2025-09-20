@@ -228,7 +228,7 @@
             <li>• Field <b>NIK Operator</b> wajib diisi.</li>
             <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
             <li>• Posisikan <b>Barcode</b> dan <b>QR Code</b> di area tengah kamera dan hindari pantulan cahaya.</li>
-            <li>• Untuk pengguna <b>iOS</b> jika kamera Work Center tidak berfungsi, harap inputkan kode secara manual.</li>
+            {{-- <li>• Untuk pengguna <b>iOS</b> jika kamera Work Center tidak berfungsi, harap inputkan kode secara manual.</li> --}}
           </ul>
         </div>
       </div>
@@ -991,52 +991,55 @@ if (qrModal) qrModal.addEventListener('click', e => { if (e.target === qrModal) 
 
     const host = select.parentElement;
     host.classList.remove('flex');
-    host.classList.add('block','relative','min-w-[120px]','w-[120px]');
+    host.classList.add('block','relative');
 
     const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.id = 'plantTrigger';
-    trigger.setAttribute('aria-haspopup','listbox');
-    trigger.setAttribute('aria-expanded','false');
-    trigger.className = [
-      'w-full','text-center','px-1','py-0','h-5','leading-[18px]',
-      'text-[11px]','font-semibold','relative','-top-[1px]',
-      'outline-none','bg-transparent','rounded-lg','focus:ring-2','focus:ring-emerald-500','select-none'
-    ].join(' ');
+trigger.type = 'button';
+trigger.id = 'plantTrigger';
+trigger.setAttribute('aria-haspopup','listbox');
+trigger.setAttribute('aria-expanded','false');
+trigger.className = [
+  'text-xs','font-semibold','relative','h-5',
+  'outline-none','bg-transparent','rounded-lg',
+  'focus:ring-2','focus:ring-emerald-500','select-none',
+  'flex','items-center','justify-center','gap-0.5'
+].join(' ');
 
-    const label = document.createElement('span');
-    label.id = 'plantLabel';
-    label.className = 'relative -top-px';
-    label.textContent = select.value ? select.value : 'Pilih Plant';
-    trigger.appendChild(label);
+const label = document.createElement('span');
+label.id = 'plantLabel';
+label.textContent = select.value ? select.value : 'Pilih Plant';
+trigger.appendChild(label);
 
-    const caret = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    caret.setAttribute('viewBox','0 0 24 24');
-    caret.setAttribute('fill','currentColor');
-    caret.classList.add('w-4','h-4','text-emerald-600','pointer-events-none','absolute','right-0','top-1/2','-translate-y-1/2');
+const caret = document.createElementNS('http://www.w3.org/2000/svg','svg');
+caret.setAttribute('viewBox','0 0 24 24');
+caret.setAttribute('fill','currentColor');
+caret.classList.add('w-3','h-3','text-emerald-600','pointer-events-none');
+caret.innerHTML = '<path d="M7 10l5 5 5-5H7z"/>';
+trigger.appendChild(caret); // Pindahkan panah ke dalam tombol
 
-    caret.innerHTML = '<path d="M7 10l5 5 5-5H7z"/>';
-    host.appendChild(trigger);
-    host.appendChild(caret);
+host.appendChild(trigger);
 
-    const menu = document.createElement('div');
-    menu.id = 'plantMenu';
-    menu.className = 'dropdown-enter invisible opacity-0 scale-95 absolute right-0 mt-1 z-30 w-44 bg-white rounded-xl shadow-2xl ring-1 ring-slate-200 overflow-hidden';
-    menu.setAttribute('role','listbox');
-    menu.tabIndex = -1;
+// Perbarui kode untuk menu
+const menu = document.createElement('div');
+menu.id = 'plantMenu';
+menu.className = 'dropdown-enter invisible opacity-0 scale-95 absolute right-0 mt-1 z-30 w-32 bg-white rounded-xl shadow-2xl ring-1 ring-slate-200 overflow-hidden';
+menu.setAttribute('role','listbox');
+menu.tabIndex = -1;
 
     const header = document.createElement('div');
-    header.className = 'px-3 py-2 text-[10px] font-semibold tracking-wider text-slate-500 bg-slate-50';
-    header.textContent = 'Pilih Plant';
+// Ubah py-2 menjadi py-1 di sini
+header.className = 'px-2 py-0.5 text-[10px] font-semibold tracking-wider text-slate-500 bg-slate-50';
+header.textContent = 'Pilih Plant';
 
     const ul = document.createElement('ul');
-    ul.className = 'dd-scroll text-xs';
+    ul.className = 'text-xs';
 
     const makeItem = (text, value) => {
-      const li = document.createElement('li');
-      li.dataset.value = value;
-      li.setAttribute('role','option');
-      li.className = 'dd-opt relative px-3 py-2 cursor-pointer hover:bg-emerald-50 hover:text-emerald-700';
+  const li = document.createElement('li');
+  li.dataset.value = value;
+  li.setAttribute('role','option');
+  // Ubah py-2 menjadi py-1 di sini
+  li.className = 'dd-opt relative px-0.5 py-0.5 cursor-pointer hover:bg-emerald-50 hover:text-emerald-700';
       li.innerHTML = `
         <span class="block w-full text-center">${text}</span>
         <span class="check absolute right-3 top-1/2 -translate-y-1/2 ${select.value===value?'':'hidden'}">✓</span>
