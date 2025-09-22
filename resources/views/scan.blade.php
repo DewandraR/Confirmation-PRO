@@ -531,90 +531,114 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =================================================================
-  // ===== FORM HANDLER (preflight → /api/yppi019/sync)
-  // =================================================================
-  const form = document.getElementById('main-form');
+// ===== FORM HANDLER (preflight → /api/yppi019/sync)
+// =================================================================
+const form = document.getElementById('main-form');
 
-  if (aufnrInput) {
-    aufnrInput.addEventListener('change', (e) => {
-      const val = String(e.target.value || '').trim();
-      if (val.length > 0) addAufnrToList(val);
-      e.target.value = '';
-    });
-  }
+if (aufnrInput) {
+  aufnrInput.addEventListener('change', (e) => {
+    const val = String(e.target.value || '').trim();
+    if (val.length > 0) addAufnrToList(val);
+    e.target.value = '';
+  });
+}
 
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+if (form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-      const pernr = pernrInput?.value.trim() || '';
-      const aufnrArray = Array.from(aufnrList);
-      const arbpl = arbplInput?.value.trim() || '';
-      const werks = werksInput?.value.trim() || '';
+    const pernr      = pernrInput?.value.trim() || '';
+    const aufnrArray = Array.from(aufnrList);
+    const arbpl      = arbplInput?.value.trim() || '';
+    const werks      = werksInput?.value.trim() || '';
 
-      if (!pernr) { showError('Input Belum Lengkap', 'NIK Operator wajib diisi.'); return pernrInput?.focus(); }
-      const hasAufnr = aufnrArray.length > 0;
-      const hasWc = arbpl !== '';
-      if (!hasAufnr && !hasWc) { showError('Input Tidak Lengkap', 'Anda harus mengisi "Work Center" atau "PRO".'); return arbplInput?.focus(); }
-      if (hasWc && werks === '') { showError('Input Tidak Lengkap', 'Jika "Work Center" diisi, maka "Plant" wajib dipilih.'); return werksInput?.focus(); }
+    if (!pernr) { showError('Input Belum Lengkap', 'NIK Operator wajib diisi.'); return pernrInput?.focus(); }
 
-      const submitBtn = form.querySelector('button[type="submit"], button:not([type])');
-      const setBusy = (b) => {
-        if (!submitBtn) return;
-        if (b) { submitBtn.dataset._txt = submitBtn.innerHTML; submitBtn.innerHTML = 'Memeriksa data...'; submitBtn.disabled = true; }
-        else { submitBtn.innerHTML = submitBtn.dataset._txt || 'Kirim Data'; submitBtn.disabled = false; }
-      };
+    const hasAufnr = aufnrArray.length > 0;
+    const hasWc    = arbpl !== '';
+    const hasPlant = werks !== '';
 
-      setBusy(true);
-      try {
-        const basePayload = { pernr };
-        if (hasWc) { basePayload.arbpl = arbpl; basePayload.werks = werks; }
+    if (!hasAufnr && !hasWc) {
+      showError('Input Tidak Lengkap', 'Anda harus mengisi "Work Center" atau "PRO".');
+      return arbplInput?.focus();
+    }
 
-        if (hasAufnr) {
-          const results = await Promise.allSettled(aufnrArray.map(aufnr => ajaxSync({ ...basePayload, aufnr })));
+    // ⛔️ Aturan baru: kalau Plant dipilih, WC wajib
+    if (hasPlant && !hasWc) {
+      showError('Input Tidak Valid', 'Jika memilih "Plant", isi juga "Work Center" atau kosongkan Plant.');
+      return arbplInput?.focus();
+    }
 
-          const okAufnrs = [];
-          let adaTeco = false;
-          results.forEach((r, i) => {
-            if (r.status === 'fulfilled') {
-              if (r.value.ok) okAufnrs.push(aufnrArray[i]);
-              if (!r.value.ok && r.value.teco) adaTeco = true;
-            }
-          });
+    // Jika WC diisi, Plant wajib (aturan lama, tetap)
+    if (hasWc && !hasPlant) {
+      showError('Input Tidak Lengkap', 'Jika "Work Center" diisi, maka "Plant" wajib dipilih.');
+      return werksInput?.focus();
+    }
 
-          if (okAufnrs.length === 0) {
-            if (adaTeco) showTeco(aufnrArray);
-            else showError('Data Tidak Ditemukan', 'PRO/WC tidak mengembalikan data dari SAP. Periksa NIK/WORK CENTER/PLANT/PRO.');
-            return;
-          }
+    const submitBtn = form.querySelector('button[type="submit"], button:not([type])');
+    const setBusy = (b) => {
+      if (!submitBtn) return;
+      if (b) { submitBtn.dataset._txt = submitBtn.innerHTML; submitBtn.innerHTML = 'Memeriksa data...'; submitBtn.disabled = true; }
+      else   { submitBtn.innerHTML = submitBtn.dataset._txt || 'Kirim Data'; submitBtn.disabled = false; }
+    };
 
-          const to = new URL(form.action, location.origin);
-          to.searchParams.set('pernr', pernr);
-          to.searchParams.set('aufnrs', okAufnrs.join(','));
-          if (hasWc) { to.searchParams.set('arbpl', arbpl); to.searchParams.set('werks', werks); }
-          location.href = to.toString();
-          return;
-        } else {
-          const r = await ajaxSync(basePayload);
-          if (!r.ok) {
-            if (r.teco) showTeco(`${arbpl} - ${werks}`);
-            else showError('Data Tidak Ditemukan', r.msg || 'WC/Plant tidak mengembalikan data.');
-            return;
-          }
-          const to = new URL(form.action, location.origin);
-          to.searchParams.set('pernr', pernr);
-          to.searchParams.set('arbpl', arbpl);
-          to.searchParams.set('werks', werks);
-          location.href = to.toString();
-          return;
-        }
-      } catch (err) {
-        showError('Gagal Sinkron', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
-      } finally {
-        setBusy(false);
-      }
-    });
-  }
+    setBusy(true);
+    try {
+      // Selalu kirim pernr; arbpl hanya bila ada WC; werks hanya bila ada WC+Plant
+      const basePayload = { pernr };
+      if (hasWc)   basePayload.arbpl = arbpl;
+      if (hasWc && hasPlant) basePayload.werks = werks;
+
+      if (hasAufnr) {
+        const results = await Promise.allSettled(
+          aufnrArray.map(aufnr => ajaxSync({ ...basePayload, aufnr }))
+        );
+
+        const okAufnrs = [];
+        let adaTeco = false;
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            if (r.value.ok) okAufnrs.push(aufnrArray[i]);
+            if (!r.value.ok && r.value.teco) adaTeco = true;
+          }
+        });
+
+        if (okAufnrs.length === 0) {
+          if (adaTeco) showTeco(aufnrArray);
+          else showError('Data Tidak Ditemukan', 'PRO/WC tidak mengembalikan data dari SAP. Periksa NIK/WORK CENTER/PLANT/PRO.');
+          return;
+        }
+
+        const to = new URL(form.action, location.origin);
+        to.searchParams.set('pernr', pernr);
+        to.searchParams.set('aufnrs', okAufnrs.join(','));
+        if (hasWc)   to.searchParams.set('arbpl', arbpl);
+        if (hasWc && hasPlant) to.searchParams.set('werks', werks);
+        location.href = to.toString();
+        return;
+
+      } else {
+        const r = await ajaxSync(basePayload);
+        if (!r.ok) {
+          if (r.teco) showTeco(`${arbpl} - ${werks}`);
+          else showError('Data Tidak Ditemukan', r.msg || 'WC/Plant tidak mengembalikan data.');
+          return;
+        }
+        const to = new URL(form.action, location.origin);
+        to.searchParams.set('pernr', pernr);
+        if (hasWc)   to.searchParams.set('arbpl', arbpl);
+        if (hasWc && hasPlant) to.searchParams.set('werks', werks);
+        location.href = to.toString();
+        return;
+      }
+    } catch (err) {
+      showError('Gagal Sinkron', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
+    } finally {
+      setBusy(false);
+    }
+  });
+}
+
 
   // =================================================================
   // ===== SCANNER BARCODE (QuaggaJS) & MODAL
