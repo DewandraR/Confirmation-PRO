@@ -33,7 +33,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/yppi019/sync_bulk',      [Yppi019DbApiController::class, 'syncBulk']);
         Route::get ('/yppi019/material',       [Yppi019DbApiController::class, 'material']);
         Route::post('/yppi019/confirm',        [Yppi019DbApiController::class, 'confirm']);
-        Route::post('/yppi019/update_qty_spx', [Yppi019DbApiController::class, 'updateQtySpx']);
 
         // ➕ Histori backdate (dipakai modal di detail.blade)
         Route::post('/yppi019/backdate-log',        [Yppi019DbApiController::class, 'backdateLog']);

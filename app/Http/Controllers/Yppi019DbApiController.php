@@ -242,42 +242,6 @@ class Yppi019DbApiController extends Controller
         }
     }
 
-    public function updateQtySpx(Request $request)
-    {
-        $request->validate([
-            'aufnr'   => 'required|string|max:20',
-            'vornr'   => 'required|string|max:10',
-            'charg'   => 'required|string|max:20',
-            'qty_spx' => 'required|numeric|min:0',
-        ]);
-
-        try {
-            $response = Http::withHeaders($this->sapHeaders())
-                ->acceptJson()
-                ->post($this->flaskBase() . '/api/yppi019/update_qty_spx', [
-                    'aufnr'   => $request->input('aufnr'),
-                    'vornrx'  => $this->padVornr($request->input('vornr')),
-                    'charg'   => $request->input('charg'),
-                    'qty_spx' => $request->input('qty_spx'),
-                ]);
-
-            if ($response->successful()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'QTY_SPX berhasil diperbarui.',
-                    'data'    => $response->json(),
-                ]);
-            } else {
-                $errorMessage = $response->json('error') ?? 'Gagal memperbarui data.';
-                return response()->json(['success' => false, 'message' => $errorMessage], $response->status());
-            }
-        } catch (ConnectionException $e) {
-            return response()->json(['success' => false, 'message' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
-        } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage()], 500);
-        }
-    }
-
     /** ➕ Proxy untuk simpan histori backdate ke Flask/MySQL (dipanggil saat konfirmasi sukses) */
     public function backdateLog(Request $req)
     {

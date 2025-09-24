@@ -534,22 +534,6 @@ def api_backdate_history():
         return jsonify({"ok": False, "error": str(e)}), 500
 # -------- END BARU --------
 
-
-@app.post("/api/yppi019/update_qty_spx")
-def api_update_qty_spx():
-    ensure_tables()
-    b = request.get_json(force=True) or {}
-    aufnr, vornrx, charg, qty = (b.get("aufnr") or "").strip(), (b.get("vornrx") or "").strip(), (b.get("charg") or "").strip(), parse_num(b.get("qty_spx"))
-    if not (aufnr and vornrx and charg and qty is not None):
-        return jsonify({"ok": False, "error": "aufnr, vornrx, charg, qty_spx wajib"}), 400
-    with connect_mysql() as db:
-        with db.cursor() as cur:
-            cur.execute("UPDATE yppi019_data SET QTY_SPX=%s WHERE AUFNR=%s AND VORNRX=%s AND CHARG=%s LIMIT 1", (qty, aufnr, vornrx, charg))
-            db.commit()
-            return jsonify({"ok": True, "updated": cur.rowcount})
-
-app.add_url_rule("/api/yppi019/update-qty-spx", view_func=api_update_qty_spx, methods=["POST"])
-
 if __name__ == "__main__":
     ensure_tables()
     app.run(host=HTTP_HOST, port=HTTP_PORT, debug=True)
