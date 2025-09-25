@@ -8,7 +8,7 @@
         <div class="max-w-6xl mx-auto">
             {{-- Tombol Kembali --}}
             <div class="flex items-center gap-2 mb-4">
-                <a href="{{ route('scan') }}" class="group flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white text-sm transition-all duration-200">
+                <a id="back-link" href="{{ route('scan') }}" class="group flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white text-sm transition-all duration-200">
                     <svg class="w-3 h-3 group-hover:-translate-x-1 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -47,7 +47,7 @@
                     </div>
 
                     {{-- Tombol kanan: Scan Lagi --}}
-                    <a href="{{ route('scan') }}"
+                    <a id="scan-again-link" href="{{ route('scan') }}"
                        class="ml-auto transform -translate-y-0.5 inline-flex items-center gap-2
                               h-8 px-3 rounded-full bg-white/20 hover:bg-white/30
                               text-white text-xs font-semibold shadow-md hover:shadow-lg transition">
@@ -184,7 +184,7 @@
 <div id="error-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
         <div class="bg-gradient-to-r from-red-50 to-red-100 px-4 py-3 border-b border-red-200">
-            <h4 class="text-lg font-semibold text-red-800">Terjadi Kesalahan</h4>
+            <h4 class="text-lg font-semibold text-red-800">Konfirmasi Gagal</h4>
         </div>
         <div class="p-4 space-y-4"><p id="error-message" class="text-sm text-slate-700"></p></div>
         <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
@@ -196,10 +196,15 @@
 {{-- Modal Warning --}}
 <div id="warning-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200">
-            <h4 class="text-lg font-semibold text-yellow-800">Peringatan</h4>
+        <div id="warning-header" class="bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200">
+            <h4 id="warning-title" class="text-lg font-semibold text-yellow-800">Peringatan</h4>
         </div>
-        <div class="p-4 space-y-4"><p id="warning-message" class="text-sm text-slate-700"></p></div>
+        <div class="p-4 space-y-3">
+            {{-- Ini untuk pesan singkat (default) --}}
+            <p id="warning-message" class="text-sm text-slate-700"></p>
+            {{-- Ini untuk daftar rincian gabungan --}}
+            <ul id="warning-list" class="space-y-2 text-sm hidden"></ul>
+        </div>
         <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
             <button id="warning-ok-button" type="button" class="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors">OK</button>
         </div>
@@ -340,6 +345,21 @@
         const IV_ARBPL = p.get('arbpl') || '';
         const IV_WERKS = p.get('werks') || '';
 
+        // Helper URL scan dgn pernr
+        function buildScanUrl() {
+            const base = "{{ route('scan') }}";
+            return IV_PERNR ? `${base}?pernr=${encodeURIComponent(IV_PERNR)}` : base;
+        }
+        function goScanWithPernr() {
+            window.location.href = buildScanUrl();
+        }
+
+        // Update link Kembali & Scan Lagi agar bawa ?pernr=
+        const backLink = document.getElementById('back-link');
+        const scanAgainLink = document.getElementById('scan-again-link');
+        if (backLink) backLink.href = buildScanUrl();
+        if (scanAgainLink) scanAgainLink.href = buildScanUrl();
+
         function ean13CheckDigit(d12){let s=0,t=0;for(let i=0;i<12;i++){const n=+d12[i];if(i%2===0)s+=n;else t+=n;}return (10-((s+3*t)%10))%10;}
         function normalizeAufnr(raw){let s=String(raw||'').replace(/\D/g,'');if(s.length===13){const cd=ean13CheckDigit(s.slice(0,12));if(cd===+s[12]) s=s.slice(0,12);}return s;}
 
@@ -365,6 +385,9 @@
         const errorOkButton = document.getElementById('error-ok-button');
         const warningModal = document.getElementById('warning-modal');
         const warningMessage = document.getElementById('warning-message');
+        const warningList = document.getElementById('warning-list');
+        const warningTitle = document.getElementById('warning-title');
+        const warningHeader = document.getElementById('warning-header');
         const warningOkButton = document.getElementById('warning-ok-button');
         const successModal = document.getElementById('success-modal');
         const successList = document.getElementById('success-list');
@@ -389,8 +412,25 @@
             headAUFNR.textContent = headText.replace(/ \/ -$/,'');
         }
 
+        // === Flags untuk kontrol redirect setelah hasil konfirmasi ===
+        let pendingResetInput=null, isWarningOpen=false;
+        let isResultWarning = false; // warning dari hasil konfirmasi (campuran)
+        let isResultError   = false; // error dari hasil konfirmasi (semua gagal)
+
         // Sinkronisasi BUDAT text ↔ hidden
-        const warning = (msg) => { warningMessage.textContent=msg; warningModal.classList.remove('hidden'); };
+        const warning = (msg) => {
+            // Warning validasi biasa (bukan hasil konfirmasi)
+            isResultWarning = false;
+
+            warningTitle.textContent = 'Peringatan';
+            warningHeader.className = 'bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200';
+            warningTitle.classList.remove('text-red-800');
+            warningTitle.classList.add('text-yellow-800');
+            warningMessage.innerHTML=msg;
+            warningMessage.classList.remove('hidden');
+            warningList.classList.add('hidden');
+            warningModal.classList.remove('hidden');
+        };
         function syncTextToHidden() {
             const ymd = dmyToYmd(budatInputText.value);
             if (!ymd) { warning('Format tanggal harus dd/mm/yyyy.'); budatInputText.value = ymdToDmy(budatInput.value); return; }
@@ -556,7 +596,6 @@
         updateConfirmButtonState();
 
         // === Validasi input QTY_SPX ===
-        let pendingResetInput=null, isWarningOpen=false;
         document.querySelectorAll('input[name="QTY_SPX"]').forEach(input=>{
             input.addEventListener('focus', function(){ if(this.value==='0') this.value=''; });
             input.addEventListener('input', function(){
@@ -586,11 +625,16 @@
             });
         });
         warningOkButton.addEventListener('click', ()=>{
+            if (isResultWarning) {
+                goScanWithPernr();
+                return;
+            }
             if (pendingResetInput){ pendingResetInput.value='0'; pendingResetInput=null; }
-            isWarningOpen=false; warningModal.classList.add('hidden');
+            isWarningOpen=false; 
+            warningModal.classList.add('hidden');
         });
 
-        // === Validasi & Kirim konfirmasi (tetap) ===
+        // === Validasi & Kirim konfirmasi ===
         confirmButton.addEventListener('click', () => {
             const budatRaw = (budatInput?.value || '').trim();
             if (!budatRaw) { warningMessage.textContent = 'Posting Date wajib diisi.'; warningModal.classList.remove('hidden'); return; }
@@ -642,6 +686,10 @@
             const todayLocal = new Date(); todayLocal.setHours(0,0,0,0);
             if (budatDate > todayLocal){ warningMessage.textContent='Posting Date tidak boleh melebihi hari ini.'; warningModal.classList.remove('hidden'); return; }
 
+            // reset flags untuk siklus hasil baru
+            isResultWarning = false;
+            isResultError   = false;
+
             const today = toYYYYMMDD();
             const pickedBudat = budatRaw.replace(/\D/g,'');
 
@@ -681,6 +729,7 @@
                 const failed = results.filter(r=>r.status<200 || r.status>=300 || r.json?.ok===false || hasSapError(r.json?.sap_return));
                 const success = results.filter(r=>!failed.includes(r));
 
+                // Logika Log Backdate tetap sama
                 try {
                     for (const s of success) {
                         const p = s.payload || {};
@@ -695,31 +744,80 @@
                     }
                 } catch {}
 
-                if (failed.length){
-                    const lines = failed.map((f,i)=>{
+                // === LOGIKA TAMPILKAN HASIL GABUNGAN (REV) ===
+                const hasMixedResults = success.length > 0 && failed.length > 0;
+
+                if (hasMixedResults) {
+                    // Campuran → Warning/Kuning + redirect setelah OK
+                    isResultWarning = true;
+
+                    const successHtml = success.map((s)=>{
+                        const {aufnr='-',_arbpl0='-',_maktx='-',psmng='-'} = s.payload;
+                        return `<li class="space-y-1 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <div class="flex justify-between items-center text-sm font-semibold text-emerald-800">
+                                <div class="flex-1 pr-3">✅ <span class="font-mono">${aufnr}</span> / <span class="font-mono">${_arbpl0}</span></div>
+                                <span class="font-mono">${psmng}</span>
+                            </div><div class="pl-5 text-xs text-slate-600">Berhasil dikonfirmasi.</div></li>`;
+                    }).join('');
+
+                    const failedHtml = failed.map((f)=>{
+                        const {aufnr='-',_arbpl0='-',_maktx='-',psmng='-'} = f.payload;
                         const entries=collectSapReturnEntries(f.json?.sap_return||{});
                         const errMsg=(entries.find(e=>['E','A'].includes(String(e?.TYPE||'').toUpperCase())&&e?.MESSAGE)?.MESSAGE)
                             ||(entries.find(e=>e?.MESSAGE)?.MESSAGE)||f.json?.error||'Gagal dikonfirmasi.';
-                        return `${i+1}. ${f.payload?.aufnr||'-'} — ${errMsg}`;
-                    }).join('\n');
-                    errorMessage.innerHTML=`Sebagian/seluruh konfirmasi gagal (${failed.length} item):<br><br>${lines.replace(/\n/g,'<br>')}`;
+                        return `<li class="space-y-1 p-2 bg-red-50 rounded-lg border border-red-200">
+                            <div class="flex justify-between items-center text-sm font-semibold text-red-800">
+                                <div class="flex-1 pr-3">❌ <span class="font-mono">${aufnr}</span> / <span class="font-mono">${_arbpl0}</span></div>
+                                <span class="font-mono">${psmng}</span>
+                            </div><div class="pl-5 text-xs text-slate-600">• ${errMsg}</div></li>`;
+                    }).join('');
+                    
+                    warningTitle.textContent = `Konfirmasi Sebagian (${success.length} Berhasil, ${failed.length} Gagal)`;
+                    warningHeader.className = 'bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200';
+                    
+                    warningMessage.classList.add('hidden');
+                    warningList.innerHTML = `<p class="text-sm text-slate-700">Rincian hasil konfirmasi:</p><ul class="space-y-2">${successHtml + failedHtml}</ul>`;
+                    warningList.classList.remove('hidden');
+                    pendingShowSuccess = () => warningModal.classList.remove('hidden');
+                } 
+                else if (failed.length > 0){
+                    // Semua gagal → Error/Merah + redirect setelah OK
+                    isResultError = true;
+
+                    const lines = failed.map((f)=>{
+                        const entries=collectSapReturnEntries(f.json?.sap_return||{});
+                        const errMsg=(entries.find(e=>['E','A'].includes(String(e?.TYPE||'').toUpperCase())&&e?.MESSAGE)?.MESSAGE)
+                            ||(entries.find(e=>e?.MESSAGE)?.MESSAGE)||f.json?.error||'Gagal dikonfirmasi.';
+                        return `PRO ${f.payload?.aufnr||'-'} (${f.payload?.psmng||'-'}): ${errMsg}`;
+                    }).join('<br>');
+                    errorMessage.innerHTML=`<div class="font-bold mb-2">Semua konfirmasi gagal (${failed.length} item):</div>${lines}`;
                     errorModal.classList.remove('hidden');
                 }
-                if (success.length){
-                    successList.innerHTML = success.map((s,i)=>{
+                else if (success.length > 0){
+                    // Semua berhasil → Success/Hijau
+                    document.querySelector('#success-modal .text-emerald-800').textContent = 'Berhasil Dikonfirmasi';
+                    document.querySelector('#success-modal .bg-gradient-to-r').className = 'bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 py-3 border-b border-emerald-200';
+                    
+                    successList.innerHTML = success.map((s)=>{
                         const {aufnr='-',_arbpl0='-',_maktx='-',psmng='-'} = s.payload;
                         const entries=collectSapReturnEntries(s.json?.sap_return||{});
                         const msgs=(entries.map(e=>e?.MESSAGE).filter(Boolean).length?entries.map(e=>e?.MESSAGE).filter(Boolean):['Confirmation of order saved']);
-                        const msgsHTML=msgs.map(m=>`<div class="pl-5 text[12px] text-slate-600">• ${m}</div>`).join('');
+                        const msgsHTML=msgs.map(m=>`<div class="pl-5 text-xs text-slate-600">• ${m}</div>`).join('');
                         return `<li class="space-y-1">
                             <div class="flex justify-between items-center text-sm font-semibold text-slate-800">
                                 <div class="flex-1 pr-3"><span class="font-mono">${aufnr}</span> / <span class="font-mono">${_arbpl0}</span> / ${_maktx}</div>
                                 <span class="font-mono">${psmng}</span>
                             </div>${msgsHTML}</li>`;
-                    }).join('');
+                        }).join('');
                     pendingShowSuccess=()=>successModal.classList.remove('hidden');
+                } 
+                else {
+                    // Tidak ada hasil terdeteksi
+                    errorMessage.textContent='Konfirmasi selesai, tetapi tidak ada PRO yang berhasil atau gagal dideteksi.';
+                    errorModal.classList.remove('hidden');
                 }
 
+                // Pewarnaan baris (tetap)
                 if (success.length || failed.length){
                     const rows = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb=>cb.closest('tr'));
                     rows.forEach(row=>{
@@ -741,8 +839,16 @@
 
         // === Close handlers ===
         cancelButton.addEventListener('click', ()=>confirmModal.classList.add('hidden'));
-        errorOkButton.addEventListener('click', ()=>errorModal.classList.add('hidden'));
-        successOkButton.addEventListener('click', ()=>{ window.location.href="{{ route('scan') }}"; });
+
+        errorOkButton.addEventListener('click', ()=>{
+            if (isResultError) {
+                goScanWithPernr();
+                return;
+            }
+            errorModal.classList.add('hidden');
+        });
+
+        successOkButton.addEventListener('click', ()=>{ goScanWithPernr(); });
     });
 </script>
 @endpush
