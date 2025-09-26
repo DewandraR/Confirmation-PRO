@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
-HTTP_PORT = int(os.getenv("HTTP_PORT", "5035"))
+HTTP_PORT = int(os.getenv("HTTP_PORT", "5036"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
 
@@ -536,4 +536,4 @@ def api_backdate_history():
 
 if __name__ == "__main__":
     ensure_tables()
-    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=True)
+    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=False, use_reloader=False)

@@ -16,7 +16,7 @@
 | Backend   | Laravel (PHP 8+)                    |
 | Frontend  | Blade Template Engine               |
 | Styling   | Tailwind CSS                        |
-| Data Sync | Python (`yppi019_mysql_service.py`) |
+| Data Sync | Python (`yppi019.py`)               |
 | Database  | MySQL (`yppi019.sql`)               |
 
 ## 🧑‍💻 Instalasi & Setup
@@ -65,5 +65,5 @@
    Jalankan pada terminal terpisah:
 
    ```bash
-   python yppi019_mysql_service.py
+   python yppi019.py
    ```

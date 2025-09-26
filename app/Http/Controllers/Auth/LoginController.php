@@ -40,7 +40,7 @@ class LoginController extends Controller
         // SAP AUTH via Flask
         $sapId      = $request->input('sap_id');
         $sapPass    = $request->input('password');
-        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5035/api/sap-login'));
+        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5036/api/sap-login'));
 
         try {
             $resp = Http::timeout(30)

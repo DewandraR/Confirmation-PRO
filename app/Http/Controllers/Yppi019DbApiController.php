@@ -12,7 +12,7 @@ class Yppi019DbApiController extends Controller
     private function flaskBase(): string
     {
         // Pastikan env YPPI019_BASE/FLASK_BASE menunjuk ke host:port Flask yang AKTIF
-        return rtrim(env('YPPI019_BASE', env('FLASK_BASE', 'http://127.0.0.1:5035')), '/');
+        return rtrim(env('YPPI019_BASE', env('FLASK_BASE', 'http://127.0.0.1:5036')), '/');
     }
 
     /** VORNR 4 digit: 10 -> "0010" */
