@@ -16,7 +16,7 @@ class LoginController extends Controller
 {
     public function show()
     {
-        return view('auth.login', ['title' => 'Masuk']);
+        return view('auth.login', ['title' => 'Masuk | Konfirmasi PRO App']);
     }
 
     public function store(Request $request)
