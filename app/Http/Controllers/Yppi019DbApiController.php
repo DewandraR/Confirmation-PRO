@@ -130,7 +130,7 @@ class Yppi019DbApiController extends Controller
         $pernr    = trim((string) $req->query('pernr', ''));
         $arbpl    = $req->query('arbpl');
         $werks    = $req->query('werks');
-        $autoSync = filter_var($req->query('auto_sync', '1'), FILTER_VALIDATE_BOOL);
+        $autoSync = filter_var($req->query('auto_sync', '0'), FILTER_VALIDATE_BOOL);
 
         // Validasi input
         if (empty($aufnr) && empty($arbpl)) {
@@ -159,7 +159,7 @@ class Yppi019DbApiController extends Controller
 
         // PERBAIKAN: Tentukan kapan sinkronisasi harus berjalan.
         $isInitialSearch = !empty($aufnr) || !empty($arbpl);
-        $shouldSync = $autoSync && (count($rows) === 0 || $isInitialSearch);
+        $shouldSync = $autoSync && (count($rows) === 0);
 
         if ($shouldSync) {
             $syncPayload = array_filter([

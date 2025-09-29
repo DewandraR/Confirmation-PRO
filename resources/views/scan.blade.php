@@ -491,6 +491,16 @@ document.addEventListener('DOMContentLoaded', () => {
     errModal?.classList.remove('hidden');
     errModal?.classList.add('flex');
   }
+
+// ➕ helper baru: tampilkan error → setelah OK jalankan thenFn
+  function showErrorAndThen(title, msg, thenFn) {
+    showError(title, msg);
+    const okBtn = document.querySelector('#errorModal button');
+    if (okBtn && typeof thenFn === 'function') {
+      okBtn.addEventListener('click', () => { try { thenFn(); } catch (_) {} }, { once: true });
+    }
+  }
+
   window.closeError = () => {
     errModal?.classList.add('hidden');
     errModal?.classList.remove('flex');
@@ -617,31 +627,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (hasAufnr) {
           const results = await Promise.allSettled(
-            aufnrArray.map(aufnr => ajaxSync({ ...basePayload, aufnr }))
-          );
+  aufnrArray.map(aufnr => ajaxSync({ ...basePayload, aufnr }))
+);
 
-          const okAufnrs = [];
-          let adaTeco = false;
-          results.forEach((r, i) => {
-            if (r.status === 'fulfilled') {
-              if (r.value.ok) okAufnrs.push(aufnrArray[i]);
-              if (!r.value.ok && r.value.teco) adaTeco = true;
-            }
-          });
+const okAufnrs = [];
+let adaTeco = false;
+let firstErrMsg = null;
+const failures = []; // ← simpan daftar gagal per-PRO
 
-          if (okAufnrs.length === 0) {
-            if (adaTeco) showTeco(aufnrArray);
-            else showError('Data Tidak Ditemukan', 'PRO/WC tidak mengembalikan data dari SAP. Periksa NIK/WORK CENTER/PLANT/PRO.');
-            return;
-          }
+results.forEach((r, i) => {
+  const pro = aufnrArray[i];
+  if (r.status === 'fulfilled') {
+    if (r.value.ok) {
+      okAufnrs.push(pro);
+    } else {
+      if (r.value.teco) adaTeco = true;
+      const msg = r.value.msg || r.value.raw?.error || 'Data Tidak Ditemukan';
+      failures.push({ key: pro, msg });
+      if (!firstErrMsg) firstErrMsg = msg;
+    }
+  } else {
+    const msg = r.reason?.message || String(r.reason || 'Gagal request');
+    failures.push({ key: pro, msg });
+    if (!firstErrMsg) firstErrMsg = msg;
+  }
+});
 
-          const to = new URL(form.action, location.origin);
-          to.searchParams.set('pernr', pernr);
-          to.searchParams.set('aufnrs', okAufnrs.join(','));
-          if (hasWc)   to.searchParams.set('arbpl', arbpl);
-          if (hasWc && hasPlant) to.searchParams.set('werks', werks);
-          location.href = to.toString();
-          return;
+if (okAufnrs.length === 0) {
+  if (adaTeco) showTeco(aufnrArray);
+  else showError('Gagal Memuat Data', firstErrMsg || 'PRO/WC tidak mengembalikan data dari SAP.');
+  return;
+}
+
+// ← di sini minimal ada 1 sukses
+const goRedirect = () => {
+  const to = new URL(form.action, location.origin);
+  to.searchParams.set('pernr', pernr);
+  to.searchParams.set('aufnrs', okAufnrs.join(','));
+  if (hasWc)   to.searchParams.set('arbpl', arbpl);
+  if (hasWc && hasPlant) to.searchParams.set('werks', werks);
+  location.href = to.toString();
+};
+
+if (failures.length > 0) {
+  const lines = failures.map(f => `${f.key} — ${f.msg}`).join('\n');
+  // tampilkan daftar gagal, lalu lanjut ke halaman detail utk PRO yang sukses
+  showErrorAndThen('Sebagian PRO gagal memuat data', lines, goRedirect);
+  return;
+}
+
+// semua sukses → langsung redirect
+goRedirect();
+
+
+
+          
 
         } else {
           const r = await ajaxSync(basePayload);
@@ -658,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
       } catch (err) {
-        showError('Gagal Sinkron', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
+        showError('Gagal Mengambil Data', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
       } finally {
         setBusy(false);
       }

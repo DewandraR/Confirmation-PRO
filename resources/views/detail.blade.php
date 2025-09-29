@@ -450,7 +450,7 @@
             if (AUFNRS.length>0) {
                 const results = await Promise.allSettled(
                     AUFNRS.map(async (aufnr) => {
-                        let url = `/api/yppi019/material?aufnr=${encodeURIComponent(aufnr)}&pernr=${encodeURIComponent(IV_PERNR)}`;
+                        let url = `/api/yppi019/material?aufnr=${encodeURIComponent(aufnr)}&pernr=${encodeURIComponent(IV_PERNR)}&auto_sync=0`;
                         if (IV_ARBPL) url += `&arbpl=${encodeURIComponent(IV_ARBPL)}`;
                         if (IV_WERKS) url += `&werks=${encodeURIComponent(IV_WERKS)}`;
                         const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -462,7 +462,7 @@
                 );
                 results.forEach(r => r.status==='fulfilled' ? rowsAll=rowsAll.concat(r.value) : failures.push(r.reason?.message||'unknown'));
             } else {
-                const url = `/api/yppi019/material?arbpl=${encodeURIComponent(IV_ARBPL)}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(IV_PERNR)}`;
+                const url = `/api/yppi019/material?arbpl=${encodeURIComponent(IV_ARBPL)}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(IV_PERNR)}&auto_sync=0`;
                 const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 let json; try { json = await res.json(); } catch { json = {}; }
                 if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);

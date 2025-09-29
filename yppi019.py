@@ -120,6 +120,21 @@ def normalize_uom(meinh: Any) -> str:
     u = str(meinh or "").strip().upper()
     return "PC" if u == "ST" else u
 
+# --- Humanize SAP/pyrfc error messages (BARU) ---
+def humanize_rfc_error(err: Exception) -> str:
+    """
+    Ambil bagian 'message=...' dari string exception pyrfc jika ada.
+    Jika tidak ada, kembalikan str(err) apa adanya.
+    """
+    s = str(err or "")
+    m = re.search(r'message=([^[]+)', s)
+    if m:
+        return m.group(1).strip()
+    m2 = re.search(r'MESSAGE\s*[:=]\s*([^\n]+)', s, flags=re.IGNORECASE)
+    if m2:
+        return m2.group(1).strip()
+    return s.strip()
+
 # ---------------- DDL & Persist ----------------
 def ensure_tables():
     with connect_mysql() as db:
@@ -224,8 +239,8 @@ def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], 
         rows = _call(args)
     except Exception as e:
         logger.exception("READ failed with args=%s", args)
-        rows = []
-    
+        # Penting: lempar lagi agar diproses oleh sync_from_sap()
+        raise
     if pernr:
         for r in rows:
             if not r.get("PERNR"): r["PERNR"] = pernr
@@ -276,7 +291,7 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
 
     except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
         logger.exception("SAP error in sync_from_sap")
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": humanize_rfc_error(e)}
     except Exception as e:
         logger.exception("Generic error in sync_from_sap")
         return {"ok": False, "error": str(e)}
@@ -440,7 +455,7 @@ def api_confirm():
                     # Gagal SAP -> batalkan transaksi, lepas kunci
                     db.rollback()
                     logger.exception("SAP error api_confirm")
-                    return jsonify({"ok": False, "error": str(e)}), 500
+                    return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
 
                 # INSERT log + UPDATE bersyarat dalam transaksi yang sama
                 cur.execute(
