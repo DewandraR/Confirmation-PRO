@@ -116,6 +116,7 @@
                        appearance-none pr-6 text-right">
           <option value="">Pilih Plant</option>
           <option value="1000">1000</option>
+          <option value="1001">1001</option>
           <option value="1200">1200</option>
           <option value="2000">2000</option>
           <option value="3000">3000</option>
