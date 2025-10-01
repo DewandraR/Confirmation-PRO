@@ -53,6 +53,24 @@ def release_mutex(cur, key: str):
     except Exception:
         pass
 
+# ---------------- HTTP helper: 423 Locked (baru) ----------------
+def locked_response(resource_type: str, resource_id: str, retry_after_sec: int = 2):
+    """
+    Kembalikan 423 Locked dengan pesan ramah saat resource sedang dikunci.
+    resource_type: mis. "AUFNR"
+    resource_id  : mis. "000001234567"
+    """
+    payload = {
+        "ok": False,
+        "error": "Sedang diproses oleh user lain. Coba lagi sebentar.",
+        "error_code": "AUFNR_LOCKED",
+        "resource": {"type": resource_type, "id": resource_id},
+    }
+    resp = jsonify(payload)
+    resp.status_code = 423  # Locked
+    resp.headers["Retry-After"] = str(retry_after_sec)
+    return resp
+
 # ---------------- SAP ----------------
 def connect_sap(username: Optional[str] = None, password: Optional[str] = None) -> Connection:
     user = (username or "").strip()
@@ -260,7 +278,15 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
             with db.cursor() as cur:
                 # Proses AUFNR satu per satu (urut: cegah deadlock)
                 for a in sorted(by_aufnr.keys()):
-                    acquire_mutex(cur, f"aufnr:{a}", timeout=10)
+                    try:
+                        acquire_mutex(cur, f"aufnr:{a}", timeout=10)
+                    except RuntimeError:
+                        return {
+                            "ok": False,
+                            "error": "Sedang diproses oleh user lain. Coba lagi sebentar.",
+                            "error_code": "AUFNR_LOCKED",
+                            "busy_aufnr": a,
+                        }
                     try:
                         db.start_transaction()
 
@@ -379,6 +405,11 @@ def api_sync():
         res.setdefault("message", "Data Tidak Ditemukan")
         return jsonify(to_jsonable(res)), 404
 
+    # Map khusus: kalau sync gagal karena AUFNR sedang terkunci, balas 423 (bukan 500)
+    if not res.get("ok") and res.get("error_code") == "AUFNR_LOCKED":
+        res["refreshed"] = False
+        return jsonify(to_jsonable(res)), 423
+
     status = 200 if res.get("ok") else 500
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
@@ -406,7 +437,10 @@ def api_confirm():
             with db.cursor(dictionary=True) as cur:
 
                 # per-AUFNR mutex to avoid /sync collision
-                acquire_mutex(cur, f"aufnr:{aufnr}", timeout=8)
+                try:
+                    acquire_mutex(cur, f"aufnr:{aufnr}", timeout=8)
+                except RuntimeError:
+                    return locked_response("AUFNR", aufnr)
                 try:
                     db.start_transaction()
 
