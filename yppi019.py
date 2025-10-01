@@ -1,4 +1,4 @@
-# api.py — yppi019_mysql_service (force per-user SAP credential from request)
+# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found"
 import os, re, json, logging, decimal, datetime, base64
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -35,6 +35,23 @@ def connect_mysql():
         database=os.getenv("DB_DATABASE", "yppi019"),
         port=int(os.getenv("DB_PORT", "3306")),
     )
+
+# -------- Advisory lock helpers (connection-scoped) --------
+def acquire_mutex(cur, key: str, timeout: int = 8):
+    """Ambil mutex bernama yppi019:<key>. Timeout detik."""
+    cur.execute("SELECT GET_LOCK(%s, %s)", (f"yppi019:{key}", timeout))
+    got = cur.fetchone()[0]
+    if got != 1:
+        raise RuntimeError(f"Resource busy for key={key}")
+
+def release_mutex(cur, key: str):
+    """Lepas mutex bernama yppi019:<key> (idempotent)."""
+    try:
+        cur.execute("SELECT RELEASE_LOCK(%s)", (f"yppi019:{key}",))
+        # FIX: consume result agar tidak "Unread result found"
+        cur.fetchone()
+    except Exception:
+        pass
 
 # ---------------- SAP ----------------
 def connect_sap(username: Optional[str] = None, password: Optional[str] = None) -> Connection:
@@ -120,12 +137,8 @@ def normalize_uom(meinh: Any) -> str:
     u = str(meinh or "").strip().upper()
     return "PC" if u == "ST" else u
 
-# --- Humanize SAP/pyrfc error messages (BARU) ---
+# --- Humanize SAP/pyrfc error messages ---
 def humanize_rfc_error(err: Exception) -> str:
-    """
-    Ambil bagian 'message=...' dari string exception pyrfc jika ada.
-    Jika tidak ada, kembalikan str(err) apa adanya.
-    """
     s = str(err or "")
     m = re.search(r'message=([^[]+)', s)
     if m:
@@ -159,8 +172,6 @@ def ensure_tables():
               KEY idx_aufnr (AUFNR)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
-
-            # ▼▼▼ TAMBAHKAN BLOK BARU INI ▼▼▼
             cur.execute("""
             CREATE TABLE IF NOT EXISTS yppi019_backdate_log (
               id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -181,32 +192,10 @@ def ensure_tables():
               KEY idx_pernr (PERNR)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
-            # ▲▲▲ END BLOK BARU ▲▲▲
-
             db.commit()
 
 def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
     return {"AUFNR": (r.get("AUFNR") or "").strip(), "VORNRX": pad_vornr(r.get("VORNRX") or r.get("VORNR") or ""),"PERNR": (str(r.get("PERNR") or "").strip() or None),"ARBPL0": (r.get("ARBPL0") or r.get("ARBPL") or None),"DISPO": r.get("DISPO"), "STEUS": r.get("STEUS"), "WERKS": r.get("WERKS"),"CHARG": (str(r.get("CHARG") or "").strip()), "MATNRX": r.get("MATNRX"), "MAKTX": r.get("MAKTX"),"MEINH": r.get("MEINH"), "QTY_SPK": parse_num(r.get("QTY_SPK")), "WEMNG": parse_num(r.get("WEMNG")),"QTY_SPX": parse_num(r.get("QTY_SPX")), "LTXA1": r.get("LTXA1"), "SNAME": r.get("SNAME"),"GSTRP": parse_date(r.get("GSTRP")), "GLTRP": parse_date(r.get("GLTRP")), "ISDZ": r.get("ISDZ"), "IEDZ": r.get("IEDZ"),"RAW_JSON": json.dumps(to_jsonable(r), ensure_ascii=False), "fetched_at": datetime.datetime.now(),}
-
-def save_rows(rows: List[Dict[str, Any]]) -> int:
-    if not rows: return 0
-    with connect_mysql() as db:
-        with db.cursor() as cur:
-            cur.executemany("""
-            INSERT INTO yppi019_data
-             (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,CHARG,MATNRX,MAKTX,MEINH,QTY_SPK,WEMNG,QTY_SPX,
-              LTXA1,SNAME,GSTRP,GLTRP,ISDZ,IEDZ,RAW_JSON,fetched_at)
-            VALUES (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,%(CHARG)s,%(MATNRX)s,%(MAKTX)s,%(MEINH)s,
-              %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
-            ON DUPLICATE KEY UPDATE
-              PERNR=VALUES(PERNR), ARBPL0=VALUES(ARBPL0), DISPO=VALUES(DISPO), STEUS=VALUES(STEUS), WERKS=VALUES(WERKS),
-              CHARG=VALUES(CHARG), MATNRX=VALUES(MATNRX), MAKTX=VALUES(MAKTX), MEINH=VALUES(MEINH), QTY_SPK=VALUES(QTY_SPK),
-              WEMNG=VALUES(WEMNG), LTXA1=VALUES(LTXA1), SNAME=VALUES(SNAME), GSTRP=VALUES(GSTRP), GLTRP=VALUES(GLTRP),
-              ISDZ=VALUES(ISDZ), IEDZ=VALUES(IEDZ), RAW_JSON=VALUES(RAW_JSON), fetched_at=VALUES(fetched_at),
-              QTY_SPX=CASE WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX WHEN QTY_SPX IS NULL THEN VALUES(QTY_SPX) ELSE LEAST(QTY_SPX, VALUES(QTY_SPX)) END
-            """, rows)
-            db.commit()
-            return cur.rowcount
 
 # ---------------- READ from SAP & sync ----------------
 def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], arbpl: Optional[str], werks: Optional[str]) -> List[Dict[str, Any]]:
@@ -235,17 +224,13 @@ def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], 
         if werks: args["IV_WERKS"] = str(werks)
 
     logger.info("Final fetch call arguments: %s", args)
-    try:
-        rows = _call(args)
-    except Exception as e:
-        logger.exception("READ failed with args=%s", args)
-        # Penting: lempar lagi agar diproses oleh sync_from_sap()
-        raise
+    rows = _call(args)  # biarkan error propagate ke caller
     if pernr:
         for r in rows:
             if not r.get("PERNR"): r["PERNR"] = pernr
     return rows
 
+# ---------- granular per-AUFNR sync with advisory locks ----------
 def sync_from_sap(username: Optional[str], password: Optional[str],
                   aufnr: Optional[str] = None, pernr: Optional[str] = None, 
                   arbpl: Optional[str] = None, werks: Optional[str] = None) -> Dict[str, Any]:
@@ -255,38 +240,76 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
             rows = fetch_from_sap(sap, aufnr, pernr, arbpl, werks)
             n_received = len(rows)
 
-        wiped, prev_count, saved = 0, 0, 0
-        note = "no data from SAP; local data untouched"
+        if n_received == 0:
+            return {
+                "ok": True, "received": 0, "saved": 0, "wiped": 0, "prev_count": 0,
+                "note": "no data from SAP; local data untouched"
+            }
 
-        if n_received > 0:
-            # PERBAIKAN: Hapus data lokal berdasarkan kunci sinkronisasi (AUFNR atau ARBPL/WERKS)
-            # Ini memastikan data yang sudah dihapus di SAP juga akan hilang dari database lokal.
-            with connect_mysql() as db:
-                with db.cursor() as cur:
-                 if aufnr:
-                    cur.execute("SELECT COUNT(*) FROM yppi019_data WHERE AUFNR=%s", (aufnr,))
-                    prev_count = (cur.fetchone() or [0])[0]
-                    cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (aufnr,))
-                    db.commit()
-                    wiped = cur.rowcount
-                 # TAMBAHKAN BLOK KONDISI INI
-                 elif arbpl and werks: 
-                    cur.execute("SELECT COUNT(*) FROM yppi019_data WHERE ARBPL0=%s AND WERKS=%s", (arbpl, werks))
-                    prev_count = (cur.fetchone() or [0])[0]
-                    cur.execute("DELETE FROM yppi019_data WHERE ARBPL0=%s AND WERKS=%s", (arbpl, werks))
-                    db.commit()
-                    wiped = cur.rowcount
-                
-            saved = save_rows(rows)
-            note = "replaced with fresh data from SAP"
+        # Kelompokkan rows per AUFNR (granular)
+        by_aufnr: Dict[str, List[Dict[str, Any]]] = {}
+        for r in rows:
+            a = (r.get("AUFNR") or "").strip()
+            if not a:
+                continue
+            by_aufnr.setdefault(a, []).append(r)
+
+        saved_total, wiped_total, prev_total = 0, 0, 0
+
+        with connect_mysql() as db:
+            with db.cursor() as cur:
+                # Proses AUFNR satu per satu (urut: cegah deadlock)
+                for a in sorted(by_aufnr.keys()):
+                    acquire_mutex(cur, f"aufnr:{a}", timeout=10)
+                    try:
+                        db.start_transaction()
+
+                        # Hitung & hapus snapshot lama untuk AUFNR ini
+                        cur.execute("SELECT COUNT(*) FROM yppi019_data WHERE AUFNR=%s", (a,))
+                        prev_count = (cur.fetchone() or [0])[0]
+                        cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
+                        wiped = cur.rowcount
+
+                        # Insert ulang rows milik AUFNR ini (pola save_rows lama)
+                        cur.executemany("""
+                            INSERT INTO yppi019_data
+                             (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,CHARG,MATNRX,MAKTX,MEINH,QTY_SPK,WEMNG,QTY_SPX,
+                              LTXA1,SNAME,GSTRP,GLTRP,ISDZ,IEDZ,RAW_JSON,fetched_at)
+                            VALUES (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,%(CHARG)s,%(MATNRX)s,%(MAKTX)s,%(MEINH)s,
+                              %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
+                            ON DUPLICATE KEY UPDATE
+                              PERNR=VALUES(PERNR), ARBPL0=VALUES(ARBPL0), DISPO=VALUES(DISPO), STEUS=VALUES(STEUS), WERKS=VALUES(WERKS),
+                              CHARG=VALUES(CHARG), MATNRX=VALUES(MATNRX), MAKTX=VALUES(MAKTX), MEINH=VALUES(MEINH), QTY_SPK=VALUES(QTY_SPK),
+                              WEMNG=VALUES(WEMNG), LTXA1=VALUES(LTXA1), SNAME=VALUES(SNAME), GSTRP=VALUES(GSTRP), GLTRP=VALUES(GLTRP),
+                              ISDZ=VALUES(ISDZ), IEDZ=VALUES(IEDZ), RAW_JSON=VALUES(RAW_JSON), fetched_at=VALUES(fetched_at),
+                              QTY_SPX=CASE
+                                         WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX
+                                         WHEN QTY_SPX IS NULL THEN VALUES(QTY_SPX)
+                                         ELSE LEAST(QTY_SPX, VALUES(QTY_SPX))
+                                      END
+                        """, by_aufnr[a])
+
+                        saved = cur.rowcount
+                        db.commit()
+
+                        wiped_total += wiped
+                        prev_total  += prev_count
+                        saved_total += saved
+
+                    except Exception:
+                        # FIX: pastikan rollback jika ada error di tengah AUFNR ini
+                        db.rollback()
+                        raise
+                    finally:
+                        release_mutex(cur, f"aufnr:{a}")
 
         return {
-            "ok": True, 
-            "received": n_received, 
-            "saved": saved, 
-            "wiped": wiped, 
-            "prev_count": prev_count, 
-            "note": note
+            "ok": True,
+            "received": n_received,
+            "saved": saved_total,
+            "wiped": wiped_total,
+            "prev_count": prev_total,
+            "note": "replaced with fresh data from SAP (per-AUFNR locked)",
         }
 
     except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
@@ -319,26 +342,14 @@ def api_get():
     with connect_mysql() as db:
         with db.cursor(dictionary=True) as cur:
             sql = "SELECT * FROM yppi019_data"
-            # Ambil kondisi filter dinamis dari parameter request
             cond, args = [f"{k}=%s" for k, v in params.items() if v], [v for v in params.values() if v]
-
-            # === PERUBAHAN DIMULAI DI SINI ===
-            # Buat daftar untuk semua klausa WHERE
             where_clauses = cond
-            
-            # Tambahkan kondisi statis untuk hanya menampilkan data yang masih bisa diproses
-            # (QTY_SPX > 0 DAN kuantitas yang sudah dikonfirmasi < kuantitas target)
             where_clauses.append("(IFNULL(QTY_SPX, 0) > 0 AND IFNULL(WEMNG, 0) < IFNULL(QTY_SPK, 0))")
-
-            # Gabungkan semua kondisi menjadi satu string query
             if where_clauses: sql += " WHERE " + " AND ".join(where_clauses)
-            # === PERUBAHAN SELESAI ===
-
             sql += " ORDER BY VORNRX ASC" if params.get("AUFNR") and not params.get("ARBPL0") else " ORDER BY AUFNR ASC, VORNRX ASC"
             sql += " LIMIT %s"; args.append(limit)
             cur.execute(sql, tuple(args))
             return jsonify({"ok": True, "rows": to_jsonable(cur.fetchall())})
-        
 
 @app.post("/api/yppi019/sync")
 def api_sync():
@@ -362,19 +373,15 @@ def api_sync():
 
     res = sync_from_sap(u, p, aufnr=aufnr, pernr=pernr, arbpl=arbpl, werks=werks)
 
-    # === PERUBAHAN UTAMA: jika SAP mengembalikan 0 row, balas 404 ===
     if res.get("ok") and int(res.get("received") or 0) == 0:
         res["teco_possible"] = True
         res["refreshed"] = False
-        # beri pesan ramah untuk modal FE
         res.setdefault("message", "Data Tidak Ditemukan")
         return jsonify(to_jsonable(res)), 404
-    # === END PERUBAHAN ===
 
     status = 200 if res.get("ok") else 500
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
-
 
 # ---------------- Confirm & Other Endpoints ----------------
 @app.post("/api/yppi019/confirm")
@@ -394,121 +401,114 @@ def api_confirm():
     if not (aufnr and vornr and pernr and budat and qty_in is not None and qty_in > 0):
         return jsonify({"ok": False, "error": "Parameter tidak valid atau psmng <= 0"}), 400
 
-    # kita akan pakai 1 koneksi DB + transaksi sampai selesai
     try:
         with connect_mysql() as db:
             with db.cursor(dictionary=True) as cur:
-                # Mulai transaksi dan KUNCI baris target agar request lain menunggu
-                db.start_transaction()
 
-                cur.execute(
-                    """
-                    SELECT id, QTY_SPK, WEMNG, QTY_SPX, MEINH
-                    FROM yppi019_data
-                    WHERE AUFNR=%s AND VORNRX=%s
-                    FOR UPDATE
-                    """,
-                    (aufnr, vornr),
-                )
-                row_db = cur.fetchone()
-                if not row_db:
-                    db.rollback()
-                    return jsonify({"ok": False, "error": "Data operation tidak ditemukan"}), 404
-
-                qty_spk = float(row_db.get("QTY_SPK") or 0.0)
-                wemng   = float(row_db.get("WEMNG")   or 0.0)
-                qty_spx = float(row_db.get("QTY_SPX") or 0.0)
-
-                sisa_spk = max(qty_spk - wemng, 0.0)
-                sisa_spx = max(qty_spx, 0.0)
-
-                if qty_in > sisa_spk:
-                    db.rollback()
-                    return jsonify({"ok": False, "error": f"Input melebihi QTY_SPK sisa ({sisa_spk})."}), 400
-                if qty_in > sisa_spx:
-                    db.rollback()
-                    return jsonify({"ok": False, "error": f"Input melebihi QTY_SPX sisa ({sisa_spx})."}), 400
-
-                # Normalisasi UOM + format kuantitas untuk SAP (tetap seperti semula)
-                meinh_req = normalize_uom(b.get("meinh") or row_db.get("MEINH"))
-                if meinh_req in {"PC", "EA", "PCS", "UNIT"}:
-                    psmng_str = str(int(round(qty_in)))
-                else:
-                    psmng_str = f"{qty_in:.3f}".replace(".", ",")
-
-                # --- PANGGIL SAP di dalam transaksi saat baris terkunci ---
-                # Catatan: baris PRO lain tetap bisa diproses; yang terkunci hanya (aufnr,vornr) ini.
+                # per-AUFNR mutex to avoid /sync collision
+                acquire_mutex(cur, f"aufnr:{aufnr}", timeout=8)
                 try:
-                    with connect_sap(u, p) as sap:
-                        sap_ret = sap.call(
-                            RFC_C,
-                            IV_AUFNR=pad_aufnr(aufnr),
-                            IV_VORNR=vornr,
-                            IV_PERNR=pernr,
-                            IV_PSMNG=psmng_str,
-                            IV_MEINH=meinh_req,
-                            IV_GSTRP=str(b.get("gstrp") or ""),
-                            IV_GLTRP=str(b.get("gltrp") or ""),
-                            IV_BUDAT=budat,
-                        )
-                except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
-                    # Gagal SAP -> batalkan transaksi, lepas kunci
-                    db.rollback()
-                    logger.exception("SAP error api_confirm")
-                    return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
+                    db.start_transaction()
 
-                # INSERT log + UPDATE bersyarat dalam transaksi yang sama
-                cur.execute(
-                    """
-                    INSERT INTO yppi019_confirm_log
-                      (AUFNR, VORNR, PERNR, PSMNG, MEINH, GSTRP, GLTRP, BUDAT, SAP_RETURN, created_at)
-                    VALUES
-                      (%s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,         %s)
-                    """,
-                    (
-                        aufnr,
-                        vornr,
-                        pernr,
-                        qty_in,
-                        meinh_req,
-                        parse_date(b.get("gstrp")),
-                        parse_date(b.get("gltrp")),
-                        parse_date(budat),
-                        json.dumps(to_jsonable(sap_ret), ensure_ascii=False),
-                        datetime.datetime.now(),
-                    ),
-                )
+                    cur.execute(
+                        """
+                        SELECT id, QTY_SPK, WEMNG, QTY_SPX, MEINH
+                        FROM yppi019_data
+                        WHERE AUFNR=%s AND VORNRX=%s
+                        FOR UPDATE
+                        """,
+                        (aufnr, vornr),
+                    )
+                    row_db = cur.fetchone()
+                    if not row_db:
+                        db.rollback()
+                        return jsonify({"ok": False, "error": "Data operation tidak ditemukan"}), 404
 
-                # UPDATE dengan guard sisa agar tetap aman (defensive double-check)
-                cur.execute(
-                    """
-                    UPDATE yppi019_data
-                    SET WEMNG = IFNULL(WEMNG,0) + %s,
-                        QTY_SPX = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
-                        fetched_at = NOW()
-                    WHERE id=%s
-                      AND (IFNULL(QTY_SPK,0) - IFNULL(WEMNG,0)) >= %s
-                      AND IFNULL(QTY_SPX,0) >= %s
-                    """,
-                    (qty_in, qty_in, row_db["id"], qty_in, qty_in),
-                )
+                    qty_spk = float(row_db.get("QTY_SPK") or 0.0)
+                    wemng   = float(row_db.get("WEMNG")   or 0.0)
+                    qty_spx = float(row_db.get("QTY_SPX") or 0.0)
 
-                if cur.rowcount != 1:
-                    # Jika gagal, berarti sisa berubah (skenario teoretis) -> batalkan
-                    db.rollback()
-                    return jsonify({"ok": False, "error": "Gagal update; sisa sudah berubah, silakan refresh"}), 409
+                    sisa_spk = max(qty_spk - wemng, 0.0)
+                    sisa_spx = max(qty_spx, 0.0)
 
-                # Bersihkan log lama (seperti semula)
-                cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
+                    if qty_in > sisa_spk:
+                        db.rollback()
+                        return jsonify({"ok": False, "error": f"Input melebihi QTY_SPK sisa ({sisa_spk})."}), 400
+                    if qty_in > sisa_spx:
+                        db.rollback()
+                        return jsonify({"ok": False, "error": f"Input melebihi QTY_SPX sisa ({sisa_spx})."}), 400
 
-                # Commit semua perubahan
-                db.commit()
+                    meinh_req = normalize_uom(b.get("meinh") or row_db.get("MEINH"))
+                    if meinh_req in {"PC", "EA", "PCS", "UNIT"}:
+                        psmng_str = str(int(round(qty_in)))
+                    else:
+                        psmng_str = f"{qty_in:.3f}".replace(".", ",")
 
-                # Ambil baris terbaru untuk dikembalikan
-                cur.execute("SELECT * FROM yppi019_data WHERE id=%s", (row_db["id"],))
-                latest_row = cur.fetchone()
+                    try:
+                        with connect_sap(u, p) as sap:
+                            sap_ret = sap.call(
+                                RFC_C,
+                                IV_AUFNR=pad_aufnr(aufnr),
+                                IV_VORNR=vornr,
+                                IV_PERNR=pernr,
+                                IV_PSMNG=psmng_str,
+                                IV_MEINH=meinh_req,
+                                IV_GSTRP=str(b.get("gstrp") or ""),
+                                IV_GLTRP=str(b.get("gltrp") or ""),
+                                IV_BUDAT=budat,
+                            )
+                    except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
+                        db.rollback()
+                        logger.exception("SAP error api_confirm")
+                        return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
 
-        # Kembali dengan format respons yang sama
+                    cur.execute(
+                        """
+                        INSERT INTO yppi019_confirm_log
+                          (AUFNR, VORNR, PERNR, PSMNG, MEINH, GSTRP, GLTRP, BUDAT, SAP_RETURN, created_at)
+                        VALUES
+                          (%s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,         %s)
+                        """,
+                        (
+                            aufnr,
+                            vornr,
+                            pernr,
+                            qty_in,
+                            meinh_req,
+                            parse_date(b.get("gstrp")),
+                            parse_date(b.get("gltrp")),
+                            parse_date(budat),
+                            json.dumps(to_jsonable(sap_ret), ensure_ascii=False),
+                            datetime.datetime.now(),
+                        ),
+                    )
+
+                    cur.execute(
+                        """
+                        UPDATE yppi019_data
+                        SET WEMNG = IFNULL(WEMNG,0) + %s,
+                            QTY_SPX = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
+                            fetched_at = NOW()
+                        WHERE id=%s
+                          AND (IFNULL(QTY_SPK,0) - IFNULL(WEMNG,0)) >= %s
+                          AND IFNULL(QTY_SPX,0) >= %s
+                        """,
+                        (qty_in, qty_in, row_db["id"], qty_in, qty_in),
+                    )
+
+                    if cur.rowcount != 1:
+                        db.rollback()
+                        return jsonify({"ok": False, "error": "Gagal update; sisa sudah berubah, silakan refresh"}), 409
+
+                    cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
+                    db.commit()
+
+                    cur.execute("SELECT * FROM yppi019_data WHERE id=%s", (row_db["id"],))
+                    latest_row = cur.fetchone()
+
+                finally:
+                    release_mutex(cur, f"aufnr:{aufnr}")
+
         return (
             jsonify(
                 {
@@ -523,7 +523,6 @@ def api_confirm():
 
     except Exception as e:
         logger.exception("Error api_confirm")
-        # upayakan rollback bila transaksi masih terbuka
         try:
             db.rollback()
         except Exception:
@@ -532,16 +531,7 @@ def api_confirm():
 
 @app.post("/api/yppi019/backdate-log")
 def api_backdate_log():
-    """
-    Simpan histori backdate (BUDAT ≠ today). Dipanggil FE setelah konfirmasi sukses.
-    Payload (JSON):
-      - aufnr (wajib), vornr, pernr, qty, meinh
-      - budat (wajib, 'YYYYMMDD'), today (wajib, 'YYYYMMDD')
-      - arbpl0, maktx, sap_return (opsional), confirmed_at (ISO8601, opsional)
-    """
     b = request.get_json(force=True) or {}
-
-    # Wajib
     for k in ("aufnr", "budat", "today"):
         if not str(b.get(k) or "").strip():
             return jsonify({"ok": False, "error": f"missing field: {k}"}), 400
@@ -551,14 +541,13 @@ def api_backdate_log():
     pernr   = (str(b.get("pernr") or "").strip() or None)
     qty     = parse_num(b.get("qty"))
     meinh   = (str(b.get("meinh") or "").strip() or None)
-    budat_s = str(b.get("budat")).strip()   # 'YYYYMMDD'
-    today_s = str(b.get("today")).strip()   # 'YYYYMMDD'
+    budat_s = str(b.get("budat")).strip()
+    today_s = str(b.get("today")).strip()
     arbpl0  = (str(b.get("arbpl0") or "").strip() or None)
     maktx   = (str(b.get("maktx") or "").strip() or None)
     sap_ret = b.get("sap_return")
     confirmed_at_s = (str(b.get("confirmed_at") or "").strip() or None)
 
-    # --- Parse tanggal di PYTHON (hindari STR_TO_DATE di SQL) ---
     from datetime import datetime, date
     try:
         budat_dt: date = datetime.strptime(budat_s, "%Y%m%d").date()
@@ -566,18 +555,14 @@ def api_backdate_log():
     except Exception:
         return jsonify({"ok": False, "error": "invalid date format (expected YYYYMMDD)"}), 400
 
-    # Guard (FE sudah memblok future-date, tapi kita validasi lagi)
     if budat_dt > today_dt:
         return jsonify({"ok": False, "error": "BUDAT cannot be in the future"}), 422
     if budat_dt == today_dt:
-        # bukan backdate -> tidak disimpan
         return jsonify({"ok": True, "skipped": True})
 
-    # Parse optional confirmed_at (ISO8601) ke datetime, kalau ada
     confirmed_dt = None
     if confirmed_at_s:
         try:
-            # dukung ...Z
             confirmed_dt = datetime.fromisoformat(confirmed_at_s.replace("Z", "+00:00"))
         except Exception:
             confirmed_dt = None
@@ -600,9 +585,6 @@ def api_backdate_log():
                         confirmed_dt
                     ),
                 )
-
-                # ▼▼▼ BARU: Pangkas otomatis, sisakan 50 baris terbaru (global) ▼▼▼
-                # Urutan "terbaru" ditentukan oleh COALESCE(CONFIRMED_AT, CREATED_AT) DESC lalu id DESC.
                 cur.execute("""
                 DELETE b
                 FROM yppi019_backdate_log b
@@ -615,33 +597,20 @@ def api_backdate_log():
                   ) t
                 ) old ON old.id = b.id
                 """)
-                # ▲▲▲ END BARU ▲▲▲
-
                 db.commit()
         return jsonify({"ok": True}), 200
     except Exception as e:
         logger.exception("Error api_backdate_log")
         return jsonify({"ok": False, "error": str(e)}), 500
 
-
-# -------- BARU: Endpoint untuk modal Histori Backdate --------
 @app.get("/api/yppi019/backdate-history")
 def api_backdate_history():
-    """
-    Ambil histori backdate terbaru.
-    Query:
-      - pernr (opsional tapi disarankan)
-      - aufnr (opsional; jika dikirim, memfilter 1 PRO)
-      - limit (default 50)
-      - order = 'asc' | 'desc' (default 'desc')
-    """
     ensure_tables()
     pernr = (request.args.get("pernr") or "").strip()
     aufnr = (request.args.get("aufnr") or "").strip()
     limit = request.args.get("limit", type=int) or 50
     order = (request.args.get("order") or "desc").lower()
     order_sql = "ASC" if order == "asc" else "DESC"
-    # batasi limit agar aman
     limit = max(1, min(int(limit), 500))
 
     try:
@@ -663,7 +632,6 @@ def api_backdate_history():
     except Exception as e:
         logger.exception("Error api_backdate_history")
         return jsonify({"ok": False, "error": str(e)}), 500
-# -------- END BARU --------
 
 if __name__ == "__main__":
     ensure_tables()
