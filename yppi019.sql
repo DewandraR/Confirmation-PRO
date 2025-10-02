@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 13, 2025 at 05:21 AM
+-- Generation Time: Oct 02, 2025 at 12:03 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.16
 
@@ -224,9 +224,14 @@ CREATE TABLE `yppi019_confirm_log` (
 --
 
 INSERT INTO `yppi019_confirm_log` (`id`, `AUFNR`, `VORNR`, `PERNR`, `PSMNG`, `MEINH`, `GSTRP`, `GLTRP`, `BUDAT`, `SAP_RETURN`, `created_at`) VALUES
-(26, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-11', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 11:33:27'),
-(27, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-10', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 13:52:17'),
-(28, '155000072353', '0020', '10006149', 1, 'PC', '2025-09-12', '2025-09-12', '2025-09-10', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000072353 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-12 14:09:27');
+(29, '155000081047', '0010', '10001463', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000081047 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 10:26:31'),
+(30, '155000081551', '0010', '10001463', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020278254 di 1001\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 10:26:33'),
+(31, '155000081047', '0010', '10001463', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"\", \"EV_SUBRC\": 0, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}, {\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"I\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Confirmation of order 155000081047 saved\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 10:48:48'),
+(32, '155000081551', '0010', '10001463', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020278254 di 1001\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 10:48:50'),
+(33, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020105628 di 1000\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 11:37:31'),
+(34, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020105628 di 1000\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 11:40:06'),
+(35, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020105628 di 1000\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 11:41:41'),
+(36, '155000072353', '0010', '10006149', 1, 'PC', '2025-09-25', '2025-09-25', '2025-09-25', '{\"EV_MSG\": \"Konfirmasi dibatalkan: stock tidak tersedia\", \"EV_SUBRC\": 1, \"IT_RETURN\": [{\"ID\": \"\", \"ROW\": 0, \"TYPE\": \"E\", \"FIELD\": \"\", \"LOG_NO\": \"\", \"NUMBER\": \"000\", \"SYSTEM\": \"\", \"MESSAGE\": \"Stock kosong untuk komponen 000000000020105628 di 1000\", \"PARAMETER\": \"\", \"LOG_MSG_NO\": \"000000\", \"MESSAGE_V1\": \"\", \"MESSAGE_V2\": \"\", \"MESSAGE_V3\": \"\", \"MESSAGE_V4\": \"\"}]}', '2025-09-25 11:45:46');
 
 -- --------------------------------------------------------
 
@@ -243,6 +248,8 @@ CREATE TABLE `yppi019_data` (
   `DISPO` varchar(10) DEFAULT NULL,
   `STEUS` varchar(8) DEFAULT NULL,
   `WERKS` varchar(10) DEFAULT NULL,
+  `KDAUF` varchar(20) DEFAULT NULL,
+  `KDPOS` varchar(10) DEFAULT NULL,
   `CHARG` varchar(20) DEFAULT NULL,
   `MATNRX` varchar(40) DEFAULT NULL,
   `MAKTX` varchar(200) DEFAULT NULL,
@@ -254,18 +261,13 @@ CREATE TABLE `yppi019_data` (
   `SNAME` varchar(100) DEFAULT NULL,
   `GSTRP` date DEFAULT NULL,
   `GLTRP` date DEFAULT NULL,
+  `SSAVD` date DEFAULT NULL,
+  `SSSLD` date DEFAULT NULL,
   `ISDZ` varchar(20) DEFAULT NULL,
   `IEDZ` varchar(20) DEFAULT NULL,
   `RAW_JSON` json NOT NULL,
   `fetched_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `yppi019_data`
---
-
-INSERT INTO `yppi019_data` (`id`, `AUFNR`, `VORNRX`, `PERNR`, `ARBPL0`, `DISPO`, `STEUS`, `WERKS`, `CHARG`, `MATNRX`, `MAKTX`, `MEINH`, `QTY_SPK`, `WEMNG`, `QTY_SPX`, `LTXA1`, `SNAME`, `GSTRP`, `GLTRP`, `ISDZ`, `IEDZ`, `RAW_JSON`, `fetched_at`) VALUES
-(2992, '361000015582', '0010', '10006149', 'WC223', 'MF3', 'ZP01', '3000', '4300019090', '90009702', 'MTL FERRULE F.024 VG 54X54X79MM PMR', 'ST', 36.000, 20.000, 16.000, 'MF POWDER COATING', 'MOCHAMAD FATANY RASIS', '2025-09-13', '2025-09-13', '', '', '{\"IEDZ\": \"\", \"ISDZ\": \"\", \"AUFNR\": \"361000015582\", \"CHARG\": \"4300019090\", \"DISPO\": \"MF3\", \"GLTRP\": \"13.09.2025\", \"GSTRP\": \"13.09.2025\", \"LTXA1\": \"MF POWDER COATING\", \"MAKTX\": \"MTL FERRULE F.024 VG 54X54X79MM PMR\", \"MANDT\": \"\", \"MEINH\": \"ST\", \"PERNR\": \"10006149\", \"SNAME\": \"MOCHAMAD FATANY RASIS\", \"STEUS\": \"ZP01\", \"WEMNG\": 20.0, \"WERKS\": \"3000\", \"ARBPL0\": \"WC223\", \"MATNRX\": \"90009702\", \"VORNRX\": \"10\", \"QTY_SPK\": 36.0, \"QTY_SPX\": 16.0}', '2025-09-13 12:12:02');
 
 --
 -- Indexes for dumped tables
@@ -354,7 +356,9 @@ ALTER TABLE `yppi019_data`
   ADD UNIQUE KEY `uniq_key` (`AUFNR`,`VORNRX`,`ARBPL0`,`CHARG`),
   ADD KEY `idx_aufnr` (`AUFNR`),
   ADD KEY `idx_pernr` (`PERNR`),
-  ADD KEY `idx_arbpl` (`ARBPL0`);
+  ADD KEY `idx_arbpl` (`ARBPL0`),
+  ADD KEY `idx_kdauf` (`KDAUF`),
+  ADD KEY `idx_kdpos` (`KDPOS`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -394,13 +398,13 @@ ALTER TABLE `yppi019_backdate_log`
 -- AUTO_INCREMENT for table `yppi019_confirm_log`
 --
 ALTER TABLE `yppi019_confirm_log`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `yppi019_data`
 --
 ALTER TABLE `yppi019_data`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2993;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15653;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
