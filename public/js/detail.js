@@ -119,6 +119,28 @@ const hasSapError = (ret) =>
     ["E", "A"].includes(String(e?.TYPE || "").toUpperCase())
   );
 
+// === NEW: normalisasi pesan error server (hindari "0") + handle 423 ===
+function mapServerErrorMessage(result) {
+  const status = result?.status || 0;
+  const j = result?.json || {};
+  const entries = collectSapReturnEntries(j.sap_return || {});
+  let msg =
+    entries.find((e) => ["E", "A"].includes(String(e?.TYPE || "").toUpperCase()) && e?.MESSAGE)?.MESSAGE ||
+    entries.find((e) => e?.MESSAGE)?.MESSAGE ||
+    j.error ||
+    j.message ||
+    "";
+
+  if (status === 423) {
+    // backend per-AUFNR lock
+    msg = j.error || "Sedang diproses oleh user lain. Coba lagi sebentar.";
+  }
+  if (!msg || /^\s*0\s*$/.test(String(msg))) {
+    msg = status >= 500 ? "Kesalahan server. Coba lagi." : "Gagal dikonfirmasi.";
+  }
+  return msg;
+}
+
 // Tangkap error global
 window.onerror = function (msg, src, line, col) {
   const em = document.getElementById("error-message");
@@ -636,8 +658,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         gstrp: today,
         gltrp: today,
         budat: pickedBudat,
-        _arbpl0: row.dataset.arbpl0 || "-",
-        _maktx: row.dataset.maktx || "-",
+        _arbpl0: row.dataset.arbpl0,
+        _maktx: row.dataset.maktx,
       };
     });
 
@@ -710,13 +732,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const failedHtml = failed
           .map((f) => {
             const { aufnr = "-", _arbpl0 = "-", _maktx = "-", psmng = "-" } = f.payload;
-            const entries = collectSapReturnEntries(f.json?.sap_return || {});
-            const errMsg =
-              entries.find((e) => ["E", "A"].includes(String(e?.TYPE || "").toUpperCase()) && e?.MESSAGE)
-                ?.MESSAGE ||
-              entries.find((e) => e?.MESSAGE)?.MESSAGE ||
-              f.json?.error ||
-              "Gagal dikonfirmasi.";
+            const errMsg = mapServerErrorMessage(f);
             return `<li class="space-y-1 p-2 bg-red-50 rounded-lg border border-red-200">
                 <div class="flex justify-between items-center text-sm font-semibold text-red-800">
                   <div class="flex-1 pr-3">❌ <span class="font-mono">${aufnr}</span> / <span class="font-mono">${_arbpl0}</span></div>
@@ -739,13 +755,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const lines = failed
           .map((f) => {
-            const entries = collectSapReturnEntries(f.json?.sap_return || {});
-            const errMsg =
-              entries.find((e) => ["E", "A"].includes(String(e?.TYPE || "").toUpperCase()) && e?.MESSAGE)
-                ?.MESSAGE ||
-              entries.find((e) => e?.MESSAGE)?.MESSAGE ||
-              f.json?.error ||
-              "Gagal dikonfirmasi.";
+            const errMsg = mapServerErrorMessage(f);
             return `PRO ${f.payload?.aufnr || "-"} (${f.payload?.psmng || "-" }): ${errMsg}`;
           })
           .join("<br>");

@@ -37,10 +37,23 @@ def connect_mysql():
     )
 
 # -------- Advisory lock helpers (connection-scoped) --------
+def _fetch_scalar(cur):
+    row = cur.fetchone()
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        # Ambil nilai kolom tunggal (GET_LOCK(...) atau RELEASE_LOCK(...))
+        return next(iter(row.values()))
+    return row[0]
+
 def acquire_mutex(cur, key: str, timeout: int = 8):
     """Ambil mutex bernama yppi019:<key>. Timeout detik."""
     cur.execute("SELECT GET_LOCK(%s, %s)", (f"yppi019:{key}", timeout))
-    got = cur.fetchone()[0]
+    got = _fetch_scalar(cur)
+    try:
+        got = int(got)
+    except (TypeError, ValueError):
+        got = 0
     if got != 1:
         raise RuntimeError(f"Resource busy for key={key}")
 
@@ -48,8 +61,7 @@ def release_mutex(cur, key: str):
     """Lepas mutex bernama yppi019:<key> (idempotent)."""
     try:
         cur.execute("SELECT RELEASE_LOCK(%s)", (f"yppi019:{key}",))
-        # FIX: consume result agar tidak "Unread result found"
-        cur.fetchone()
+        _fetch_scalar(cur)  # consume result; cegah "Unread result found"
     except Exception:
         pass
 
