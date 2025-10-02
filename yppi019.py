@@ -1,4 +1,4 @@
-# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found"
+# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS
 import os, re, json, logging, decimal, datetime, base64
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -7,6 +7,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import mysql.connector
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
+from flask import jsonify, request
 
 load_dotenv()
 app = Flask(__name__)
@@ -23,6 +24,7 @@ HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
 HTTP_PORT = int(os.getenv("HTTP_PORT", "5036"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
+RFC_H = "Z_FM_YPPR062"      # HASIL (baru)
 
 CONFIRM_LOG_KEEP_DAYS = int(os.getenv("CONFIRM_LOG_KEEP_DAYS", "0"))
 
@@ -155,6 +157,16 @@ def pad_aufnr(v: Any) -> str:
     s = re.sub(r"\D", "", str(v or ""))
     return s.zfill(12) if s else ""
 
+# --- NEW: zero-pad item SO 6 digit (000010, 000020, ...) ---
+def pad_kdpos(v: Any) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    try:
+        return f"{int(float(s)):06d}"
+    except Exception:
+        return s.zfill(6)
+
 def to_jsonable(o: Any) -> Any:
     if isinstance(o, (str, int, float, bool, type(None))): return o
     if isinstance(o, decimal.Decimal): return float(o)
@@ -167,7 +179,6 @@ def normalize_uom(meinh: Any) -> str:
     u = str(meinh or "").strip().upper()
     return "PC" if u == "ST" else u
 
-# --- Humanize SAP/pyrfc error messages ---
 def humanize_rfc_error(err: Exception) -> str:
     s = str(err or "")
     m = re.search(r'message=([^[]+)', s)
@@ -184,14 +195,42 @@ def ensure_tables():
         with db.cursor() as cur:
             cur.execute("""
             CREATE TABLE IF NOT EXISTS yppi019_data (
-              id BIGINT AUTO_INCREMENT PRIMARY KEY, AUFNR VARCHAR(20) NOT NULL, VORNRX VARCHAR(10) NULL,
-              PERNR VARCHAR(20) NULL, ARBPL0 VARCHAR(40) NULL, DISPO VARCHAR(10) NULL, STEUS VARCHAR(8) NULL,
-              WERKS VARCHAR(10) NULL, CHARG VARCHAR(20) NULL, MATNRX VARCHAR(40) NULL, MAKTX VARCHAR(200) NULL,
-              MEINH VARCHAR(10) NULL, QTY_SPK DECIMAL(18,3) NULL, WEMNG DECIMAL(18,3) NULL, QTY_SPX DECIMAL(18,3) NULL,
-              LTXA1 VARCHAR(200) NULL, SNAME VARCHAR(100) NULL, GSTRP DATE NULL, GLTRP DATE NULL,
-              ISDZ VARCHAR(20) NULL, IEDZ VARCHAR(20) NULL, RAW_JSON JSON NOT NULL, fetched_at DATETIME NOT NULL,
-              UNIQUE KEY uniq_key (AUFNR, VORNRX, CHARG, ARBPL0), KEY idx_aufnr (AUFNR), KEY idx_pernr (PERNR),
-              KEY idx_arbpl (ARBPL0), KEY idx_steus (STEUS), KEY idx_werks (WERKS)
+              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+              AUFNR VARCHAR(20) NOT NULL,
+              VORNRX VARCHAR(10) NULL,
+              PERNR VARCHAR(20) NULL,
+              ARBPL0 VARCHAR(40) NULL,
+              DISPO VARCHAR(10) NULL,
+              STEUS VARCHAR(8) NULL,
+              WERKS VARCHAR(10) NULL,
+              -- NEW: Sales Order & Item
+              KDAUF VARCHAR(20) NULL,
+              KDPOS VARCHAR(10) NULL,
+              CHARG VARCHAR(20) NULL,
+              MATNRX VARCHAR(40) NULL,
+              MAKTX VARCHAR(200) NULL,
+              MEINH VARCHAR(10) NULL,
+              QTY_SPK DECIMAL(18,3) NULL,
+              WEMNG DECIMAL(18,3) NULL,
+              QTY_SPX DECIMAL(18,3) NULL,
+              LTXA1 VARCHAR(200) NULL,
+              SNAME VARCHAR(100) NULL,
+              GSTRP DATE NULL,
+              GLTRP DATE NULL,
+              SSAVD DATE NULL,
+              SSSLD DATE NULL,
+              ISDZ VARCHAR(20) NULL,
+              IEDZ VARCHAR(20) NULL,
+              RAW_JSON JSON NOT NULL,
+              fetched_at DATETIME NOT NULL,
+              UNIQUE KEY uniq_key (AUFNR, VORNRX, CHARG, ARBPL0),
+              KEY idx_aufnr (AUFNR),
+              KEY idx_pernr (PERNR),
+              KEY idx_arbpl (ARBPL0),
+              KEY idx_steus (STEUS),
+              KEY idx_werks (WERKS),
+              KEY idx_kdauf (KDAUF),
+              KEY idx_kdpos (KDPOS)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
             cur.execute("""
@@ -225,7 +264,38 @@ def ensure_tables():
             db.commit()
 
 def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
-    return {"AUFNR": (r.get("AUFNR") or "").strip(), "VORNRX": pad_vornr(r.get("VORNRX") or r.get("VORNR") or ""),"PERNR": (str(r.get("PERNR") or "").strip() or None),"ARBPL0": (r.get("ARBPL0") or r.get("ARBPL") or None),"DISPO": r.get("DISPO"), "STEUS": r.get("STEUS"), "WERKS": r.get("WERKS"),"CHARG": (str(r.get("CHARG") or "").strip()), "MATNRX": r.get("MATNRX"), "MAKTX": r.get("MAKTX"),"MEINH": r.get("MEINH"), "QTY_SPK": parse_num(r.get("QTY_SPK")), "WEMNG": parse_num(r.get("WEMNG")),"QTY_SPX": parse_num(r.get("QTY_SPX")), "LTXA1": r.get("LTXA1"), "SNAME": r.get("SNAME"),"GSTRP": parse_date(r.get("GSTRP")), "GLTRP": parse_date(r.get("GLTRP")), "ISDZ": r.get("ISDZ"), "IEDZ": r.get("IEDZ"),"RAW_JSON": json.dumps(to_jsonable(r), ensure_ascii=False), "fetched_at": datetime.datetime.now(),}
+    return {
+        "AUFNR": (r.get("AUFNR") or "").strip(),
+        "VORNRX": pad_vornr(r.get("VORNRX") or r.get("VORNR") or ""),
+        "PERNR": (str(r.get("PERNR") or "").strip() or None),
+        "ARBPL0": (r.get("ARBPL0") or r.get("ARBPL") or None),
+        "DISPO": r.get("DISPO"),
+        "STEUS": r.get("STEUS"),
+        "WERKS": r.get("WERKS"),
+        # NEW: Sales Order & Item dari SAP jika tersedia
+        "KDAUF": (r.get("KDAUF") or None),
+        "KDPOS": (pad_kdpos(r.get("KDPOS")) or None),
+
+        "CHARG": (str(r.get("CHARG") or "").strip()),
+        "MATNRX": r.get("MATNRX"),
+        "MAKTX": r.get("MAKTX"),
+        "MEINH": r.get("MEINH"),
+        "QTY_SPK": parse_num(r.get("QTY_SPK")),
+        "WEMNG": parse_num(r.get("WEMNG")),
+        "QTY_SPX": parse_num(r.get("QTY_SPX")),
+        "LTXA1": r.get("LTXA1"),
+        "SNAME": r.get("SNAME"),
+        "GSTRP": parse_date(r.get("GSTRP")),
+        "GLTRP": parse_date(r.get("GLTRP")),
+        # ➕ BARU: tanggal start/finish dari SAP (format apa pun → dinormalisasi oleh parse_date)
+        "SSAVD": parse_date(r.get("SSAVD")),
+        "SSSLD": parse_date(r.get("SSSLD")),
+        "ISDZ": r.get("ISDZ"),
+        "IEDZ": r.get("IEDZ"),
+        "RAW_JSON": json.dumps(to_jsonable(r), ensure_ascii=False),
+        "fetched_at": datetime.datetime.now(),
+    }
+
 
 # ---------------- READ from SAP & sync ----------------
 def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], arbpl: Optional[str], werks: Optional[str]) -> List[Dict[str, Any]]:
@@ -349,24 +419,47 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
                             cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
                         wiped = cur.rowcount
 
-                        # Insert ulang rows milik AUFNR ini (pola save_rows lama)
+                        # Insert ulang rows milik AUFNR ini (pola save_rows lama) + KDAUF/KDPOS
                         cur.executemany("""
-                            INSERT INTO yppi019_data
-                             (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,CHARG,MATNRX,MAKTX,MEINH,QTY_SPK,WEMNG,QTY_SPX,
-                              LTXA1,SNAME,GSTRP,GLTRP,ISDZ,IEDZ,RAW_JSON,fetched_at)
-                            VALUES (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,%(CHARG)s,%(MATNRX)s,%(MAKTX)s,%(MEINH)s,
-                              %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
-                            ON DUPLICATE KEY UPDATE
-                              PERNR=VALUES(PERNR), ARBPL0=VALUES(ARBPL0), DISPO=VALUES(DISPO), STEUS=VALUES(STEUS), WERKS=VALUES(WERKS),
-                              CHARG=VALUES(CHARG), MATNRX=VALUES(MATNRX), MAKTX=VALUES(MAKTX), MEINH=VALUES(MEINH), QTY_SPK=VALUES(QTY_SPK),
-                              WEMNG=VALUES(WEMNG), LTXA1=VALUES(LTXA1), SNAME=VALUES(SNAME), GSTRP=VALUES(GSTRP), GLTRP=VALUES(GLTRP),
-                              ISDZ=VALUES(ISDZ), IEDZ=VALUES(IEDZ), RAW_JSON=VALUES(RAW_JSON), fetched_at=VALUES(fetched_at),
-                              QTY_SPX=CASE
-                                         WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX
-                                         WHEN QTY_SPX IS NULL THEN VALUES(QTY_SPX)
-                                         ELSE LEAST(QTY_SPX, VALUES(QTY_SPX))
-                                      END
-                        """, by_aufnr[a])
+    INSERT INTO yppi019_data
+     (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,
+      KDAUF,KDPOS,
+      CHARG,MATNRX,MAKTX,MEINH,
+      QTY_SPK,WEMNG,QTY_SPX,LTXA1,SNAME,GSTRP,GLTRP,SSAVD,SSSLD,ISDZ,IEDZ,RAW_JSON,fetched_at)
+    VALUES (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,
+      %(KDAUF)s,%(KDPOS)s,
+      %(CHARG)s,%(MATNRX)s,%(MAKTX)s,%(MEINH)s,
+      %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(SSAVD)s,%(SSSLD)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
+    ON DUPLICATE KEY UPDATE
+      PERNR=VALUES(PERNR),
+      ARBPL0=VALUES(ARBPL0),
+      DISPO=VALUES(DISPO),
+      STEUS=VALUES(STEUS),
+      WERKS=VALUES(WERKS),
+      KDAUF=VALUES(KDAUF),
+      KDPOS=VALUES(KDPOS),
+      CHARG=VALUES(CHARG),
+      MATNRX=VALUES(MATNRX),
+      MAKTX=VALUES(MAKTX),
+      MEINH=VALUES(MEINH),
+      QTY_SPK=VALUES(QTY_SPK),
+      WEMNG=VALUES(WEMNG),
+      LTXA1=VALUES(LTXA1),
+      SNAME=VALUES(SNAME),
+      GSTRP=VALUES(GSTRP),
+      GLTRP=VALUES(GLTRP),
+      SSAVD=VALUES(SSAVD),
+      SSSLD=VALUES(SSSLD),
+      ISDZ=VALUES(ISDZ),
+      IEDZ=VALUES(IEDZ),
+      RAW_JSON=VALUES(RAW_JSON),
+      fetched_at=VALUES(fetched_at),
+      QTY_SPX=CASE
+                 WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX
+                 WHEN QTY_SPX IS NULL THEN VALUES(QTY_SPX)
+                 ELSE LEAST(QTY_SPX, VALUES(QTY_SPX))
+              END
+""", by_aufnr[a])
 
                         saved = cur.rowcount
                         db.commit()
@@ -414,21 +507,63 @@ def sap_login():
     except Exception as e: logger.exception("SAP login failed"); return jsonify({"error": str(e)}), 401
 
 @app.get("/api/yppi019")
-def api_get():
+def api_get_yppi019():
+    """
+    GET /api/yppi019
+    Selalu kembalikan SEMUA data yang match filter (tanpa limit),
+    sekalipun client mengirim ?limit=...
+    Filter: aufnr, vornrx, charg, steus, pernr, arbpl, werks
+    Kondisi stok wajib:
+      (IFNULL(QTY_SPX,0) > 0 AND IFNULL(WEMNG,0) < IFNULL(QTY_SPK,0))
+    """
     ensure_tables()
-    params = {"AUFNR": request.args.get("aufnr"), "VORNRX": request.args.get("vornrx"),"CHARG": request.args.get("charg"), "STEUS": request.args.get("steus"),"PERNR": request.args.get("pernr"), "ARBPL0": request.args.get("arbpl"),"WERKS": request.args.get("werks")}
-    limit = request.args.get("limit", type=int) or 100
+
+    get = request.args.get
+    params = {
+        "AUFNR":  get("aufnr"),
+        "VORNRX": get("vornrx"),
+        "CHARG":  get("charg"),
+        "STEUS":  get("steus"),
+        "PERNR":  get("pernr"),
+        "ARBPL0": get("arbpl"),
+        "WERKS":  get("werks"),
+    }
+
+    # WHERE
+    where_parts, args = [], []
+    for k, v in params.items():
+        if v not in (None, ""):
+            where_parts.append(f"{k}=%s")
+            args.append(v)
+
+    where_parts.append("(IFNULL(QTY_SPX, 0) > 0 AND IFNULL(WEMNG, 0) < IFNULL(QTY_SPK, 0))")
+    where_sql = " WHERE " + " AND ".join(where_parts) if where_parts else ""
+
+    # ORDER BY (mengikuti logika bawaan)
+    if params.get("AUFNR") and not params.get("ARBPL0"):
+        order_sql = " ORDER BY VORNRX ASC"
+    else:
+        order_sql = " ORDER BY AUFNR ASC, VORNRX ASC"
+
+    base_from = "FROM yppi019_data"
+    data_sql  = f"SELECT * {base_from}{where_sql}{order_sql}"     # <— TANPA LIMIT
+    count_sql = f"SELECT COUNT(*) AS total {base_from}{where_sql}"
+
     with connect_mysql() as db:
         with db.cursor(dictionary=True) as cur:
-            sql = "SELECT * FROM yppi019_data"
-            cond, args = [f"{k}=%s" for k, v in params.items() if v], [v for v in params.values() if v]
-            where_clauses = cond
-            where_clauses.append("(IFNULL(QTY_SPX, 0) > 0 AND IFNULL(WEMNG, 0) < IFNULL(QTY_SPK, 0))")
-            if where_clauses: sql += " WHERE " + " AND ".join(where_clauses)
-            sql += " ORDER BY VORNRX ASC" if params.get("AUFNR") and not params.get("ARBPL0") else " ORDER BY AUFNR ASC, VORNRX ASC"
-            sql += " LIMIT %s"; args.append(limit)
-            cur.execute(sql, tuple(args))
-            return jsonify({"ok": True, "rows": to_jsonable(cur.fetchall())})
+            cur.execute(count_sql, tuple(args))
+            total = int((cur.fetchone() or {"total": 0})["total"])
+
+            cur.execute(data_sql, tuple(args))
+            rows = cur.fetchall() or []
+
+    return jsonify({
+        "ok": True,
+        "filters": {k: v for k, v in params.items() if v not in (None, "")},
+        "total": total,          # jumlah match (tanpa limit)
+        "returned": len(rows),   # harus = total
+        "rows": to_jsonable(rows),
+    })
 
 @app.post("/api/yppi019/sync")
 def api_sync():
@@ -466,6 +601,110 @@ def api_sync():
     status = 200 if res.get("ok") else 500
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
+
+
+
+# --- helper kecil (taruh sekali saja di file ini, di atas route) ---
+def _is_message_table(rows) -> bool:
+    """
+    Deteksi tabel pesan (BAPIRET2-like). Jika true, jangan dipakai sebagai data.
+    """
+    if not isinstance(rows, list) or not rows:
+        return False
+    first = rows[0]
+    if not isinstance(first, dict):
+        return False
+    msg_keys = {
+        "TYPE","ID","NUMBER","MESSAGE","PARAMETER","FIELD","SYSTEM",
+        "LOG_MSG_NO","LOG_NO","ROW","MESSAGE_V1","MESSAGE_V2","MESSAGE_V3","MESSAGE_V4"
+    }
+    keys = {str(k).upper() for k in first.keys()}
+    return keys.issubset(msg_keys)
+
+
+# --- ENDPOINT FINAL: /api/yppi019/hasil ---
+@app.get("/api/yppi019/hasil")
+def api_hasil():
+    """
+    GET /api/yppi019/hasil?pernr=XXXXXX&budat=YYYYMMDD[&aufnr=XXXXXXXXXXXX]
+    Auth: Basic (Authorization) atau X-SAP-Username/X-SAP-Password seperti endpoint lain.
+
+    Panggil RFC:
+        Z_FM_YPPR062(P_PERNR=?, P_BUDAT=?, [P_AUFNR=?])
+    Baca data dari:
+        T_DATA1  (struktur YPPR062)
+    Pesan SAP:
+        RETURN   (BAPIRET2) -> jika ada TYPE E/A dikembalikan sebagai error 502
+    """
+    try:
+        username, password = get_credentials_from_request()
+    except ValueError as ve:
+        return jsonify({"ok": False, "error": str(ve)}), 401
+
+    pernr = (request.args.get("pernr") or "").strip()
+    budat = (request.args.get("budat") or "").strip().replace("-", "")
+    aufnr = (request.args.get("aufnr") or "").strip()  # opsional
+
+    if not pernr or not re.match(r"^\d{8}$", budat):
+        return jsonify({"ok": False, "error": "param pernr & budat(YYYYMMDD) wajib"}), 400
+
+    try:
+        with connect_sap(username, password) as sap:
+            args = {"P_PERNR": pernr, "P_BUDAT": budat}
+            if aufnr:
+                # zero-pad 12 digit kalau user mengirimkan PRO
+                args["P_AUFNR"] = pad_aufnr(aufnr)
+
+            logger.info("Calling Z_FM_YPPR062 with %s", args)
+            res = sap.call("Z_FM_YPPR062", **args)
+
+            # Ambil tabel pasti sesuai metadata
+            rows = res.get("T_DATA1", []) or []
+            messages = res.get("RETURN", []) or []
+
+            # ===== Tambahan LOG =====
+            # ringkasan jumlah baris & pesan
+            logger.info(
+                "Z_FM_YPPR062 -> rows=%d, messages=%d",
+                len(rows), len(messages)
+            )
+            # log sebagian kolom dari baris pertama untuk verifikasi struktur
+            if rows and isinstance(rows, list) and isinstance(rows[0], dict):
+                sample_keys = list(rows[0].keys())[:8]
+                sample_row  = {k: rows[0].get(k) for k in sample_keys}
+                logger.debug("Z_FM_YPPR062 first_row_keys=%s sample=%s", sample_keys, sample_row)
+            # ringkasan jenis pesan (S/W/I/E/A) jika ada
+            if messages:
+                kinds = [str(m.get("TYPE", "")).upper() for m in messages]
+                logger.info("Z_FM_YPPR062 message_types=%s", ",".join(kinds))
+
+            # Jika RETURN ada TYPE E/A, anggap error dari SAP
+            err = next((m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")), None)
+            if err:
+                msg = err.get("MESSAGE") or str(err)
+                logger.warning("Z_FM_YPPR062 returned error: %s", msg)
+                return jsonify({"ok": False, "error": msg, "messages": to_jsonable(messages)}), 502
+
+            # Jangan kirim tabel pesan sebagai data
+            if _is_message_table(rows):
+                rows = []
+
+            payload = {
+                "ok": True,
+                "rows": to_jsonable(rows),
+                "messages": to_jsonable(messages),
+                "count": len(rows),
+            }
+            return jsonify(payload), 200
+
+    except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    except Exception as e:
+        logger.exception("Error api_hasil")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
 
 # ---------------- Confirm & Other Endpoints ----------------
 @app.post("/api/yppi019/confirm")

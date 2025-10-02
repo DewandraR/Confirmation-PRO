@@ -208,6 +208,34 @@ class Yppi019DbApiController extends Controller
         ]);
     }
 
+    /** ➕ Baru: proxy hasil konfirmasi (RFC Z_FM_YPPR062) */
+    public function hasil(Request $req)
+    {
+        $pernr = trim((string)$req->query('pernr', ''));
+        $budat = preg_replace('/-/', '', (string)$req->query('budat', ''));
+
+        if ($pernr === '' || !preg_match('/^\d{8}$/', $budat)) {
+            return response()->json(['ok' => false, 'error' => 'param pernr & budat(YYYYMMDD) wajib'], 400);
+        }
+
+        try {
+            $res = Http::withHeaders($this->sapHeaders())
+                ->acceptJson()
+                ->timeout(60)
+                ->get($this->flaskBase() . '/api/yppi019/hasil', [
+                    'pernr' => $pernr,
+                    'budat' => $budat,
+                ]);
+
+            return response($res->body(), $res->status())
+                ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+        } catch (ConnectionException $e) {
+            return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+        } catch (Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function confirm(Request $req)
     {
         $payload = $req->validate([

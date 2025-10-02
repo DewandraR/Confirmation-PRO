@@ -84,6 +84,49 @@
               <label for="selectAll" class="text-sm text-slate-600 font-medium">Pilih Semua</label>
             </div>
 
+            {{-- ===== QUICK DATE FILTERS (NEW) ===== --}}
+            <div class="w-full md:w-auto">
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="fltToday"
+                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                  Today
+                </button>
+                <button id="fltOutgoing"
+                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                  Outgoing
+                </button>
+                <button id="fltPeriod"
+                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                  Period
+                </button>
+
+                <!-- tambahkan di samping tombol Period -->
+<button type="button" id="fltAllDate"
+  class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+  All date
+</button>
+
+
+                {{-- Range picker hanya saat Period aktif --}}
+                <div id="periodPicker" class="hidden items-center gap-2 ml-1">
+                  <input type="date" id="periodFrom"
+                         class="px-2 py-1.5 rounded-md border border-slate-300 text-sm">
+                  <span class="text-slate-400 text-sm">s/d</span>
+                  <input type="date" id="periodTo"
+                         class="px-2 py-1.5 rounded-md border border-slate-300 text-sm">
+                  <button id="applyPeriod"
+                          class="px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700">
+                    Terapkan
+                  </button>
+                  <button id="clearFilter"
+                          class="px-2 py-1.5 rounded-md text-sm text-slate-600 hover:underline">
+                    Bersihkan
+                  </button>
+                </div>
+              </div>
+            </div>
+            {{-- ===== END QUICK DATE FILTERS ===== --}}
+
             <div class="flex items-center gap-6 mt-3 sm:mt-0">
               <div class="flex items-center gap-2">
                 <label for="budat-input-text" class="text-xs text-slate-500 font-bold">Posting Date</label>
@@ -147,9 +190,15 @@
                     </div>
                   </th>
                   <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 w-16">No</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">PRO</th>
+                  <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">PRO</th>
+
+                  {{-- ====== TAMBAHAN BARU (sinkron dengan detail.js) ====== --}}
+                  
+                  <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px]">Qty_PRO</th>
+                  {{-- ====== AKHIR TAMBAHAN ====== --}}
+
                   <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Qty Input</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">Act Desc</th>
+                  {{-- <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">Act Desc</th> --}}
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">MRP</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">Control Key</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Material</th>
@@ -157,6 +206,11 @@
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Work Center</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">NIK Operator</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Nama Operator</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Start</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Finish</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[130px]">Sales Order</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[90px]">Item</th>
+
                 </tr>
               </thead>
               <tbody id="tableBody" class="bg-white divide-y divide-slate-200"></tbody>

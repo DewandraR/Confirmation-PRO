@@ -157,6 +157,18 @@
               </div>
               <label class="text-xs font-medium text-slate-700">PRO</label>
               <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
+
+              {{-- ⬇️ Tombol Hasil Konfirmasi (baru) --}}
+              <button type="button" id="openHasilKonfirmasi"
+                      class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                             bg-gradient-to-r from-emerald-600 to-blue-900 text-white shadow
+                             hover:from-emerald-700 hover:to-blue-900 active:scale-[0.98] transition min-w-[140px] justify-center"
+                      title="Lihat hasil konfirmasi">
+                <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z"/>
+                </svg>
+                Hasil Konfirmasi
+              </button>
             </div>
             <div class="relative group">
               <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2 flex-wrap">
@@ -369,6 +381,50 @@
     </div>
   </div>
 </div>
+
+{{-- ⬇️ Modal Hasil Konfirmasi (baru) --}}
+<!-- Modal Hasil Konfirmasi -->
+<div id="hasilModal"
+     class="fixed inset-0 z-[100] hidden"
+     aria-hidden="true">
+  <!-- backdrop -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
+
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-blue-900 text-white">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z"/></svg>
+          <h3 class="font-semibold">Hasil Konfirmasi</h3>
+        </div>
+        <p class="text-white/80 text-xs">Masukkan NIK dan tanggal untuk membuka halaman hasil.</p>
+      </div>
+
+      <form id="hasilForm" class="px-5 py-4 space-y-3">
+        <div>
+          <label class="text-xs text-slate-600">NIK Operator (PERNR) <span class="text-red-600">*</span></label>
+          <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                 placeholder="contoh: 100234" required>
+        </div>
+        <div>
+          <label class="text-xs text-slate-600">Tanggal (BUDAT) <span class="text-red-600">*</span></label>
+          <input id="hasil-budat" name="budat" type="date"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                 required>
+          <p class="text-[11px] text-slate-500 mt-1">Format akan dikirim sebagai <code>YYYYMMDD</code>.</p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" id="hasilCancel"
+                  class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>
+          <button type="submit"
+                  class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Lanjutkan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 @endsection
 
 @push('head')
@@ -424,4 +480,3 @@
 @push('scripts')
 <script src="{{ asset('js/scan.js') }}"></script>
 @endpush
-

@@ -21,6 +21,13 @@ function apiPost(url, payload) {
 
 // ===== Helpers umum =====
 const padVornr = (v) => String(parseInt(v || "0", 10)).padStart(4, "0");
+// NEW: pad item SO ke 6 digit
+const padKdpos = (v) => {
+  const n = String(v ?? "").trim();
+  if (!n) return "";
+  const x = parseInt(n, 10);
+  return Number.isFinite(x) ? String(x).padStart(6, "0") : n.padStart(6, "0");
+};
 
 // Terima dd.mm.yyyy, dd/mm/yyyy, atau yyyy-mm-dd -> yyyymmdd
 const toYYYYMMDD = (d) => {
@@ -239,6 +246,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const clearSearch = document.getElementById("clearSearch");
   const shownCountEl = document.getElementById("shownCount");
 
+  // Quick date filter controls
+  const fltToday = document.getElementById("fltToday");
+  const fltOutgoing = document.getElementById("fltOutgoing");
+  const fltPeriod = document.getElementById("fltPeriod");
+  const fltAllDate = document.getElementById("fltAllDate"); // <-- NEW
+  const periodPicker = document.getElementById("periodPicker");
+  const periodFrom = document.getElementById("periodFrom");
+  const periodTo = document.getElementById("periodTo");
+  const applyPeriod = document.getElementById("applyPeriod");
+  const clearFilterBtn = document.getElementById("clearFilter");
+
   // Header: PERNR/AUFNR/WC
   if (headAUFNR) {
     let headText = "-";
@@ -353,7 +371,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!rowsAll.length) {
     tableBody.innerHTML =
-      '<tr><td colspan="12" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>';
+      '<tr><td colspan="17" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>';
     totalItems.textContent = "0";
     if (shownCountEl) shownCountEl.textContent = "0";
     return;
@@ -374,15 +392,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   tableBody.innerHTML = rowsAll
     .map((r, i) => {
       const vornr = padVornr(r.VORNRX || r.VORNR || "0");
-      const qtySPK = parseFloat(r.QTY_SPK ?? 0);
+      const qtySPK = parseFloat(r.QTY_SPK ?? 0); // Qty_PRO
       const weMng = parseFloat(r.WEMNG ?? 0);
       const qtySPX = parseFloat(r.QTY_SPX ?? 0);
       const sisaSPK = Math.max(qtySPK - weMng, 0);
       const maxAllow = Math.max(0, Math.min(qtySPX, sisaSPK));
       const meinh = (r.MEINH || "ST").toUpperCase();
 
+      // === NEW: normalisasi SSAVD/SSSLD
+      const ssavdYMD = toYYYYMMDD(r.SSAVD);
+      const sssldYMD = toYYYYMMDD(r.SSSLD);
+      const ssavdDMY =
+        ssavdYMD && ssavdYMD.length === 8
+          ? `${ssavdYMD.slice(6, 8)}/${ssavdYMD.slice(4, 6)}/${ssavdYMD.slice(0, 4)}`
+          : "";
+      const sssldDMY =
+        sssldYMD && sssldYMD.length === 8
+          ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(4, 6)}/${sssldYMD.slice(0, 4)}`
+          : "";
+
       const searchStr = [
         r.AUFNR,
+        
         r.MATNRX,
         r.MAKTX,
         r.LTXA1,
@@ -392,9 +423,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         vornr,
         r.PERNR || "",
         r.SNAME || "",
+        ssavdDMY,
+        sssldDMY,
+        r.KDAUF,               // NEW: cari berdasarkan SO
+        r.KDPOS,               // NEW: cari berdasarkan Item
+        qtySPK                 // NEW: bisa cari Qty_PRO
       ]
         .map(toKey)
         .join(" ");
+
+      const kdpos6 = padKdpos(r.KDPOS);
 
       return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
         data-aufnr="${r.AUFNR || ""}" data-vornr="${vornr}" data-pernr="${
@@ -403,6 +441,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-meinh="${r.MEINH || "ST"}" data-gstrp="${toYYYYMMDD(r.GSTRP)}" data-gltrp="${toYYYYMMDD(
         r.GLTRP
       )}"
+        data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
         data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-search="${searchStr}">
@@ -410,23 +449,28 @@ document.addEventListener("DOMContentLoaded", async () => {
           <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
         </td>
         <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
-          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${
-            i + 1
-          }</div>
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${i + 1}</div>
         </td>
         <td class="px-3 py-3 text-sm font-semibold text-slate-900">${r.AUFNR || "-"}</td>
+        <!-- NEW: SO & Item & Qty_PRO -->
+        
+        <td class="align-middle">
+  <div
+    class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto"
+  >
+    ${Number.isFinite(qtySPK) ? qtySPK : "-"}
+  </div>
+</td>
+
+        <!-- END NEW -->
         <td class="px-3 py-3 text-sm text-slate-700 text-center">
           <input type="number" name="QTY_SPX" class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
               value="0" placeholder="0" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
-              step="${meinh === "M3" ? "0.001" : "1"}" inputmode="${
-        meinh === "M3" ? "decimal" : "numeric"
-      }"
+              step="${meinh === "M3" ? "0.001" : "1"}" inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
               title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"/>
-          <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(
-        meinh
-      )})</div>
+          <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(meinh)})</div>
         </td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.LTXA1 || "-"}</td>
+       
         <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
@@ -434,12 +478,61 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="px-3 py-3 text-sm text-slate-700">${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.PERNR || IV_PERNR || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || '-'}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.KDAUF || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${kdpos6 || "-"}</td>
+
       </tr>`;
     })
     .join("");
 
-  // === SEARCH/FILTER berbasis data-search ===
+  // === SEARCH/FILTER berbasis data-search + quick date filters ===
   const normTxt = (s) => String(s || "").toLowerCase();
+
+  // Quick date filter state
+  let dateFilterMode = "none"; // 'none' | 'today' | 'outgoing' | 'period'
+  let qCurrent = ""; // current search query (lowercased)
+  let pfYMD = ""; // period from yyyymmdd
+  let ptYMD = ""; // period to yyyymmdd
+
+  function ymdToday() {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  }
+
+  function rowPassesDateFilter(tr) {
+    if (dateFilterMode === "none") return true;
+
+    const ss = (tr.dataset.ssavd || "").replace(/\D/g, "");
+    const ee = (tr.dataset.sssld || "").replace(/\D/g, "");
+    if (!ss && !ee) return false;
+
+    if (dateFilterMode === "today") {
+      const t = ymdToday();
+      return ss === t; // SSAVD persis hari ini
+    }
+
+    if (dateFilterMode === "outgoing") {
+      const t = ymdToday();
+      const s = ss || t;
+      const e = ee || t;
+      return s <= t && t <= e; // di rentang
+    }
+
+    if (dateFilterMode === "period") {
+      if (!pfYMD || !ptYMD) return true; // belum pilih -> tampilkan semua
+      const s = ss || "00000000";
+      const e = ee || "99991231";
+      // tampilkan jika overlap antara [s,e] dan [pf,pt]
+      return !(e < pfYMD || s > ptYMD);
+    }
+
+    return true;
+  }
+
   function visibleRowCheckboxes() {
     return Array.from(tableBody.querySelectorAll("tr"))
       .filter((tr) => tr.style.display !== "none")
@@ -451,11 +544,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectedCountSpan.textContent = count;
     confirmButton.disabled = count === 0;
   }
-  function filterRows(q) {
-    const query = normTxt(q).trim();
+
+  function applyFilters() {
     let shown = 0;
     tableBody.querySelectorAll("tr").forEach((tr) => {
-      const hit = query.length === 0 ? true : (tr.dataset.search || "").includes(query);
+      const searchHit =
+        qCurrent.length === 0 ? true : (tr.dataset.search || "").includes(qCurrent);
+      const dateHit = rowPassesDateFilter(tr);
+      const hit = searchHit && dateHit;
       tr.style.display = hit ? "" : "none";
       if (hit) shown++;
     });
@@ -465,6 +561,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectAll.checked = vis.length > 0 && visChecked === vis.length;
     selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
     updateConfirmButtonState();
+  }
+
+  // search input
+  function filterRows(q) {
+    qCurrent = normTxt(q).trim();
+    applyFilters();
   }
   filterRows("");
   searchInput?.addEventListener("input", () => {
@@ -477,6 +579,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     filterRows("");
     clearSearch.classList.add("hidden");
     searchInput.focus();
+  });
+
+  // ===== Quick Date Filter handlers =====
+  function setActive(btn) {
+    [fltToday, fltOutgoing, fltPeriod, fltAllDate].forEach((b) => {
+      if (!b) return;
+      b.classList.remove("bg-emerald-600", "text-white", "border-emerald-600");
+      b.classList.add("border-slate-300");
+    });
+    if (btn) {
+      btn.classList.remove("border-slate-300");
+      btn.classList.add("bg-emerald-600", "text-white", "border-emerald-600");
+    }
+  }
+
+  fltToday?.addEventListener("click", () => {
+    dateFilterMode = "today";
+    setActive(fltToday);
+    periodPicker?.classList.add("hidden");
+    applyFilters();
+  });
+
+  fltOutgoing?.addEventListener("click", () => {
+    dateFilterMode = "outgoing";
+    setActive(fltOutgoing);
+    periodPicker?.classList.add("hidden");
+    applyFilters();
+  });
+
+  fltPeriod?.addEventListener("click", () => {
+    dateFilterMode = "period";
+    setActive(fltPeriod);
+    periodPicker?.classList.remove("hidden");
+  });
+
+  applyPeriod?.addEventListener("click", () => {
+    pfYMD = toYYYYMMDD(periodFrom?.value || "");
+    ptYMD = toYYYYMMDD(periodTo?.value || "");
+    if (pfYMD && ptYMD && pfYMD > ptYMD) [pfYMD, ptYMD] = [ptYMD, pfYMD];
+    applyFilters();
+  });
+
+  // === NEW: All date (tampilkan semua) ===
+  fltAllDate?.addEventListener("click", () => {
+    dateFilterMode = "none";
+    pfYMD = "";
+    ptYMD = "";
+    setActive(fltAllDate);
+    periodPicker?.classList.add("hidden");
+    applyFilters();
+  });
+
+  clearFilterBtn?.addEventListener("click", () => {
+    dateFilterMode = "none";
+    pfYMD = "";
+    ptYMD = "";
+    setActive(fltAllDate || null); // kalau tombol ada, jadikan aktif; kalau tidak, kosongkan
+    periodPicker?.classList.add("hidden");
+    applyFilters();
   });
 
   // === Checkbox & tombol konfirmasi ===
