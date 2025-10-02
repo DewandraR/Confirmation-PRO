@@ -284,6 +284,39 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
                 continue
             by_aufnr.setdefault(a, []).append(r)
 
+        # === (2) Purge AUFNR stale untuk WC+WERKS+PERNR ini ===
+        if arbpl and werks:
+            with connect_mysql() as db:
+                with db.cursor() as cur:
+                    cur.execute(
+                        "SELECT DISTINCT AUFNR FROM yppi019_data WHERE ARBPL0=%s AND WERKS=%s AND PERNR=%s",
+                        (arbpl, werks, pernr or ""),
+                    )
+                    existing = {row[0] for row in cur.fetchall()}
+            now_have = set(by_aufnr.keys())
+            stale = sorted(existing - now_have)
+            if stale:
+                with connect_mysql() as db:
+                    with db.cursor() as cur:
+                        for a in stale:
+                            try:
+                                acquire_mutex(cur, f"aufnr:{a}", timeout=2)
+                            except RuntimeError:
+                                # Lagi dipakai proses lain – lewati, akan bersih pada sync berikutnya
+                                continue
+                            try:
+                                db.start_transaction()
+                                cur.execute(
+                                    "DELETE FROM yppi019_data WHERE AUFNR=%s AND ARBPL0=%s AND WERKS=%s AND PERNR=%s",
+                                    (a, arbpl, werks, pernr or ""),
+                                )
+                                db.commit()
+                            except Exception:
+                                db.rollback()
+                                raise
+                            finally:
+                                release_mutex(cur, f"aufnr:{a}")
+
         saved_total, wiped_total, prev_total = 0, 0, 0
 
         with connect_mysql() as db:
@@ -305,7 +338,15 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
                         # Hitung & hapus snapshot lama untuk AUFNR ini
                         cur.execute("SELECT COUNT(*) FROM yppi019_data WHERE AUFNR=%s", (a,))
                         prev_count = (cur.fetchone() or [0])[0]
-                        cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
+
+                        # (1) DELETE dipersempit ke WC+WERKS jika tersedia
+                        if arbpl and werks:
+                            cur.execute(
+                                "DELETE FROM yppi019_data WHERE AUFNR=%s AND ARBPL0=%s AND WERKS=%s",
+                                (a, arbpl, werks),
+                            )
+                        else:
+                            cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
                         wiped = cur.rowcount
 
                         # Insert ulang rows milik AUFNR ini (pola save_rows lama)
