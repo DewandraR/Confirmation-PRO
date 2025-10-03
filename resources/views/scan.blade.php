@@ -408,40 +408,35 @@
                  placeholder="contoh: 100234" required>
         </div>
         <!-- ganti blok ini SAJA -->
-<!-- ====== GANTI HANYA BLOK TANGGAL INI ====== -->
 <div>
   <label class="text-xs text-slate-600">
     Tanggal<span class="text-red-600">*</span>
   </label>
 
-  <!-- Satu kolom: input + ikon di dalamnya (kanan) -->
-  <div class="mt-1 relative">
-    <!-- input tampilan dd/mm/yyyy -->
-    <input id="hasil-budat-display" type="text"
-           inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}"
-           placeholder="dd/mm/yyyy" required
-           class="w-full rounded-lg border border-slate-300 px-3 py-2
-                  pr-12  /* ruang untuk ikon di kanan */
-                  focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-
-    <!-- tombol ikon kalender (posisi di dalam input, kanan) -->
+  <!-- ikon dulu, lalu kolom tanggal (dd/mm/yyyy), dan native date tersembunyi -->
+  <div class="mt-1 flex items-center gap-2">
+    <!-- tombol ikon kalender -->
     <button id="hasil-budat-btn" type="button" title="Pilih tanggal"
-            class="absolute right-2 top-1/2 -translate-y-1/2
-                   inline-flex items-center justify-center
-                   w-8 h-8 rounded-md text-slate-600
-                   hover:bg-slate-50 focus:outline-none">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"
-           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg
+                   border border-slate-300 text-slate-700 hover:bg-slate-50">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round"
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
     </button>
 
-    <!-- native date picker (hidden) -->
+    <!-- input tampilan dd/mm/yyyy (bisa diketik manual) -->
+    <input id="hasil-budat-display" type="text"
+           inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}"
+           placeholder="dd/mm/yyyy" required
+           class="w-full rounded-lg border border-slate-300 px-3 py-2
+                  focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+
+    <!-- native date picker untuk memunculkan kalender -->
     <input id="hasil-budat-native" type="date" class="sr-only">
   </div>
 </div>
-
 
 
         <div class="flex items-center justify-end gap-2 pt-2">
