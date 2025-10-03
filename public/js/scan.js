@@ -892,16 +892,20 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // end DOMContentLoaded
 
 
-// === Modal Hasil Konfirmasi (dd/mm/yyyy di modal) ===
+// === Modal Hasil Konfirmasi (dd/mm/yyyy + ikon kalender) ===
 (function () {
   const btnOpen   = document.getElementById('openHasilKonfirmasi');
   const modal     = document.getElementById('hasilModal');
   const form      = document.getElementById('hasilForm');
   const inpPernr  = document.getElementById('hasil-pernr');
-  const inpBudat  = document.getElementById('hasil-budat'); // ini akan dipaksa jadi text
-  const btnCancel = document.getElementById('hasilCancel');
 
-  if (!btnOpen || !modal || !form || !inpBudat) return;
+  const inpBudatTxt    = document.getElementById('hasil-budat') || document.getElementById('hasil-budat-display');
+const btnBudat       = document.getElementById('hasil-budat-btn');
+const inpBudatNative = document.getElementById('hasil-budat-native');
+
+const btnCancel = document.getElementById('hasilCancel');
+if (!btnOpen || !modal || !form || !inpBudatTxt) return;
+
 
   // helpers
   const toDMY = (d) => {
@@ -914,68 +918,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '').trim());
     return m ? `${m[3]}${m[2]}${m[1]}` : '';
   };
-  const getLastPernr = () => {
-    try { return localStorage.getItem('last_pernr') || ''; } catch { return ''; }
+  const dmyToIso = (s) => {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '').trim());
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
   };
+  const isoToDmy = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+  };
+  const getLastPernr = () => { try { return localStorage.getItem('last_pernr') || ''; } catch { return ''; } };
 
-  // Paksa input tanggal menjadi TEXT agar tampil dd/mm/yyyy
-  (function ensureTextDate() {
-    if (inpBudat.type !== 'text') {
-      try { inpBudat.type = 'text'; } catch {}
-    }
-    inpBudat.setAttribute('inputmode', 'numeric');
-    inpBudat.setAttribute('pattern', '\\d{2}/\\d{2}/\\d{4}');
-    inpBudat.placeholder = 'dd/mm/yyyy';
-  })();
-
-  function setTodayIfEmpty() {
-    if (!inpBudat.value) {
-      inpBudat.value = toDMY(new Date()); // dd/mm/yyyy
+  // default hari ini ke keduanya
+  function ensureTodayIfEmpty() {
+    if (!inpBudatTxt.value) inpBudatTxt.value = toDMY(new Date());
+    if (inpBudatNative && !inpBudatNative.value) {
+      try { inpBudatNative.value = new Date().toISOString().slice(0,10); } catch {}
     }
   }
 
+  // sinkronisasi dua input
+  function syncTxtToNative() {
+    if (!inpBudatNative) return;
+    const iso = dmyToIso(inpBudatTxt.value);
+    if (iso) inpBudatNative.value = iso;
+  }
+  function syncNativeToTxt() {
+    const dmy = isoToDmy(inpBudatNative.value);
+    if (dmy) inpBudatTxt.value = dmy;
+  }
+
   const show = () => {
-    setTodayIfEmpty(); // default hari ini (dd/mm/yyyy)
+    ensureTodayIfEmpty();
+    syncTxtToNative();
+
     if (inpPernr && !inpPernr.value) {
       const last = getLastPernr();
       if (last) inpPernr.value = last;
     }
+    try { if (inpBudatNative) inpBudatNative.max = new Date().toISOString().slice(0,10); } catch {}
+
     modal.classList.remove('hidden');
     setTimeout(() => inpPernr?.focus(), 50);
   };
 
   const hide = () => modal.classList.add('hidden');
 
+  // events
   btnOpen.addEventListener('click', show);
   btnCancel?.addEventListener('click', hide);
   modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
 
+  btnBudat?.addEventListener('click', () => {
+    if (!inpBudatNative) return;
+    syncTxtToNative();
+    try { inpBudatNative.showPicker ? inpBudatNative.showPicker() : inpBudatNative.click(); }
+    catch { inpBudatNative.click(); }
+  });
+
+  inpBudatNative?.addEventListener('change', syncNativeToTxt);
+  inpBudatTxt.addEventListener('blur', syncTxtToNative);
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const pernr = (inpPernr.value || '').trim();
-    const dmy   = (inpBudat.value || '').trim();
+    const dmy   = (inpBudatTxt.value || '').trim();
 
-    if (!pernr) {
-      alert('NIK Operator wajib diisi.');
-      inpPernr.focus();
-      return;
-    }
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dmy)) {
-      alert('Tanggal tidak valid. Gunakan format dd/mm/yyyy.');
-      inpBudat.focus();
-      return;
-    }
+    if (!pernr) { alert('NIK Operator wajib diisi.'); inpPernr.focus(); return; }
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dmy)) { alert('Tanggal tidak valid. Gunakan dd/mm/yyyy.'); inpBudatTxt.focus(); return; }
 
-    const budat = dmyToYmdNoDash(dmy); // -> YYYYMMDD
+    const budat = dmyToYmdNoDash(dmy); // YYYYMMDD
     try { localStorage.setItem('last_pernr', pernr); } catch {}
 
     const url = `/hasil?pernr=${encodeURIComponent(pernr)}&budat=${encodeURIComponent(budat)}`;
     window.location.assign(url);
   });
 
-  // prefilling awal jika modal mungkin dibuka otomatis
-  setTodayIfEmpty();
+  // prefilling awal
+  ensureTodayIfEmpty();
+  syncTxtToNative();
 })();
+
 
 
 
