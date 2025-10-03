@@ -402,17 +402,17 @@
 
       <form id="hasilForm" class="px-5 py-4 space-y-3">
         <div>
-          <label class="text-xs text-slate-600">NIK Operator (PERNR) <span class="text-red-600">*</span></label>
+          <label class="text-xs text-slate-600">NIK Operator<span class="text-red-600">*</span></label>
           <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
                  class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                  placeholder="contoh: 100234" required>
         </div>
         <div>
-          <label class="text-xs text-slate-600">Tanggal (BUDAT) <span class="text-red-600">*</span></label>
+          <label class="text-xs text-slate-600">Tanggal<span class="text-red-600">*</span></label>
           <input id="hasil-budat" name="budat" type="date"
                  class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                  required>
-          <p class="text-[11px] text-slate-500 mt-1">Format akan dikirim sebagai <code>YYYYMMDD</code>.</p>
+          {{-- <p class="text-[11px] text-slate-500 mt-1">Format akan dikirim sebagai <code>YYYYMMDD</code>.</p> --}}
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-2">

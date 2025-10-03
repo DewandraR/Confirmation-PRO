@@ -28,6 +28,12 @@ const padKdpos = (v) => {
   const x = parseInt(n, 10);
   return Number.isFinite(x) ? String(x).padStart(6, "0") : n.padStart(6, "0");
 };
+// NEW: tampilkan tanpa leading zero (front-end only)
+function stripLeadingZeros(val) {
+  const s = String(val ?? "").trim();
+  const t = s.replace(/^0+/, "");
+  return t === "" && s !== "" ? "0" : (t || s);
+}
 
 // Terima dd.mm.yyyy, dd/mm/yyyy, atau yyyy-mm-dd -> yyyymmdd
 const toYYYYMMDD = (d) => {
@@ -378,12 +384,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- urutkan & render ---
-  rowsAll.sort((a, b) => {
-    if ((a.AUFNR || "") !== (b.AUFNR || "")) return (a.AUFNR || "").localeCompare(b.AUFNR || "");
-    const va = parseInt(a.VORNRX || a.VORNR || "0", 10) || 0;
-    const vb = parseInt(b.VORNRX || b.VORNR || "0", 10) || 0;
-    return va - vb;
-  });
+// Urut SSAVD ascending; SSAVD kosong ditaruh paling akhir.
+// Tie-breaker: AUFNR, lalu VORNR numerik.
+rowsAll.sort((a, b) => {
+  const sa = a.SSAVD ? toYYYYMMDD(a.SSAVD) : "99999999";
+  const sb = b.SSAVD ? toYYYYMMDD(b.SSAVD) : "99999999";
+  if (sa !== sb) return sa.localeCompare(sb);
+
+  if ((a.AUFNR || "") !== (b.AUFNR || "")) {
+    return (a.AUFNR || "").localeCompare(b.AUFNR || "");
+  }
+  const va = parseInt(a.VORNRX || a.VORNR || "0", 10) || 0;
+  const vb = parseInt(b.VORNRX || b.VORNR || "0", 10) || 0;
+  return va - vb;
+});
+
   totalItems.textContent = String(rowsAll.length);
 
   // helper normalisasi untuk data-search
@@ -411,9 +426,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(4, 6)}/${sssldYMD.slice(0, 4)}`
           : "";
 
+      // NEW: Item view tanpa leading zero + versi 6 digit
+      const kdpos6 = padKdpos(r.KDPOS);
+      const kdposView = stripLeadingZeros(r.KDPOS);
+
       const searchStr = [
         r.AUFNR,
-        
         r.MATNRX,
         r.MAKTX,
         r.LTXA1,
@@ -425,14 +443,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         r.SNAME || "",
         ssavdDMY,
         sssldDMY,
-        r.KDAUF,               // NEW: cari berdasarkan SO
-        r.KDPOS,               // NEW: cari berdasarkan Item
-        qtySPK                 // NEW: bisa cari Qty_PRO
+        r.KDAUF,          // cari berdasarkan SO
+        r.KDPOS,          // raw KDPOS
+        kdpos6,           // versi 6 digit
+        kdposView,        // versi tanpa leading zero (tampilan)
+        qtySPK            // bisa cari Qty_PRO
       ]
         .map(toKey)
         .join(" ");
-
-      const kdpos6 = padKdpos(r.KDPOS);
 
       return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
         data-aufnr="${r.AUFNR || ""}" data-vornr="${vornr}" data-pernr="${
@@ -452,17 +470,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${i + 1}</div>
         </td>
         <td class="px-3 py-3 text-sm font-semibold text-slate-900">${r.AUFNR || "-"}</td>
-        <!-- NEW: SO & Item & Qty_PRO -->
-        
-        <td class="align-middle">
-  <div
-    class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto"
-  >
-    ${Number.isFinite(qtySPK) ? qtySPK : "-"}
-  </div>
-</td>
 
+        <!-- NEW: Qty_PRO tampilan ring -->
+        <td class="align-middle">
+          <div class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto">
+            ${Number.isFinite(qtySPK) ? qtySPK : "-"}
+          </div>
+        </td>
         <!-- END NEW -->
+
         <td class="px-3 py-3 text-sm text-slate-700 text-center">
           <input type="number" name="QTY_SPX" class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
               value="0" placeholder="0" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
@@ -470,7 +486,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"/>
           <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(meinh)})</div>
         </td>
-       
+
         <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
@@ -481,8 +497,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || '-'}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.KDAUF || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${kdpos6 || "-"}</td>
-
+        <!-- ITEM tanpa leading zero -->
+        <td class="px-3 py-3 text-sm text-slate-700">${kdposView || "-"}</td>
       </tr>`;
     })
     .join("");
@@ -580,6 +596,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     clearSearch.classList.add("hidden");
     searchInput.focus();
   });
+
+  // --- Default: aktifkan "All date" saat pertama kali masuk halaman
+  setActive(fltAllDate);      // tampilkan state tombolnya
+  dateFilterMode = "none";    // mode tanpa filter tanggal = semua data
+  periodPicker?.classList.add("hidden");
+  applyFilters();             // hitung ulang tampilan & counter
 
   // ===== Quick Date Filter handlers =====
   function setActive(btn) {

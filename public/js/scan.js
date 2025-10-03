@@ -892,57 +892,90 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // end DOMContentLoaded
 
 
-// === Modal Hasil Konfirmasi ===
+// === Modal Hasil Konfirmasi (dd/mm/yyyy di modal) ===
 (function () {
-const btnOpen   = document.getElementById('openHasilKonfirmasi');
-const modal     = document.getElementById('hasilModal');
-const form      = document.getElementById('hasilForm');
-const inpPernr  = document.getElementById('hasil-pernr');
-const inpBudat  = document.getElementById('hasil-budat');
-const btnCancel = document.getElementById('hasilCancel');
+  const btnOpen   = document.getElementById('openHasilKonfirmasi');
+  const modal     = document.getElementById('hasilModal');
+  const form      = document.getElementById('hasilForm');
+  const inpPernr  = document.getElementById('hasil-pernr');
+  const inpBudat  = document.getElementById('hasil-budat'); // ini akan dipaksa jadi text
+  const btnCancel = document.getElementById('hasilCancel');
 
-if (!btnOpen || !modal || !form) return;
+  if (!btnOpen || !modal || !form || !inpBudat) return;
 
-const show = () => {
-  // default tanggal: hari ini
-  if (inpBudat && !inpBudat.value) {
-    inpBudat.value = new Date().toISOString().slice(0, 10);
+  // helpers
+  const toDMY = (d) => {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = d.getFullYear();
+    return `${dd}/${mm}/${yy}`;
+  };
+  const dmyToYmdNoDash = (s) => {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '').trim());
+    return m ? `${m[3]}${m[2]}${m[1]}` : '';
+  };
+  const getLastPernr = () => {
+    try { return localStorage.getItem('last_pernr') || ''; } catch { return ''; }
+  };
+
+  // Paksa input tanggal menjadi TEXT agar tampil dd/mm/yyyy
+  (function ensureTextDate() {
+    if (inpBudat.type !== 'text') {
+      try { inpBudat.type = 'text'; } catch {}
+    }
+    inpBudat.setAttribute('inputmode', 'numeric');
+    inpBudat.setAttribute('pattern', '\\d{2}/\\d{2}/\\d{4}');
+    inpBudat.placeholder = 'dd/mm/yyyy';
+  })();
+
+  function setTodayIfEmpty() {
+    if (!inpBudat.value) {
+      inpBudat.value = toDMY(new Date()); // dd/mm/yyyy
+    }
   }
-  modal.classList.remove('hidden');
-  setTimeout(() => inpPernr?.focus(), 50);
-};
 
-const hide = () => modal.classList.add('hidden');
+  const show = () => {
+    setTodayIfEmpty(); // default hari ini (dd/mm/yyyy)
+    if (inpPernr && !inpPernr.value) {
+      const last = getLastPernr();
+      if (last) inpPernr.value = last;
+    }
+    modal.classList.remove('hidden');
+    setTimeout(() => inpPernr?.focus(), 50);
+  };
 
-const toYmdNoDash = (iso) => {
-  // "YYYY-MM-DD" -> "YYYYMMDD"
-  return String(iso || '').trim().replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1$2$3');
-};
+  const hide = () => modal.classList.add('hidden');
 
-btnOpen.addEventListener('click', show);
-btnCancel?.addEventListener('click', hide);
-modal.addEventListener('click', (e) => {
-  // klik backdrop menutup modal
-  if (e.target === modal) hide();
-});
+  btnOpen.addEventListener('click', show);
+  btnCancel?.addEventListener('click', hide);
+  modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const pernr = (inpPernr.value || '').trim();
-  const budatIso = (inpBudat.value || '').trim();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const pernr = (inpPernr.value || '').trim();
+    const dmy   = (inpBudat.value || '').trim();
 
-  if (!pernr) {
-    alert('NIK Operator wajib diisi.');
-    inpPernr.focus();
-    return;
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(budatIso)) {
-    alert('Tanggal tidak valid. Gunakan format YYYY-MM-DD.');
-    inpBudat.focus();
-    return;
-  }
-  const budat = toYmdNoDash(budatIso);
-  const url = `/hasil?pernr=${encodeURIComponent(pernr)}&budat=${encodeURIComponent(budat)}`;
-  window.location.assign(url);
-});
+    if (!pernr) {
+      alert('NIK Operator wajib diisi.');
+      inpPernr.focus();
+      return;
+    }
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dmy)) {
+      alert('Tanggal tidak valid. Gunakan format dd/mm/yyyy.');
+      inpBudat.focus();
+      return;
+    }
+
+    const budat = dmyToYmdNoDash(dmy); // -> YYYYMMDD
+    try { localStorage.setItem('last_pernr', pernr); } catch {}
+
+    const url = `/hasil?pernr=${encodeURIComponent(pernr)}&budat=${encodeURIComponent(budat)}`;
+    window.location.assign(url);
+  });
+
+  // prefilling awal jika modal mungkin dibuka otomatis
+  setTodayIfEmpty();
 })();
+
+
+
