@@ -45,7 +45,7 @@ class LoginController extends Controller
         // === Cek whitelist user lebih dulu ===
         if (!$this->isWhitelistedUser($sapId)) {
             return back()
-                ->withErrors(['login' => 'Akun ini tidak diberi izin mengakses aplikasi.'])
+                ->withErrors(['login' => 'Aplikasi sedang maintenance. Akun ini sementara tidak diberi izin mengakses aplikasi.'])
                 ->onlyInput('sap_id');
         }
         // === End cek whitelist ===
