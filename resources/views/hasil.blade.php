@@ -6,7 +6,7 @@
   <div class="max-w-[1280px] mx-auto">
 
     {{-- ===== Header kartu ===== --}}
-    <div class="bg-white rounded-3xl shadow-xl border border-slate-200/60 overflow-hidden">
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-200/60 overflow-hidden mt-4 sm:mt-6 lg:mt-8">
       <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 to-blue-900 text-white flex items-center gap-3">
         <h1 class="text-lg md:text-2xl font-bold">
           Hasil Konfirmasi
@@ -26,36 +26,37 @@
       {{-- ===== Bar aksi (geser ke kiri + tombol pilih tanggal) ===== --}}
       <div class="px-5 py-4 flex flex-wrap gap-3 items-end">
         <div class="ml-auto flex gap-2">
-  <a href="/scan"
-     class="inline-flex items-center h-9 px-3 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
-    Kembali
-  </a>
+          <a href="/scan"
+             class="inline-flex items-center h-9 px-3 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
+            Kembali
+          </a>
 
-  <button id="btn-refresh"
-          class="inline-flex items-center h-9 px-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
-    Refresh
-  </button>
+          <button id="btn-refresh"
+                  class="inline-flex items-center h-9 px-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+            Refresh
+          </button>
 
-  {{-- Ikon kalender (dibuka dengan native date picker) --}}
-  <button id="btn-date" type="button" title="Pilih tanggal"
-          class="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-    </svg>
-  </button>
+          {{-- Ikon kalender (dibuka dengan native date picker) --}}
+          <button id="btn-date" type="button" title="Pilih tanggal"
+                  class="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+          </button>
 
-  {{-- Kolom tanggal (dd/mm/yyyy) — bisa diketik --}}
-  <input id="date-display" type="text"
-         inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}"
-         placeholder="dd/mm/yyyy"
-         class="inline-flex h-9 px-2 rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 w-[120px] text-center" />
+          {{-- Kolom tanggal (dd/mm/yyyy) — bisa diketik --}}
+          <input id="date-display" type="text"
+                 inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}"
+                 placeholder="dd/mm/yyyy"
+                 class="inline-flex h-9 px-2 rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 w-[120px] text-center" />
 
-  {{-- Native date picker tersembunyi (pemicu kalender) --}}
-  <input id="choose-date" type="date" class="sr-only">
-</div>
-
-
+          {{-- Native date picker tersembunyi (pemicu kalender) --}}
+          <input id="choose-date" type="date" class="sr-only">
+        </div>
       </div>
+
+      <!-- Ringkasan (Operator, Total Menit Kerja, Total Menit Inspect) diisi oleh JS -->
+      {{-- <div id="hasil-summary" class="px-5 pb-2"></div> --}}
 
       {{-- ===== Tabel ===== --}}
       <div class="px-5 pb-6">
@@ -65,44 +66,19 @@
               <tr>
                 {{-- ====== Header utama ====== --}}
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[70px]">No.</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[140px] whitespace-nowrap">Material Doc</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[130px] whitespace-nowrap">Posting Date</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">NIK</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[180px]">Operator</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Work Center</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px]">Desc. Work Center</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px]">Activity</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Operation</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px]">PRO</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Material</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[320px]">Desc</th>
 
                 {{-- ====== Kolom-kolom tambahan ====== --}}
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">QTY TARGET</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px] whitespace-nowrap">QTY PRO</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[140px] whitespace-nowrap">Qty Konfirmasi</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px] whitespace-nowrap">QTY Sisa</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Fin. Inspect</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[80px] whitespace-nowrap">Uom</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Cap. Target</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px] whitespace-nowrap">Cap. WC</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Menit Kerja</th>
                 <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[130px] whitespace-nowrap">Menit Inspect</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px] whitespace-nowrap">Total Menit Kerja</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[170px] whitespace-nowrap">Total Menit Inspect</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[170px] whitespace-nowrap">Total Detik Inspect</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[140px]">Setting Time</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px]">Perkalian Routing</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">KPI</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Total % KPI</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px] whitespace-nowrap">Avg. KPI</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px] whitespace-nowrap">Time Confirmation</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Variant</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Variant (2)</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">Stock Type</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[140px] whitespace-nowrap">Start Date</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[140px] whitespace-nowrap">Finish Date</th>
-                <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Batch</th>
               </tr>
             </thead>
 

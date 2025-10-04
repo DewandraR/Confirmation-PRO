@@ -42,6 +42,14 @@ class LoginController extends Controller
         $sapPass    = $request->input('password');
         $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5036/api/sap-login'));
 
+        // === Cek whitelist user lebih dulu ===
+        if (!$this->isWhitelistedUser($sapId)) {
+            return back()
+                ->withErrors(['login' => 'Akun ini tidak diberi izin mengakses aplikasi.'])
+                ->onlyInput('sap_id');
+        }
+        // === End cek whitelist ===
+
         try {
             $resp = Http::timeout(30)
                 ->acceptJson()
@@ -218,5 +226,22 @@ class LoginController extends Controller
 
         // ----- 6) Default generik -----
         return 'Gagal login ke SAP. Silakan periksa kredensial dan koneksi jaringan Anda.';
+    }
+
+    /**
+     * Whitelist user yang diizinkan login.
+     */
+    private function isWhitelistedUser(string $sapId): bool
+    {
+        // Hardcode sesuai kebutuhan:
+        $allowed = ['abaper01', 'kmi-ct02'];
+
+        $id = strtolower(trim($sapId));
+        foreach ($allowed as $u) {
+            if ($id === strtolower($u)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

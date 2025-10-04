@@ -129,46 +129,86 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const map = (r, k) => (r[k] ?? r[k?.toLowerCase?.()] ?? r[k?.toUpperCase?.()]);
+      // --- mapping tolerant + alias khusus sesuai data RFC (tanpa mengubah kunci lain)
+      const _direct = (r, k) => (r[k] ?? r[k?.toLowerCase?.()] ?? r[k?.toUpperCase?.()]);
+      function getVal(r, k) {
+        const v = _direct(r, k);
+        if (v !== undefined) return v;
+
+        switch (k) {
+          case 'QTY_TARGET': return _direct(r, 'PSMNG');          // alias target = PSMNG
+          case 'SISA': {
+            const p = Number(_direct(r, 'PSMNG') ?? 0);
+            const g = Number(_direct(r, 'GMNGX') ?? 0);
+            return Math.max(p - g, 0);                            // hitung sisa
+          }
+          case 'STPRO2':  return _direct(r, 'STPRO20');           // total menit inspect
+          case 'STPRO2X': return _direct(r, 'TDWS');              // total detik inspect
+          case 'AVGKPI':  return _direct(r, 'PERAVG');            // avg kpi
+          // kolom yang memang tidak ada di JSON RFC ini -> biarkan kosong
+          case 'CAP_TARGET':
+          case 'CAP_WC':
+          case 'INSMK':   return '';
+          default:        return v;
+        }
+      }
+
+      // ===== Ringkasan di bawah header (Operator + Total Menit Kerja + Total Menit Inspect)
+      // Operator (unique list, tampil singkat)
+      const opSet = new Set(rows.map(r => getVal(r,'SNAME')).filter(Boolean));
+      const opList = Array.from(opSet);
+      const operatorLabel = opList.length <= 2 ? opList.join(', ') : `${opList[0]} +${opList.length - 1}`;
+
+      // Total Menit Kerja/Inspect: jika semua baris sama -> tampil angka itu; kalau beda -> jumlahkan
+      const sameOrSum = (arr) => {
+        const vals = arr.filter(v => Number.isFinite(v));
+        if (!vals.length) return '';
+        return vals.every(v => v === vals[0]) ? vals[0] : vals.reduce((a,b)=>a+b,0);
+      };
+      const totalKerja   = sameOrSum(rows.map(r => Number(getVal(r,'STPRO'))));
+      const totalInspect = sameOrSum(rows.map(r => Number(getVal(r,'STPRO2'))));
+
+      // sisipkan summary card (buat elemen jika belum ada)
+      let summary = document.getElementById('hasil-summary');
+      if (!summary) {
+        summary = document.createElement('div');
+        summary.id = 'hasil-summary';
+        // taruh di bawah bar deretan tombol (setelah parent dari btn-refresh), jika tidak ada: sebelum tabel
+        const anchor = (btnRefresh && btnRefresh.parentElement) || (tbody && tbody.closest('table')) || document.body;
+        anchor.insertAdjacentElement('afterend', summary);
+      }
+      summary.innerHTML = `
+        <div class="mt-3 grid grid-cols-3 sm:grid-cols-3 gap-3">
+          <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-sm">
+            <div class="text-xs text-emerald-700">Operator</div>
+            <div class="text-xs font-semibold text-emerald-900">${operatorLabel || '-'}</div>
+          </div>
+          <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm">
+            <div class="text-xs text-sky-700">Total Menit Kerja</div>
+            <div class="text-2xs font-bold">${(totalKerja ?? '')}</div>
+          </div>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm">
+            <div class="text-xs text-amber-700">Total Menit Inspect</div>
+            <div class="text-2xs font-bold">${(totalInspect ?? '')}</div>
+          </div>
+        </div>
+      `;
+
+      // ===== Render tabel (tetap generate sel, tapi 3 kolom akan disembunyikan via CSS)
       tbody.innerHTML = rows.map((r, i) => `
         <tr class="align-top">
-          <td class="px-3 py-2">${i + 1}</td>
-          <td class="px-3 py-2">${map(r,'WABLNR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'BUDAT') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'PERNR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'SNAME') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'ARBPL') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'KTEXT') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'VORNR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'STEUS') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'AUFNR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'MATNR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'MAKTX') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'QTY_TARGET') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'PSMNG') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'GMNGX') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'SISA') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'QTYQM') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'GMEIN') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'CAP_TARGET') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'CAP_WC') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'TTCNF') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'TTCNF2') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'STPRO') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'STPRO2') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'STPRO2X') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'ZWNOR') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'PERO') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'PERKPI') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'PERKPI2') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'AVGKPI') ?? ''}</td>
-          <td class="px-3 py-2 text-right">${map(r,'MAXCF') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'AVGVGR2') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'PERAVG2') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'INSMK') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'GSTRP') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'GLTRP') ?? ''}</td>
-          <td class="px-3 py-2">${map(r,'CHARG') ?? ''}</td>
+          <td class="px-3 py-2">${i + 1}</td>  
+          <td class="px-3 py-2">${getVal(r,'ARBPL') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'KTEXT') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'AUFNR') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'MATNR') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'MAKTX') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'PSMNG') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'GMNGX') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'SISA') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'GMEIN') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'TTCNF') ?? ''}</td>
+          <td class="px-3 py-2">${getVal(r,'TTCNF2') ?? ''}</td>     
         </tr>
       `).join('');
     } catch (e) {
