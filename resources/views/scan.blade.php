@@ -483,9 +483,9 @@
 
 {{-- ↓ Tidak ada CSS inline. Semua style khusus halaman dipindah ke scan.css --}}
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/scan.css') }}">
+<link rel="stylesheet" href="{{ asset('css/scan.css') }}?v={{ filemtime(public_path('css/scan.css')) }}">
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/scan.js') }}"></script>
+<script src="{{ asset('js/scan.js') }}?v={{ filemtime(public_path('js/scan.js')) }}"></script>
 @endpush

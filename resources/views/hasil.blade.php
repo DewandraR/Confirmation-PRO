@@ -98,9 +98,9 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/hasil.css') }}">
+<link rel="stylesheet" href="{{ asset('css/hasil.css') }}?v={{ filemtime(public_path('css/hasil.css')) }}">
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/hasil.js') }}"></script>
+<script src="{{ asset('js/hasil.js') }}?v={{ filemtime(public_path('js/hasil.js')) }}"></script>
 @endpush

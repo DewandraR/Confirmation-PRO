@@ -301,11 +301,10 @@
 
 {{-- ===== Styles ===== --}}
 @push('styles')
-  <link rel="stylesheet" href="{{ asset('css/detail.css') }}">
+<link rel="stylesheet" href="{{ asset('css/detail.css') }}?v={{ filemtime(public_path('css/detail.css')) }}">
 @endpush
 
 {{-- ===== Scripts ===== --}}
 @push('scripts')
-  {{-- cache-busting opsional --}}
-  <script src="{{ asset('js/detail.js') }}?v={{ filemtime(public_path('js/detail.js')) }}"></script>
+<script src="{{ asset('js/detail.js') }}?v={{ filemtime(public_path('js/detail.js')) }}"></script>
 @endpush
