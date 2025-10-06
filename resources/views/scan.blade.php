@@ -1,6 +1,11 @@
 {{-- resources/views/scan.blade.php --}}
 @extends('layout')
 
+@push('head')
+  {{-- konfigurasi timeout klien (opsional, bisa dioverride per-halaman) --}}
+  <meta name="client-timeout-ms" content="240000"><!-- 240 dtk -->
+@endpush
+
 @section('content')
 {{-- Bagian header dengan gradasi yang disesuaikan --}}
 <div class="bg-gradient-to-br from-green-700 via-green-800 to-blue-900 relative overflow-hidden">
@@ -57,34 +62,40 @@
 
       {{-- Isi form input data --}}
       <div class="p-5">
-        <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get">
+        <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get" data-timeout-ms="240000">
 
 <!-- Work Center & Plant (match PRO style) -->
 <div class="space-y-2">
-  <div class="flex items-center gap-2 flex-wrap ios-nowrap-row">
-    <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-      <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    </div>
-    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Work Center & Plant</label>
-    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0 whitespace-nowrap">Optional</span>
-
-    {{-- ⬇️ Tombol Histori Backdate (baru) --}}
-    <button type="button" id="openBackdateHistory"
-            class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
-                   bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
-                   hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition min-w-[130px] justify-center"
-            title="Lihat histori backdate">
-      <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z"/>
-      </svg>
-      Histori Backdate
-    </button>
+  <div class="flex items-center gap-2 ios-nowrap-row">
+  <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
+    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
   </div>
+
+  <!-- wadah teks boleh mengecil -->
+  <div class="min-w-0 flex items-center gap-2">
+    <label class="text-xs font-medium text-slate-700 truncate">Work Center &amp; Plant</label>
+    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0 whitespace-nowrap">Optional</span>
+  </div>
+
+  <!-- tombol kanan dibatasi di layar kecil -->
+  <button type="button" id="openBackdateHistory"
+          class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                 bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
+                 hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition
+                 max-w-[50%] sm:max-w-none overflow-hidden text-ellipsis whitespace-nowrap justify-center"
+          title="Lihat histori backdate">
+    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z"/>
+    </svg>
+    Histori Backdate
+  </button>
+</div>
+
 
   <div class="relative group">
     <!-- Shell: border abu-abu solid saat tidak fokus -->
@@ -240,7 +251,7 @@
           <ul class="text-xs text-slate-600 space-y-0.5">
             <li>• Pastikan untuk <b>menghidupkan dan mengizinkan kamera di browser anda</b>, saat akan melakukan scan.</li>
             <li>• Field <b>NIK Operator</b> wajib diisi.</li>
-            <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>, ATAU ketiganya.</li>
+            <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>.</li>
             <li>• Posisikan <b>Barcode</b> dan <b>QR Code</b> di area tengah kamera dan hindari pantulan cahaya.</li>
             {{-- <li>• Untuk pengguna <b>iOS</b> jika kamera Work Center tidak berfungsi, harap inputkan kode secara manual.</li> --}}
           </ul>
@@ -449,54 +460,28 @@
     </div>
   </div>
 </div>
+
+<!-- Overlay Loading -->
+<div id="overlay" class="hidden fixed inset-0 z-50 grid place-items-center bg-black/40">
+  <div class="overlay-card rounded-2xl bg-white shadow-2xl px-5 py-4 text-sm text-slate-700 w-[min(92vw,360px)] text-center">
+    <div class="flex flex-col items-center gap-2">
+      <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo"
+           class="w-10 h-10 rounded-xl overlay-logo-spin select-none mx-auto" draggable="false" />
+
+      <div id="overlayText" class="font-medium">Mengambil data dari SAP…</div>
+      <div class="text-[11px] text-slate-500">Jangan tutup halaman ini.</div>
+      <div id="overlayTip" class="mt-1 text-[11px] text-emerald-700/80"></div>
+    </div>
+
+    <div class="mt-3 overlay-bar h-1.5 rounded-full bg-slate-200">
+      <i class="block h-full bg-emerald-600 rounded-full"></i>
+    </div>
+  </div>
+</div>
+
 @endsection
 
-@push('head')
-<style>
-  #reader,
-#qr-reader {
-  width: 100%;
-  /* Perbesar ukuran maksimalnya */
-  max-width: 600px;
-  margin: 0 auto;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #000;
-  position: relative;
-  /* Pertahankan rasio aspek agar tidak melar */
-  aspect-ratio: 16 / 9;
-}
-  #reader video, #reader canvas,
-  #qr-reader video, #qr-reader canvas {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    -webkit-touch-callout: none; /* iOS: cegah fullscreen otomatis */
-  }
-
-  /* =============== iPhone layout helper =============== */
-  /* Pada perangkat iOS kecil, paksa baris title Work Center & tombol agar tidak turun */
-  @supports (-webkit-touch-callout: none) {
-    .ios-nowrap-row { flex-wrap: nowrap !important; }
-    .ios-nowrap-row > * { white-space: nowrap; }
-    #openBackdateHistory { min-width: 132px; }
-  }
-  @media (max-width: 430px) {
-    .ios-nowrap-row { flex-wrap: nowrap; }
-    #openBackdateHistory { min-width: 132px; }
-  }
-
-  /* Dropdown kustom */
-  .dropdown-enter { opacity: 0; transform: scale(0.97); }
-  .dropdown-enter-active { opacity: 1; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
-  .dropdown-leave-active { opacity: 0; transform: scale(0.97); transition: opacity .12s ease, transform .12s ease; }
-  .dd-opt-focus { background-color: rgb(240 253 244); }
-  .dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
-  .hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
-</style>
-@endpush
-
+{{-- ↓ Tidak ada CSS inline. Semua style khusus halaman dipindah ke scan.css --}}
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/scan.css') }}">
 @endpush

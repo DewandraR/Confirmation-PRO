@@ -4,8 +4,29 @@
 // --- CSRF dari <meta>, tanpa fallback Blade ---
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
-// --- Helper request POST JSON ---
+/* =======================
+   TIMEOUT HELPERS (NEW)
+   ======================= */
+function getClientTimeoutMs() {
+  const m = document.querySelector('meta[name="client-timeout-ms"]');
+  return m && /^\d+$/.test(m.content) ? parseInt(m.content, 10) : 240000; // default 240s
+}
+async function fetchWithTimeout(url, init = {}) {
+  const ctl = new AbortController();
+  const ms = getClientTimeoutMs();
+  const t  = setTimeout(() => ctl.abort(), ms);
+  try {
+    const res = await fetch(url, { ...init, signal: ctl.signal });
+    return res;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// --- Helper request POST JSON (UPDATED: with timeout) ---
 function apiPost(url, payload) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), getClientTimeoutMs());
   return fetch(url, {
     method: "POST",
     headers: {
@@ -16,7 +37,8 @@ function apiPost(url, payload) {
     },
     credentials: "same-origin",
     body: JSON.stringify(payload),
-  });
+    signal: ctl.signal,
+  }).finally(() => clearTimeout(t));
 }
 
 // ===== Helpers umum =====
@@ -333,7 +355,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           )}&pernr=${encodeURIComponent(IV_PERNR)}&auto_sync=0`;
           if (IV_ARBPL) url += `&arbpl=${encodeURIComponent(IV_ARBPL)}`;
           if (IV_WERKS) url += `&werks=${encodeURIComponent(IV_WERKS)}`;
-          const res = await fetch(url, { headers: { Accept: "application/json" } });
+          const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
           let json;
           try {
             json = await res.json();
@@ -356,7 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       )}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(
         IV_PERNR
       )}&auto_sync=0`;
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
       let json;
       try {
         json = await res.json();
@@ -368,7 +390,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       rowsAll = Array.isArray(t) ? t : t ? [t] : [];
     }
   } catch (e) {
-    errorMessage.textContent = e.message || "Gagal mengambil data";
+    errorMessage.textContent =
+      e?.name === "AbortError"
+        ? "Waktu tunggu klien habis. Silakan coba lagi."
+        : (e?.message || "Gagal mengambil data");
     errorModal.classList.remove("hidden");
   } finally {
     loading.classList.add("hidden");
@@ -987,7 +1012,10 @@ rowsAll.sort((a, b) => {
         });
       }
     } catch (e) {
-      errorMessage.textContent = "Terjadi kesalahan saat memproses respon: " + e.message;
+      errorMessage.textContent =
+        e?.name === "AbortError"
+          ? "Waktu tunggu klien habis. Silakan coba lagi."
+          : ("Terjadi kesalahan saat memproses respon: " + e.message);
       errorModal.classList.remove("hidden");
     } finally {
       loading.classList.add("hidden");

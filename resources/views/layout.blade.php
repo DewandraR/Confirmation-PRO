@@ -18,6 +18,8 @@
   </style>
 
   @stack('head')
+  {{-- Tambahkan stack untuk stylesheet halaman --}}
+  @stack('styles')
 </head>
 <body class="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 antialiased touch-manipulation">
 
@@ -43,6 +45,7 @@
     </div>
   </footer>
 
+  {{-- Stack untuk script per-halaman --}}
   @stack('scripts')
 
   <script>

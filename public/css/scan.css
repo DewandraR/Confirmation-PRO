@@ -36,3 +36,46 @@
 .dd-opt-focus { background-color: rgb(240 253 244); }
 .dd-scroll { max-height: 14rem; overflow: auto; -webkit-overflow-scrolling: touch; }
 .hidden-native-select { position:absolute; inset:auto 0 0 auto; width:0; height:0; opacity:0; pointer-events:none; }
+
+/* Overlay Loading (scan) */
+#overlay.hidden { display: none; }
+#overlay { backdrop-filter: blur(1px); }
+
+/* Overlay Loading (scan) – animated */
+#overlay.hidden { display: none; }
+#overlay { backdrop-filter: blur(1px); }
+
+/* Scoped hanya di overlay */
+#overlay .overlay-card { animation: overlayPop .20s ease-out both; }
+#overlay .overlay-logo-spin { animation: logoSpin 6s linear infinite; will-change: transform; }
+#overlay .bob { animation: bob 2.6s ease-in-out infinite; transform-origin: center; }
+
+#overlay .overlay-bar { position: relative; overflow: hidden; }
+#overlay .overlay-bar > i {
+  position: absolute; left: -40%; top: 0; width: 40%; height: 100%;
+  animation: indeterminate 1.1s cubic-bezier(.4,0,.2,1) infinite;
+  border-radius: 9999px;
+}
+
+/* Keyframes */
+@keyframes logoSpin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+@keyframes bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+@keyframes indeterminate { from { left: -40% } to { left: 100% } }
+@keyframes overlayPop { from { transform: translateY(2px) scale(.98); opacity: 0 } to { transform: none; opacity: 1 } }
+
+/* Hormati preferensi user */
+@media (prefers-reduced-motion: reduce) {
+  #overlay .overlay-card,
+  #overlay .overlay-logo-spin,
+  #overlay .bob,
+  #overlay .overlay-bar > i { animation: none !important; }
+}
+
+/* --- Header WC/Plant: tetap sejajar tanpa melebar --- */
+.ios-nowrap-row > * { white-space: normal !important; } /* izinkan label di-truncate */
+.ios-nowrap-row .min-w-0 { min-width: 0; }              /* agar flex child boleh mengecil */
+#openBackdateHistory { min-width: 0 !important; }       /* hapus lebar minimum lama */
+
+@media (max-width: 430px) {
+  #openBackdateHistory { max-width: 50% !important; }   /* tombol tak “mengalahkan” label */
+}

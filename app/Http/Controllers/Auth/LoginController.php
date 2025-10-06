@@ -234,7 +234,7 @@ class LoginController extends Controller
     private function isWhitelistedUser(string $sapId): bool
     {
         // Hardcode sesuai kebutuhan:
-        $allowed = ['abaper01', 'kmi-ct02'];
+        $allowed = ['abaper01', 'kmi-ct02', 'auto_email'];
 
         $id = strtolower(trim($sapId));
         foreach ($allowed as $u) {

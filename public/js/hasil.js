@@ -133,7 +133,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const _direct = (r, k) => (r[k] ?? r[k?.toLowerCase?.()] ?? r[k?.toUpperCase?.()]);
       function getVal(r, k) {
         const v = _direct(r, k);
-        if (v !== undefined) return v;
+        if (v !== undefined) {
+          // Transformasi tampilan UOM: ST -> PC
+          if (k === 'GMEIN' && v === 'ST') return 'PC';
+          return v;
+        }
 
         switch (k) {
           case 'QTY_TARGET': return _direct(r, 'PSMNG');          // alias target = PSMNG

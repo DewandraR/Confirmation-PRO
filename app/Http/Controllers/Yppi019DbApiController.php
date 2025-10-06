@@ -85,7 +85,7 @@ class Yppi019DbApiController extends Controller
 
         try {
             $res = Http::withHeaders($this->sapHeaders())
-                ->acceptJson()->timeout(120)
+                ->acceptJson()->timeout(500)
                 ->post($this->flaskBase() . '/api/yppi019/sync', $body);
 
             return response($res->body(), $res->status())
@@ -111,7 +111,7 @@ class Yppi019DbApiController extends Controller
 
         try {
             $res = Http::withHeaders($this->sapHeaders())
-                ->acceptJson()->timeout(300)
+                ->acceptJson()->timeout(420)
                 ->post($this->flaskBase() . '/api/yppi019/sync_bulk', $payload);
 
             return response($res->body(), $res->status())
@@ -171,7 +171,7 @@ class Yppi019DbApiController extends Controller
 
             if (!empty($syncPayload['aufnr']) || (!empty($syncPayload['arbpl']) && !empty($syncPayload['werks']))) {
                 $sync = Http::withHeaders($this->sapHeaders())
-                    ->acceptJson()->timeout(120)
+                    ->acceptJson()->timeout(500)
                     ->post($base . '/api/yppi019/sync', $syncPayload);
 
                 if (!$sync->ok() || !($sync->json('ok') ?? false)) {
@@ -221,7 +221,7 @@ class Yppi019DbApiController extends Controller
         try {
             $res = Http::withHeaders($this->sapHeaders())
                 ->acceptJson()
-                ->timeout(60)
+                ->timeout(180)
                 ->get($this->flaskBase() . '/api/yppi019/hasil', [
                     'pernr' => $pernr,
                     'budat' => $budat,
@@ -258,7 +258,7 @@ class Yppi019DbApiController extends Controller
 
         try {
             $res = Http::withHeaders($this->sapHeaders())
-                ->acceptJson()->timeout(60)
+                ->acceptJson()->timeout(180)
                 ->post($this->flaskBase() . '/api/yppi019/confirm', $payload);
 
             return response($res->body(), $res->status())

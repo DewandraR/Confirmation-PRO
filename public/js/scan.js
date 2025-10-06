@@ -1,4 +1,4 @@
-// scan.js — versi full (disesuaikan)
+// scan.js — versi full (dengan client-timeout & loading overlay)
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
@@ -63,6 +63,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =================================================================
+  // ===== PATCH: CLIENT TIMEOUT + OVERLAY HELPERS (baru)
+  // =================================================================
+  // >>> Tambahkan util di dekat helper lain
+  function getClientTimeoutMs() {
+    // prioritas: meta -> data-timeout pada form -> default 240s
+    const m = document.querySelector('meta[name="client-timeout-ms"]');
+    if (m && /^\d+$/.test(m.content)) return parseInt(m.content, 10);
+    const f = document.getElementById('main-form');
+    const d = f?.dataset?.timeoutMs;
+    if (d && /^\d+$/.test(String(d))) return parseInt(d, 10);
+    return 240_000; // default 240 dtk
+  }
+
+  function showOverlay(msg = 'Mengambil data dari SAP…') {
+    const ov = document.getElementById('overlay');
+    const t  = document.getElementById('overlayText');
+    if (t) t.textContent = msg;
+    ov?.classList.remove('hidden');
+  }
+  function hideOverlay() {
+    document.getElementById('overlay')?.classList.add('hidden');
+  }
+
+  // =================================================================
   // ===== MODAL & ERROR HANDLING
   // =================================================================
   const errModal = document.getElementById('errorModal');
@@ -92,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // =================================================================
   // === PATCH: helper sinkron + TECO modal
   // =================================================================
+  // >>> Ganti isi ajaxSync dengan versi ber-timeout
   async function ajaxSync(payload) {
     const headers = {
       'Content-Type': 'application/json',
@@ -99,28 +124,40 @@ document.addEventListener('DOMContentLoaded', () => {
       'X-Requested-With': 'XMLHttpRequest',
       'X-CSRF-TOKEN': CSRF,
     };
-    if (window.SAP_AUTH) headers['Authorization'] = window.SAP_AUTH; // opsional
+    if (window.SAP_AUTH) headers['Authorization'] = window.SAP_AUTH;
 
-    const res = await fetch('/api/yppi019/sync', {
-      method: 'POST',
-      headers,
-      credentials: 'same-origin',
-      body: JSON.stringify(payload),
-    });
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), getClientTimeoutMs());
 
-    const rawText = await res.text().catch(() => '');
-    let json = {};
-    try { json = rawText ? JSON.parse(rawText) : {}; } catch (_) { json = { _raw: rawText }; }
+    showOverlay('Mengambil data dari SAP… (harap tunggu)');
+    try {
+      const res = await fetch('/api/yppi019/sync', {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
-    if (res.status === 404) {
-      return { ok: false, teco: !!json.teco_possible, msg: json.message || 'Data Tidak Ditemukan', raw: json };
+      const rawText = await res.text().catch(() => '');
+      let json = {};
+      try { json = rawText ? JSON.parse(rawText) : {}; } catch { json = { _raw: rawText }; }
+
+      if (res.status === 404) {
+        return { ok:false, teco:!!json.teco_possible, msg: json.message || 'Data Tidak Ditemukan', raw: json };
+      }
+      if (!res.ok) {
+        const msg = json?.error || json?.message || `HTTP ${res.status} ${res.statusText}`;
+        throw new Error(msg);
+      }
+      return { ok:true, received: Number(json?.received || json?.count || 0), raw: json };
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Waktu tunggu klien habis / dibatalkan.');
+      throw e;
+    } finally {
+      clearTimeout(to);
+      hideOverlay();
     }
-    if (!res.ok) {
-      const msg = json?.error || json?.message || `HTTP ${res.status} ${res.statusText}${rawText ? ` — ${rawText.slice(0,200)}` : ''}`;
-      console.error('SYNC ERROR', { status: res.status, body: json, rawText });
-      throw new Error(msg);
-    }
-    return { ok: true, received: Number(json?.received || json?.count || 0), raw: json };
   }
 
   function showTeco(listOrText) {
@@ -900,12 +937,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const inpPernr  = document.getElementById('hasil-pernr');
 
   const inpBudatTxt    = document.getElementById('hasil-budat') || document.getElementById('hasil-budat-display');
-const btnBudat       = document.getElementById('hasil-budat-btn');
-const inpBudatNative = document.getElementById('hasil-budat-native');
+  const btnBudat       = document.getElementById('hasil-budat-btn');
+  const inpBudatNative = document.getElementById('hasil-budat-native');
 
-const btnCancel = document.getElementById('hasilCancel');
-if (!btnOpen || !modal || !form || !inpBudatTxt) return;
-
+  const btnCancel = document.getElementById('hasilCancel');
+  if (!btnOpen || !modal || !form || !inpBudatTxt) return;
 
   // helpers
   const toDMY = (d) => {
@@ -998,6 +1034,55 @@ if (!btnOpen || !modal || !form || !inpBudatTxt) return;
   syncTxtToNative();
 })();
 
+// ==== Overlay extras (non-intrusive) ====
+// Menambahkan animasi titik-titik & rotasi tips ketika #overlay tampil.
+// Tidak mengubah flow submit Anda; hanya observe class "hidden".
+(function () {
+  const ov  = document.getElementById('overlay');
+  if (!ov) return;
+  const txt = document.getElementById('overlayText');
+  const tip = document.getElementById('overlayTip');
 
+  const TIPS = [
+    'Tips: izinkan kamera di browser agar scan lebih cepat.',
+    'Gunakan cahaya yang cukup saat memindai barcode/QR.',
+    'Jika barcode buram, isi manual selalu tersedia.',
+    'Sebaiknya berdoa terlebih dahulu.',
+  ];
+  let dotsTimer = null, tipTimer = null, tipIdx = 0;
 
+  function start() {
+    // animasi titik status
+    clearInterval(dotsTimer);
+    const base = (txt && txt.textContent) ? txt.textContent.replace(/\.*$/,'') : 'Memuat';
+    let dots = 0;
+    dotsTimer = setInterval(() => {
+      dots = (dots + 1) % 4;
+      if (txt) txt.textContent = base + '.'.repeat(dots);
+    }, 450);
+
+    // rotasi tips
+    if (tip) {
+      tip.textContent = TIPS[tipIdx % TIPS.length];
+      clearInterval(tipTimer);
+      tipTimer = setInterval(() => {
+        tipIdx++;
+        tip.textContent = TIPS[tipIdx % TIPS.length];
+      }, 3000);
+    }
+  }
+  function stop() {
+    clearInterval(dotsTimer); dotsTimer = null;
+    clearInterval(tipTimer);  tipTimer  = null;
+  }
+
+  // Observe perubahan class (tampil/sembunyi)
+  const obs = new MutationObserver(() => {
+    if (ov.classList.contains('hidden')) stop(); else start();
+  });
+  obs.observe(ov, { attributes: true, attributeFilter: ['class'] });
+
+  // Jika page load sudah dalam kondisi tampil (jarang, tapi aman)
+  if (!ov.classList.contains('hidden')) start();
+})();
 
