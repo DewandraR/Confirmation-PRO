@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cur = normalizeByFormat(raw, fmt);
     const valid = /^[A-Za-z0-9\-\/\.]{6,20}$/.test(cur);
     if (!valid) return false;
-    if (cur === lastCode && (now - lastAt) < 800) {
+    if (cur === lastCode && (now - lastAt) < 1600) {
       addAufnrToList(cur);
       return true;
     }
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       },
       locator: { patchSize: "medium", halfSample: true },
-      decoder: { readers: ["code_128_reader", "ean_reader", "ean_8_reader"] },
+      decoder: { readers: ["code_128_reader"] },
       locate: true,
       numOfWorkers: navigator.hardwareConcurrency || 2,
     }, (err) => {
@@ -418,11 +418,24 @@ document.addEventListener('DOMContentLoaded', () => {
       try { currentTrack = Quagga.CameraAccess.getActiveStream()?.getVideoTracks?.()[0] || null; } catch(_) {}
       onDet = (res) => {
         if (committing) return;
-        const raw = res?.codeResult?.code || '';
-        const fmt = res?.codeResult?.format || '';
+        const cr  = res?.codeResult;
+        const raw = cr?.code || '';
+        const fmt = cr?.format || '';
         if (!raw) return;
-        if (stableCommit(raw, fmt)) { committing = true; closeModal(); }
+      
+        // filter berdasarkan rata-rata error decoding
+        const errs   = (cr.decodedCodes || [])
+                        .map(d => d.error)
+                        .filter(e => typeof e === 'number');
+        const avgErr = errs.length ? (errs.reduce((a,b)=>a+b,0) / errs.length) : 1;
+        if (avgErr > 0.15) return;
+      
+        if (stableCommit(raw, fmt)) {
+          committing = true;
+          closeModal();
+        }
       };
+      
       Quagga.onDetected(onDet);
 
       // paksa playsinline di iOS

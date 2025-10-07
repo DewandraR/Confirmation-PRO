@@ -454,6 +454,8 @@ rowsAll.sort((a, b) => {
       // NEW: Item view tanpa leading zero + versi 6 digit
       const kdpos6 = padKdpos(r.KDPOS);
       const kdposView = stripLeadingZeros(r.KDPOS);
+      // gabungan "Sales Order / Item" untuk tampilan & pencarian
+      const soItem = [r.KDAUF || "", kdposView || ""].filter(Boolean).join("/") || "-";
 
       const searchStr = [
         r.AUFNR,
@@ -472,7 +474,10 @@ rowsAll.sort((a, b) => {
         r.KDPOS,          // raw KDPOS
         kdpos6,           // versi 6 digit
         kdposView,        // versi tanpa leading zero (tampilan)
-        qtySPK            // bisa cari Qty_PRO
+        qtySPK,           // bisa cari Qty_PRO
+        soItem,                 // "1110001101/10"
+        (r.KDAUF || "") + "/" + kdpos6,
+        (r.KDAUF || "") + kdpos6,   // tanpa slash juga bisa
       ]
         .map(toKey)
         .join(" ");
@@ -521,9 +526,7 @@ rowsAll.sort((a, b) => {
         <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || '-'}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.KDAUF || "-"}</td>
-        <!-- ITEM tanpa leading zero -->
-        <td class="px-3 py-3 text-sm text-slate-700">${kdposView || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
       </tr>`;
     })
     .join("");
