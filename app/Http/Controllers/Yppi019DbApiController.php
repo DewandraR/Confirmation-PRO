@@ -126,7 +126,7 @@ class Yppi019DbApiController extends Controller
     public function material(Request $req)
     {
         $aufnr    = $req->query('aufnr');
-        $limit    = (int) $req->query('limit', 100);
+        $limit = $req->has('limit') ? (int) $req->query('limit') : null;
         $pernr    = trim((string) $req->query('pernr', ''));
         $arbpl    = $req->query('arbpl');
         $werks    = $req->query('werks');
@@ -146,13 +146,17 @@ class Yppi019DbApiController extends Controller
         $base = $this->flaskBase();
 
         // Kumpulkan semua parameter query yang valid untuk dikirim ke Flask
+        // bangun query params, tapi hanya tambahkan 'limit' jika tidak null
         $queryParams = array_filter([
             'aufnr' => $aufnr,
             'pernr' => $pernr,
             'arbpl' => $arbpl,
             'werks' => $werks,
-            'limit' => $limit,
-        ]);
+        ], fn($v) => $v !== null && $v !== '');
+        
+        if ($limit !== null) {
+            $queryParams['limit'] = $limit;
+        }
 
         $res = Http::acceptJson()->timeout(30)->get($base . '/api/yppi019', $queryParams);
         $rows = $res->ok() ? ($res->json('rows') ?? []) : [];

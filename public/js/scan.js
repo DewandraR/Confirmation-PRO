@@ -910,6 +910,11 @@ logoutConfirm?.addEventListener('click', (e) => {
     return `${tgl} ${jam}`;
   }
 
+  function mapUom(u) {
+    const x = String(u || '').toUpperCase();
+    return (x === 'ST' || x === 'EA' || x === 'PCS' || x === 'PC') ? 'PC' : x;
+  }  
+
   function openHistoryModalScan(){
     if (!historyModal) return;
     historyList.innerHTML = '';
@@ -930,25 +935,31 @@ logoutConfirm?.addEventListener('click', (e) => {
 
       if (!rows.length) { historyEmpty.classList.remove('hidden'); return; }
 
-      historyList.innerHTML = rows.map(r => {
+      historyList.innerHTML = rows.map((r, i) => {
         const auf   = r.AUFNR || r.aufnr || '-';
         const vor   = r.VORNR || r.vornr || '-';
         const qty   = r.QTY   || r.qty   || '-';
-        const me    = (r.MEINH || r.meinh || '-') || '';
+        const me    = mapUom(r.MEINH || r.meinh || '-');     // sudah ada dari step sebelumnya
         const bud   = fmtYMD(r.BUDAT || r.budat || '-');
+        const today = fmtYMD(r.TODAY || r.today || '-');
         const wc    = r.ARBPL0|| r.arbpl0|| '-';
         const mkx   = r.MAKTX || r.maktx || '-';
         const nik   = r.PERNR || r.pernr || r.NIK || r.nik || '-';
-
+      
         return `<tr class="odd:bg-white even:bg-slate-50">
+          <!-- ⬇️ sel nomor baru -->
+          <td class="px-3 py-2 border-b text-center font-mono">${i + 1}</td>
+      
           <td class="px-3 py-2 border-b font-mono">${auf} / ${vor}</td>
           <td class="px-3 py-2 border-b font-mono">${nik}</td>
           <td class="px-3 py-2 border-b font-mono">${qty} ${me}</td>
           <td class="px-3 py-2 border-b">${bud}</td>
+          <td class="px-3 py-2 border-b">${today}</td>
           <td class="px-3 py-2 border-b">${wc}</td>
           <td class="px-3 py-2 border-b">${mkx}</td>
         </tr>`;
       }).join('');
+         
     })
     .catch(err => {
       historyLoading.classList.add('hidden');

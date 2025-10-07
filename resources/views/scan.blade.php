@@ -423,10 +423,12 @@
         <table class="min-w-full text-[12px]">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
+              <th class="px-3 py-2 text-center font-semibold border-b w-[60px]">No</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[190px]">PRO / Activity</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">NIK Operator</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Qty (UoM)</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Posting Date</th>
+              <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Today</th>
               <th class="px-3 py-2 text-left font-semibold border-b w-[120px]">Work Center</th>
               <th class="px-3 py-2 text-left font-semibold border-b">Material Desc</th>
             </tr>
