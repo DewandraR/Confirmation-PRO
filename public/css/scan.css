@@ -79,3 +79,46 @@
 @media (max-width: 430px) {
   #openBackdateHistory { max-width: 50% !important; }   /* tombol tak “mengalahkan” label */
 }
+
+/* === Welcome Marquee (sapaan selamat datang) === */
+.welcome-marquee{
+  position: relative;
+  overflow: hidden;
+}
+.welcome-track{
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  animation: welcome-scroll 10s linear infinite;
+  color: #fff; /* teks di header gradasi */
+}
+
+/* efek fade di kiri/kanan biar mulus */
+.welcome-marquee::before,
+.welcome-marquee::after{
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 64px;
+  pointer-events: none;
+}
+.welcome-marquee::before{
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,.12), rgba(0,0,0,0));
+}
+.welcome-marquee::after{
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,.12), rgba(0,0,0,0));
+}
+
+/* keyframes: karena konten diduplikasi 2x, geser -50% untuk loop mulus */
+@keyframes welcome-scroll{
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* aksesibilitas: hormati preferensi reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .welcome-track{ animation: none; }
+}
+

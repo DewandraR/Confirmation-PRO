@@ -668,26 +668,67 @@ document.addEventListener('DOMContentLoaded', () => {
   if (qrModal) qrModal.addEventListener('click', e => { if (e.target === qrModal) closeQrModal(); });
 
   // =================================================================
-  // ===== LOGOUT
-  // =================================================================
-  const logoutModal  = document.getElementById('logoutModal');
-  const openLogoutBtn= document.getElementById('openLogoutConfirm');
-  const logoutCancel = document.getElementById('logoutCancel');
-  const logoutConfirm= document.getElementById('logoutConfirm');
-  const logoutForm   = document.getElementById('logoutForm');
+// ===== LOGOUT (dibuat anti double-click / double-submit)
+// =================================================================
+const logoutModal   = document.getElementById('logoutModal');
+const openLogoutBtn = document.getElementById('openLogoutConfirm');
+const logoutCancel  = document.getElementById('logoutCancel');
+const logoutConfirm = document.getElementById('logoutConfirm');
+const logoutForm    = document.getElementById('logoutForm');
 
-  if (openLogoutBtn) openLogoutBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    logoutModal?.classList.remove('hidden');
-    logoutModal?.classList.add('flex');
-  });
-  if (logoutCancel)  logoutCancel.addEventListener('click', () => {
-    logoutModal?.classList.add('hidden');
-    logoutModal?.classList.remove('flex');
-  });
-  if (logoutConfirm) logoutConfirm.addEventListener('click', () => {
-    logoutForm?.submit();
-  });
+let logoutModalOpen = false;
+let logoutSubmitting = false;
+
+function openLogout() {
+  if (logoutModalOpen) return;           // cegah buka berkali-kali
+  logoutModalOpen = true;
+  if (openLogoutBtn) {
+    openLogoutBtn.disabled = true;
+    openLogoutBtn.classList.add('opacity-60','cursor-not-allowed');
+  }
+  logoutModal?.classList.remove('hidden');
+  logoutModal?.classList.add('flex');
+}
+
+function closeLogout() {
+  logoutModalOpen = false;
+  if (openLogoutBtn) {
+    openLogoutBtn.disabled = false;
+    openLogoutBtn.classList.remove('opacity-60','cursor-not-allowed');
+  }
+  logoutModal?.classList.add('hidden');
+  logoutModal?.classList.remove('flex');
+
+  // reset tombol konfirmasi bila modal ditutup
+  if (logoutConfirm) {
+    logoutConfirm.disabled = false;
+    logoutConfirm.removeAttribute('aria-busy');
+    logoutConfirm.classList.remove('opacity-60','cursor-not-allowed');
+    if (logoutConfirm.dataset._txt) logoutConfirm.innerHTML = logoutConfirm.dataset._txt;
+  }
+  logoutSubmitting = false;
+}
+
+openLogoutBtn?.addEventListener('click', (e) => { e.preventDefault(); openLogout(); });
+logoutCancel?.addEventListener('click', () => closeLogout());
+
+logoutConfirm?.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (logoutSubmitting) return;          // hard guard
+  logoutSubmitting = true;
+
+  // kunci UI tombol
+  logoutConfirm.dataset._txt = logoutConfirm.innerHTML;
+  logoutConfirm.disabled = true;
+  logoutConfirm.setAttribute('aria-busy','true');
+  logoutConfirm.classList.add('opacity-60','cursor-not-allowed');
+  logoutConfirm.innerHTML = 'Keluar…';
+
+  // submit sekali saja
+  if (logoutForm?.requestSubmit) logoutForm.requestSubmit();
+  else logoutForm?.submit();
+});
+
 
   // =================================================================
   // ===== DROPDOWN KUSTOM PLANT (tidak mengubah yang lama)

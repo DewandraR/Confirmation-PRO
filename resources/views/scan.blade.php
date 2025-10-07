@@ -17,8 +17,63 @@
       <div class="mb-3">
         <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-16 h-16 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
       </div>
-      <h1 class="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO</h1>
+      <h1 class="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO App</h1>
       <p class="text-sm md:text-base text-white/80 leading-tight">Pindai barcode atau masukkan data secara manual</p>
+
+      {{-- ===== Sapaan Selamat Datang (hanya saat login) ===== --}}
+@php
+  $namaUser = optional(Auth::user())->name
+    ?? optional(Auth::user())->username
+    ?? (\Illuminate\Support\Str::before(optional(Auth::user())->email, '@') ?: 'User');
+@endphp
+@auth
+  <div class="mt-3 md:mt-4">
+    <div class="max-w-2xl mx-auto">
+      <div id="welcomeBanner"
+     class="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md welcome-type-card"
+     data-username="{{ $namaUser }}">
+
+        <div class="flex items-center gap-3 px-4 py-3">
+          <div class="shrink-0 w-9 h-9 rounded-xl bg-white/20 grid place-items-center">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <path d="M12 22a2.25 2.25 0 0 0 2.12-1.5H9.88A2.25 2.25 0 0 0 12 22Zm7.5-6.75h-.75a1.5 1.5 0 0 1-1.5-1.5V10a5.25 5.25 0 1 0-10.5 0v3.75a1.5 1.5 0 0 1-1.5 1.5H4.5a.75.75 0 0 0 0 1.5h15a.75.75 0 0 0 0-1.5Z"/>
+</svg>
+
+
+
+
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <!-- Marquee -->
+            <div class="welcome-marquee">
+              <div class="welcome-track">
+                <span class="font-semibold">Selamat datang, <span class="underline decoration-white/40 underline-offset-2">{{ $namaUser }}</span> 👋 </span>
+                <span class="opacity-90">Semoga proses konfirmasi berjalan lancar hari ini.</span>
+                <span class="mx-6">•</span>
+                <!-- duplikasi konten agar scroll kontinu -->
+                <span class="font-semibold">Selamat datang, <span class="underline decoration-white/40 underline-offset-2">{{ $namaUser }}</span> 👋 </span>
+                <span class="opacity-90">Semoga proses konfirmasi berjalan lancar hari ini.</span>
+              </div>
+            </div>
+
+            <!-- fallback bila JS/animasi dimatikan -->
+            <noscript>
+              <div class="text-white text-sm font-semibold">
+                Selamat datang, {{ $namaUser }} 👋
+              </div>
+              <div class="text-white/80 text-xs">Semoga proses konfirmasi berjalan lancar hari ini.</div>
+            </noscript>
+          </div>
+        </div>
+
+        
+      </div>
+    </div>
+  </div>
+@endauth
+{{-- ===== END Sapaan ===== --}}
+
     </div>
   </div>
 </div>

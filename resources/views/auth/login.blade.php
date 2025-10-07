@@ -10,7 +10,7 @@
                 <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo" class="mx-auto w-14 h-14 md:w-20 md:h-20 object-contain rounded-xl p-0.5 bg-white">
             </div>
             <h1 class="text-lg md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">Halaman Login</h1>
-            <h2 class="text-lg md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO</h2>
+            <h2 class="text-lg md:text-3xl font-bold text-white mb-1 md:mb-2 leading-tight">Konfirmasi PRO App</h2>
             {{-- Selalu tampil, diperkecil di mobile --}}
             <p class="text-xs md:text-base text-white/80 leading-tight">Silakan masuk menggunakan SAP ID</p>
         </div>

@@ -1044,3 +1044,51 @@ rowsAll.sort((a, b) => {
     goScanWithPernr();
   });
 });
+
+// ===== Guard tombol "Ya" agar tidak double-submit =====
+(() => {
+  function initYesButtonGuard() {
+    const modal     = document.getElementById('confirm-modal');
+    const yesBtn    = document.getElementById('yes-button');
+    const cancelBtn = document.getElementById('cancel-button');
+    if (!modal || !yesBtn) return;
+
+    const originalHTML = yesBtn.innerHTML;
+
+    function disableYes() {
+      if (yesBtn.disabled) return;
+      yesBtn.disabled = true;
+      yesBtn.setAttribute('aria-busy', 'true');
+      yesBtn.classList.add('opacity-60', 'cursor-not-allowed');
+      // spinner kecil + label
+      yesBtn.innerHTML =
+        '<svg class="w-4 h-4 mr-2 inline-block animate-spin" viewBox="0 0 24 24" fill="none">' +
+          '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>' +
+          '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>' +
+        '</svg>Memproses…';
+    }
+    function enableYes() {
+      yesBtn.disabled = false;
+      yesBtn.removeAttribute('aria-busy');
+      yesBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+      yesBtn.innerHTML = originalHTML;
+    }
+
+    // 1) Disable segera saat diklik
+    yesBtn.addEventListener('click', disableYes, { capture: true });
+    // 2) Re-enable jika pengguna batal
+    if (cancelBtn) cancelBtn.addEventListener('click', enableYes);
+    // 3) Reset setiap kali modal muncul lagi
+    const obs = new MutationObserver(() => {
+      if (!modal.classList.contains('hidden')) enableYes();
+    });
+    obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initYesButtonGuard);
+  } else {
+    initYesButtonGuard();
+  }
+})();
+
