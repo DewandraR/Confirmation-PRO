@@ -304,7 +304,11 @@ def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], 
         res = sap.call(RFC_Y, **args)
         rows = [map_tdata1_row(r) for r in (res.get("T_DATA1", []) or [])]
         ret = res.get("RETURN") or res.get("T_MESSAGES") or []
-        if ret: logger.info("RETURN/MESSAGES: %s", to_jsonable(ret))
+        # log hanya E/A/W (Error/Abort/Warning), abaikan S/I
+        bad = [m for m in ret if str(m.get("TYPE", "")).upper() in ("E", "A", "W")]
+        if bad:
+            logger.warning("RETURN/MESSAGES: %s", to_jsonable(bad))
+
         logger.info("Result %s: %d row(s)", RFC_Y, len(rows))
         return rows
     
@@ -323,7 +327,7 @@ def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], 
         if arbpl: args["IV_ARBPL"] = str(arbpl)
         if werks: args["IV_WERKS"] = str(werks)
 
-    logger.info("Final fetch call arguments: %s", args)
+    
     rows = _call(args)  # biarkan error propagate ke caller
     if pernr:
         for r in rows:
@@ -961,4 +965,4 @@ def api_backdate_history():
 
 if __name__ == "__main__":
     ensure_tables()
-    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=False, use_reloader=False)
+    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=False, use_reloader=False, threaded=True)

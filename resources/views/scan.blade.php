@@ -307,8 +307,8 @@
             <li>• Pastikan untuk <b>menghidupkan dan mengizinkan kamera di browser anda</b>, saat akan melakukan scan.</li>
             <li>• Field <b>NIK Operator</b> wajib diisi.</li>
             <li>• Anda bisa mengisi <b>Work Center & Plant</b>, ATAU <b>PRO</b>.</li>
+            <li>• Pastikan sebelum melakukan scan <b>PRO</b>, barcodenya dalam bentuk <b>PDF</b> atau <b>di Print fisik</b>.</li>
             <li>• Posisikan <b>Barcode</b> dan <b>QR Code</b> di area tengah kamera dan hindari pantulan cahaya.</li>
-            {{-- <li>• Untuk pengguna <b>iOS</b> jika kamera Work Center tidak berfungsi, harap inputkan kode secara manual.</li> --}}
           </ul>
         </div>
       </div>
