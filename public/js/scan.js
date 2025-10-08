@@ -275,10 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           if (okAufnrs.length === 0) {
-            if (adaTeco) showTeco(aufnrArray);
-            else showError('Gagal Memuat Data', firstErrMsg || 'PRO/WC tidak mengembalikan data dari SAP.');
+            const lines = failures.length
+              ? failures.map(f => `${f.key} — ${f.msg}`).join('\n')
+              : (firstErrMsg || 'PRO/WC tidak mengembalikan data dari SAP.');
+          
+            // tampilkan SEMUA error per-PRO dalam satu alert
+            showError('Semua PRO gagal memuat data', lines);
+          
             return;
           }
+          
 
           // ← di sini minimal ada 1 sukses
           const goRedirect = () => {
