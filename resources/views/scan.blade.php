@@ -522,8 +522,11 @@
 <div id="overlay" class="hidden fixed inset-0 z-50 grid place-items-center bg-black/40">
   <div class="overlay-card rounded-2xl bg-white shadow-2xl px-5 py-4 text-sm text-slate-700 w-[min(92vw,360px)] text-center">
     <div class="flex flex-col items-center gap-2">
-      <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo"
-           class="w-10 h-10 rounded-xl overlay-logo-spin select-none mx-auto" draggable="false" />
+      {{-- Pembungkus baru untuk logo dan garis putar --}}
+<div class="relative logo-wrapper">
+  <img src="{{ asset('images/kmi.jpg') }}" alt="Company Logo"
+       class="w-10 h-10 rounded-xl select-none" draggable="false" />
+</div>
 
       <div id="overlayText" class="font-medium">Mengambil data dari SAP…</div>
       <div class="text-[11px] text-slate-500">Jangan tutup halaman ini.</div>
@@ -531,7 +534,7 @@
     </div>
 
     <div class="mt-3 overlay-bar h-1.5 rounded-full bg-slate-200">
-      <i class="block h-full bg-emerald-600 rounded-full"></i>
+      <i class="block h-full rounded-full"></i>
     </div>
   </div>
 </div>
