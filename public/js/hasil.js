@@ -163,14 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const opList = Array.from(opSet);
       const operatorLabel = opList.length <= 2 ? opList.join(', ') : `${opList[0]} +${opList.length - 1}`;
 
-      // Total Menit Kerja/Inspect: jika semua baris sama -> tampil angka itu; kalau beda -> jumlahkan
-      const sameOrSum = (arr) => {
-        const vals = arr.filter(v => Number.isFinite(v));
-        if (!vals.length) return '';
-        return vals.every(v => v === vals[0]) ? vals[0] : vals.reduce((a,b)=>a+b,0);
-      };
-      const totalKerja   = sameOrSum(rows.map(r => Number(getVal(r,'STPRO'))));
-      const totalInspect = sameOrSum(rows.map(r => Number(getVal(r,'STPRO2'))));
+      // Total Menit Kerja/Inspect = SUM kolom menit per baris (TTCNF / TTCNF2)
+const sumNum = (arr) => arr.reduce((a, v) => a + (Number(v) || 0), 0);
+const totalKerja   = sumNum(rows.map(r => getVal(r, 'TTCNF')));   // Σ MENIT KERJA
+const totalInspect = sumNum(rows.map(r => getVal(r, 'TTCNF2')));  // Σ MENIT INSPECT
+
+const fmt2 = (n) => Number.isFinite(n) ? Number(n.toFixed(2)) : '';
 
       // sisipkan summary card (buat elemen jika belum ada)
       let summary = document.getElementById('hasil-summary');
@@ -189,11 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm">
             <div class="text-xs text-sky-700">Total Menit Kerja</div>
-            <div class="text-2xs font-bold">${(totalKerja ?? '')}</div>
+            <div class="text-2xs font-bold">${fmt2(totalKerja)}</div>
           </div>
           <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm">
             <div class="text-xs text-amber-700">Total Menit Inspect</div>
-            <div class="text-2xs font-bold">${(totalInspect ?? '')}</div>
+            <div class="text-2xs font-bold">${fmt2(totalInspect)}</div>
           </div>
         </div>
       `;
