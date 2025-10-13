@@ -439,6 +439,22 @@ rowsAll.sort((a, b) => {
       const maxAllow = Math.max(0, Math.min(qtySPX, sisaSPK));
       const meinh = (r.MEINH || "ST").toUpperCase();
 
+      // ========= PREFILL MAX (FIX: cek plant dari data baris) =========
+const dispo = String(r.DISPO || "").toUpperCase();
+// Ambil plant dari data baris; fallback ke URL jika ada.
+// Beberapa backend menamai plant sebagai WERKS / PWERK / PLANT, jadi coba semuanya.
+const werksRow = String(
+  r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? ""
+).replace(/^0+/, ""); // hilangkan leading zero seperti "01000" -> "1000"
+
+const shouldPrefillMax =
+  ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
+
+const defaultQty = shouldPrefillMax ? maxAllow : 0;
+// ================================================================
+
+      // =====================================
+
       // === NEW: normalisasi SSAVD/SSSLD
       const ssavdYMD = toYYYYMMDD(r.SSAVD);
       const sssldYMD = toYYYYMMDD(r.SSSLD);
@@ -511,7 +527,7 @@ rowsAll.sort((a, b) => {
 
         <td class="px-3 py-3 text-sm text-slate-700 text-center">
           <input type="number" name="QTY_SPX" class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
-              value="0" placeholder="0" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
+              value="${defaultQty}" placeholder="${defaultQty}" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
               step="${meinh === "M3" ? "0.001" : "1"}" inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
               title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"/>
           <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(meinh)})</div>
@@ -1094,4 +1110,3 @@ rowsAll.sort((a, b) => {
     initYesButtonGuard();
   }
 })();
-
