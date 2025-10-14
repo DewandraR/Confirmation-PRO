@@ -117,14 +117,6 @@ const isFutureYmd = (ymd) => {
   return d > t;
 };
 
-// TAMPILKAN 3 DESIMAL (untuk LTIME/LTIMEX)
-function fixed3(val) {
-  if (val === null || val === undefined || val === "") return "-";
-  const n = Number(String(val).replace(",", "."));
-  return Number.isFinite(n) ? n.toFixed(3) : String(val);
-}
-
-
 function getUnitName(unit) {
   const u = String(unit || "").toUpperCase();
   switch (u) {
@@ -481,11 +473,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(4, 6)}/${sssldYMD.slice(0, 4)}`
           : "";
 
-      // === NEW: LTIME / LTIMEX (menit)
-      // sebelum return `<tr ...>`
-const ltimeStr  = fixed3(r.LTIME);
-const ltimexStr = fixed3(r.LTIMEX);
-
+      // === NEW: LTIMEX (menit)
+      const ltimexStr = fmtMinutes(r.LTIMEX);
 
       // NEW: Item view tanpa leading zero + versi 6 digit
       const kdpos6 = padKdpos(r.KDPOS);
@@ -506,8 +495,8 @@ const ltimexStr = fixed3(r.LTIMEX);
         r.SNAME || "",
         ssavdDMY,
         sssldDMY,
-        // tambahkan LTIME ke pencarian
-        ltimeStr,
+        // tambahkan LTIME/LTIMEX ke pencarian
+        ltimexStr,
         r.KDAUF,          // cari berdasarkan SO
         r.KDPOS,          // raw KDPOS
         kdpos6,           // versi 6 digit
@@ -528,7 +517,7 @@ const ltimexStr = fixed3(r.LTIMEX);
         r.GLTRP
       )}"
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
-        data-ltime="${ltimeStr}" data-ltimex="${ltimexStr}"
+        data-ltimex="${ltimexStr}"
         data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-search="${searchStr}">
@@ -567,7 +556,8 @@ const ltimexStr = fixed3(r.LTIMEX);
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
 
         <!-- NEW: LTIME & LTIMEX (menit) -->
-        <td class="px-3 py-3 text-sm text-slate-700">${ltimeStr}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
+
         <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
       </tr>`;
     })
