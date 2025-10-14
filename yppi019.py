@@ -1,4 +1,4 @@
-# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS
+# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS + LTIME/LTIMEX (minutes)
 import os, re, json, logging, decimal, datetime, base64
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -219,6 +219,9 @@ def ensure_tables():
               GLTRP DATE NULL,
               SSAVD DATE NULL,
               SSSLD DATE NULL,
+              -- NEW: start/finish time in minutes (as numeric)
+              LTIME  DECIMAL(18,3) NULL,
+              LTIMEX DECIMAL(18,3) NULL,
               ISDZ VARCHAR(20) NULL,
               IEDZ VARCHAR(20) NULL,
               RAW_JSON JSON NOT NULL,
@@ -261,6 +264,16 @@ def ensure_tables():
               KEY idx_pernr (PERNR)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
+            # --- Lightweight migration if the columns already exist / or DB created earlier
+            try:
+                cur.execute("ALTER TABLE yppi019_data ADD COLUMN LTIME DECIMAL(18,3) NULL AFTER SSSLD")
+            except Exception:
+                pass
+            try:
+                cur.execute("ALTER TABLE yppi019_data ADD COLUMN LTIMEX DECIMAL(18,3) NULL AFTER LTIME")
+            except Exception:
+                pass
+
             db.commit()
 
 def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -290,6 +303,9 @@ def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
         # ➕ BARU: tanggal start/finish dari SAP (format apa pun → dinormalisasi oleh parse_date)
         "SSAVD": parse_date(r.get("SSAVD")),
         "SSSLD": parse_date(r.get("SSSLD")),
+        # ➕ BARU: waktu (menit, numeric) — langsung parse ke float
+        "LTIME":  parse_num(r.get("LTIME")),
+        "LTIMEX": parse_num(r.get("LTIMEX")),
         "ISDZ": r.get("ISDZ"),
         "IEDZ": r.get("IEDZ"),
         "RAW_JSON": json.dumps(to_jsonable(r), ensure_ascii=False),
@@ -423,17 +439,17 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
                             cur.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
                         wiped = cur.rowcount
 
-                        # Insert ulang rows milik AUFNR ini (pola save_rows lama) + KDAUF/KDPOS
+                        # Insert ulang rows milik AUFNR ini (pola save_rows lama) + KDAUF/KDPOS + LTIME/LTIMEX
                         cur.executemany("""
     INSERT INTO yppi019_data
      (AUFNR,VORNRX,PERNR,ARBPL0,DISPO,STEUS,WERKS,
       KDAUF,KDPOS,
       CHARG,MATNRX,MAKTX,MEINH,
-      QTY_SPK,WEMNG,QTY_SPX,LTXA1,SNAME,GSTRP,GLTRP,SSAVD,SSSLD,ISDZ,IEDZ,RAW_JSON,fetched_at)
+      QTY_SPK,WEMNG,QTY_SPX,LTXA1,SNAME,GSTRP,GLTRP,SSAVD,SSSLD,LTIME,LTIMEX,ISDZ,IEDZ,RAW_JSON,fetched_at)
     VALUES (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,
       %(KDAUF)s,%(KDPOS)s,
       %(CHARG)s,%(MATNRX)s,%(MAKTX)s,%(MEINH)s,
-      %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(SSAVD)s,%(SSSLD)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
+      %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,%(GSTRP)s,%(GLTRP)s,%(SSAVD)s,%(SSSLD)s,%(LTIME)s,%(LTIMEX)s,%(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s)
     ON DUPLICATE KEY UPDATE
       PERNR=VALUES(PERNR),
       ARBPL0=VALUES(ARBPL0),
@@ -454,6 +470,8 @@ def sync_from_sap(username: Optional[str], password: Optional[str],
       GLTRP=VALUES(GLTRP),
       SSAVD=VALUES(SSAVD),
       SSSLD=VALUES(SSSLD),
+      LTIME=VALUES(LTIME),
+      LTIMEX=VALUES(LTIMEX),
       ISDZ=VALUES(ISDZ),
       IEDZ=VALUES(IEDZ),
       RAW_JSON=VALUES(RAW_JSON),

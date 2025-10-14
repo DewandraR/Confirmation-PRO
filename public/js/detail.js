@@ -91,6 +91,14 @@ const fmtDateTime = (iso) => {
   }
 };
 
+// NEW: format menit (angka) → up to 3 desimal, hilangkan nol di akhir
+function fmtMinutes(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = parseFloat(String(v).replace(",", "."));
+  if (!Number.isFinite(n)) return "-";
+  return n.toFixed(3).replace(/\.?0+$/, "");
+}
+
 const ymdToDmy = (ymd) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || "").trim());
   return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
@@ -108,6 +116,14 @@ const isFutureYmd = (ymd) => {
   t.setHours(0, 0, 0, 0);
   return d > t;
 };
+
+// TAMPILKAN 3 DESIMAL (untuk LTIME/LTIMEX)
+function fixed3(val) {
+  if (val === null || val === undefined || val === "") return "-";
+  const n = Number(String(val).replace(",", "."));
+  return Number.isFinite(n) ? n.toFixed(3) : String(val);
+}
+
 
 function getUnitName(unit) {
   const u = String(unit || "").toUpperCase();
@@ -402,27 +418,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!rowsAll.length) {
     tableBody.innerHTML =
-      '<tr><td colspan="17" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>';
+      '<tr><td colspan="19" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>';
     totalItems.textContent = "0";
     if (shownCountEl) shownCountEl.textContent = "0";
     return;
   }
 
   // --- urutkan & render ---
-// Urut SSAVD ascending; SSAVD kosong ditaruh paling akhir.
-// Tie-breaker: AUFNR, lalu VORNR numerik.
-rowsAll.sort((a, b) => {
-  const sa = a.SSAVD ? toYYYYMMDD(a.SSAVD) : "99999999";
-  const sb = b.SSAVD ? toYYYYMMDD(b.SSAVD) : "99999999";
-  if (sa !== sb) return sa.localeCompare(sb);
+  // Urut SSAVD ascending; SSAVD kosong ditaruh paling akhir.
+  // Tie-breaker: AUFNR, lalu VORNR numerik.
+  rowsAll.sort((a, b) => {
+    const sa = a.SSAVD ? toYYYYMMDD(a.SSAVD) : "99999999";
+    const sb = b.SSAVD ? toYYYYMMDD(b.SSAVD) : "99999999";
+    if (sa !== sb) return sa.localeCompare(sb);
 
-  if ((a.AUFNR || "") !== (b.AUFNR || "")) {
-    return (a.AUFNR || "").localeCompare(b.AUFNR || "");
-  }
-  const va = parseInt(a.VORNRX || a.VORNR || "0", 10) || 0;
-  const vb = parseInt(b.VORNRX || b.VORNR || "0", 10) || 0;
-  return va - vb;
-});
+    if ((a.AUFNR || "") !== (b.AUFNR || "")) {
+      return (a.AUFNR || "").localeCompare(b.AUFNR || "");
+    }
+    const va = parseInt(a.VORNRX || a.VORNR || "0", 10) || 0;
+    const vb = parseInt(b.VORNRX || b.VORNR || "0", 10) || 0;
+    return va - vb;
+  });
 
   totalItems.textContent = String(rowsAll.length);
 
@@ -440,20 +456,18 @@ rowsAll.sort((a, b) => {
       const meinh = (r.MEINH || "ST").toUpperCase();
 
       // ========= PREFILL MAX (FIX: cek plant dari data baris) =========
-const dispo = String(r.DISPO || "").toUpperCase();
-// Ambil plant dari data baris; fallback ke URL jika ada.
-// Beberapa backend menamai plant sebagai WERKS / PWERK / PLANT, jadi coba semuanya.
-const werksRow = String(
-  r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? ""
-).replace(/^0+/, ""); // hilangkan leading zero seperti "01000" -> "1000"
+      const dispo = String(r.DISPO || "").toUpperCase();
+      // Ambil plant dari data baris; fallback ke URL jika ada.
+      // Beberapa backend menamai plant sebagai WERKS / PWERK / PLANT, jadi coba semuanya.
+      const werksRow = String(
+        r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? ""
+      ).replace(/^0+/, ""); // hilangkan leading zero seperti "01000" -> "1000"
 
-const shouldPrefillMax =
-  ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
+      const shouldPrefillMax =
+        ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
 
-const defaultQty = shouldPrefillMax ? maxAllow : 0;
-// ================================================================
-
-      // =====================================
+      const defaultQty = shouldPrefillMax ? maxAllow : 0;
+      // ================================================================
 
       // === NEW: normalisasi SSAVD/SSSLD
       const ssavdYMD = toYYYYMMDD(r.SSAVD);
@@ -466,6 +480,12 @@ const defaultQty = shouldPrefillMax ? maxAllow : 0;
         sssldYMD && sssldYMD.length === 8
           ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(4, 6)}/${sssldYMD.slice(0, 4)}`
           : "";
+
+      // === NEW: LTIME / LTIMEX (menit)
+      // sebelum return `<tr ...>`
+const ltimeStr  = fixed3(r.LTIME);
+const ltimexStr = fixed3(r.LTIMEX);
+
 
       // NEW: Item view tanpa leading zero + versi 6 digit
       const kdpos6 = padKdpos(r.KDPOS);
@@ -486,6 +506,8 @@ const defaultQty = shouldPrefillMax ? maxAllow : 0;
         r.SNAME || "",
         ssavdDMY,
         sssldDMY,
+        // tambahkan LTIME ke pencarian
+        ltimeStr,
         r.KDAUF,          // cari berdasarkan SO
         r.KDPOS,          // raw KDPOS
         kdpos6,           // versi 6 digit
@@ -506,6 +528,7 @@ const defaultQty = shouldPrefillMax ? maxAllow : 0;
         r.GLTRP
       )}"
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
+        data-ltime="${ltimeStr}" data-ltimex="${ltimexStr}"
         data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-search="${searchStr}">
@@ -542,6 +565,9 @@ const defaultQty = shouldPrefillMax ? maxAllow : 0;
         <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || '-'}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
+
+        <!-- NEW: LTIME & LTIMEX (menit) -->
+        <td class="px-3 py-3 text-sm text-slate-700">${ltimeStr}</td>
         <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
       </tr>`;
     })
