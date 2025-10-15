@@ -42,11 +42,22 @@ def connect_mysql():
 def _fetch_scalar(cur):
     row = cur.fetchone()
     if row is None:
-        return None
-    if isinstance(row, dict):
-        # Ambil nilai kolom tunggal (GET_LOCK(...) atau RELEASE_LOCK(...))
-        return next(iter(row.values()))
-    return row[0]
+        val = None
+    else:
+        val = next(iter(row.values())) if isinstance(row, dict) else row[0]
+
+    # Drain sisa baris (kalau ada) + sisa result set (kalau ada)
+    try:
+        cur.fetchall()
+    except Exception:
+        pass
+    try:
+        while cur.nextset():
+            cur.fetchall()
+    except Exception:
+        pass
+    return val
+
 
 def acquire_mutex(cur, key: str, timeout: int = 8):
     """Ambil mutex bernama yppi019:<key>. Timeout detik."""
@@ -737,6 +748,7 @@ def api_confirm():
         return jsonify({"ok": False, "error": str(ve)}), 401
 
     b = request.get_json(force=True) or {}
+
     aufnr  = (str(b.get("aufnr") or "").strip())
     vornr  = pad_vornr(b.get("vornr"))
     pernr  = (str(b.get("pernr") or "").strip())
@@ -748,30 +760,56 @@ def api_confirm():
 
     try:
         with connect_mysql() as db:
-            with db.cursor(dictionary=True) as cur:
+            # pakai cursor buffered supaya tak ada unread result
+            with db.cursor(dictionary=True, buffered=True) as cur:
 
-                # per-AUFNR mutex to avoid /sync collision
+                coarse_key = f"aufnr:{aufnr}"
+                fine_key   = f"aufnr:{aufnr}:vornr:{vornr}"
+
+                # 1) coarse lock terhadap /sync untuk AUFNR ini
                 try:
-                    acquire_mutex(cur, f"aufnr:{aufnr}", timeout=8)
+                    acquire_mutex(cur, coarse_key, timeout=8)
                 except RuntimeError:
                     return locked_response("AUFNR", aufnr)
+
+                # 2) fine lock terhadap confirm lain di operasi yang sama
+                try:
+                    acquire_mutex(cur, fine_key, timeout=8)
+                except RuntimeError:
+                    # lepas coarse lock sebelum keluar
+                    release_mutex(cur, coarse_key)
+                    return locked_response("AUFNR+VORNR", f"{aufnr}/{vornr}")
+
                 try:
                     db.start_transaction()
 
-                    cur.execute(
-                        """
+                    # (opsional) pembeda tambahan jika ada
+                    charg  = (str(b.get("charg")  or "").strip())
+                    arbpl0 = (str(b.get("arbpl0") or b.get("arbpl") or "").strip())
+
+                    where = ["AUFNR=%s", "VORNRX=%s"]
+                    args  = [aufnr, vornr]
+                    if charg:
+                        where.append("CHARG=%s");  args.append(charg)
+                    if arbpl0:
+                        where.append("ARBPL0=%s"); args.append(arbpl0)
+
+                    cur.execute(f"""
                         SELECT id, QTY_SPK, WEMNG, QTY_SPX, MEINH
                         FROM yppi019_data
-                        WHERE AUFNR=%s AND VORNRX=%s
+                        WHERE {" AND ".join(where)}
                         FOR UPDATE
-                        """,
-                        (aufnr, vornr),
-                    )
-                    row_db = cur.fetchone()
-                    if not row_db:
+                    """, tuple(args))
+                    rows = cur.fetchall()  # habiskan result set
+
+                    if not rows:
                         db.rollback()
                         return jsonify({"ok": False, "error": "Data operation tidak ditemukan"}), 404
+                    if len(rows) > 1 and not (charg or arbpl0):
+                        db.rollback()
+                        return jsonify({"ok": False, "error": "Data tidak unik (>1 baris). Sertakan CHARG/ARBPL0."}), 409
 
+                    row_db  = rows[0]
                     qty_spk = float(row_db.get("QTY_SPK") or 0.0)
                     wemng   = float(row_db.get("WEMNG")   or 0.0)
                     qty_spx = float(row_db.get("QTY_SPX") or 0.0)
@@ -805,6 +843,23 @@ def api_confirm():
                                 IV_GLTRP=str(b.get("gltrp") or ""),
                                 IV_BUDAT=budat,
                             )
+
+                            def _collect_msgs(ret):
+                                msgs = []
+                                if isinstance(ret, dict):
+                                    for k, v in ret.items():
+                                        if isinstance(v, list):
+                                            msgs += [x for x in v if isinstance(x, dict)]
+                                return msgs
+
+                            msgs = _collect_msgs(sap_ret)
+                            err = next((m for m in msgs if str(m.get("TYPE","")).upper() in ("E","A")), None)
+                            if err:
+                                db.rollback()
+                                return jsonify({"ok": False,
+                                                "error": err.get("MESSAGE") or "SAP returned error",
+                                                "sap_return": to_jsonable(sap_ret)}), 500
+
                     except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
                         db.rollback()
                         logger.exception("SAP error api_confirm")
@@ -855,19 +910,20 @@ def api_confirm():
                     latest_row = cur.fetchone()
 
                 finally:
-                    release_mutex(cur, f"aufnr:{aufnr}")
+                    # lepas fine lock dulu, lalu coarse lock
+                    try:
+                        release_mutex(cur, fine_key)
+                    finally:
+                        release_mutex(cur, coarse_key)
 
-        return (
-            jsonify(
-                {
-                    "ok": True,
-                    "sap_return": to_jsonable(sap_ret),
-                    "refreshed": {"ok": True, "mode": "local_update"},
-                    "row": to_jsonable(latest_row),
-                }
-            ),
-            200,
-        )
+        return jsonify(
+            {
+                "ok": True,
+                "sap_return": to_jsonable(sap_ret),
+                "refreshed": {"ok": True, "mode": "local_update"},
+                "row": to_jsonable(latest_row),
+            }
+        ), 200
 
     except Exception as e:
         logger.exception("Error api_confirm")
@@ -876,6 +932,8 @@ def api_confirm():
         except Exception:
             pass
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
 
 @app.post("/api/yppi019/backdate-log")
 def api_backdate_log():

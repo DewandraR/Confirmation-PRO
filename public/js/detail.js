@@ -519,6 +519,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
         data-ltimex="${ltimexStr}"
         data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
+        data-charg="${r.CHARG || ""}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-search="${searchStr}">
         <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
@@ -901,6 +902,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         gstrp: today,
         gltrp: today,
         budat: pickedBudat,
+        arbpl0: row.dataset.arbpl0 || "",
+        charg : row.dataset.charg  || "",
         _arbpl0: row.dataset.arbpl0,
         _maktx: row.dataset.maktx,
       };

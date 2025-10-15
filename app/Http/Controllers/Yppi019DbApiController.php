@@ -252,6 +252,7 @@ class Yppi019DbApiController extends Controller
             'gltrp' => 'nullable|string',
             'budat' => 'required|string',
             'charg' => 'nullable|string',
+            'arbpl0'=> 'nullable|string',
         ]);
 
         $payload['vornr'] = $this->padVornr($payload['vornr'] ?? null);
