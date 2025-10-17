@@ -43,11 +43,11 @@ class LoginController extends Controller
         $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5036/api/sap-login'));
 
         // === Cek whitelist user lebih dulu ===
-        if (!$this->isWhitelistedUser($sapId)) {
-            return back()
-                ->withErrors(['login' => 'Aplikasi sedang maintenance. Akun ini sementara tidak diberi izin mengakses aplikasi.'])
-                ->onlyInput('sap_id');
-        }
+        // if (!$this->isWhitelistedUser($sapId)) {
+        //     return back()
+        //         ->withErrors(['login' => 'Aplikasi sedang maintenance. Akun ini sementara tidak diberi izin mengakses aplikasi.'])
+        //         ->onlyInput('sap_id');
+        // }
         // === End cek whitelist ===
 
         try {
@@ -231,17 +231,17 @@ class LoginController extends Controller
     /**
      * Whitelist user yang diizinkan login.
      */
-    private function isWhitelistedUser(string $sapId): bool
-    {
-        // Hardcode sesuai kebutuhan:
-        $allowed = ['auto_email'];
+    // private function isWhitelistedUser(string $sapId): bool
+    // {
+    //     // Hardcode sesuai kebutuhan:
+    //     $allowed = ['auto_email'];
 
-        $id = strtolower(trim($sapId));
-        foreach ($allowed as $u) {
-            if ($id === strtolower($u)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    //     $id = strtolower(trim($sapId));
+    //     foreach ($allowed as $u) {
+    //         if ($id === strtolower($u)) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
 }
