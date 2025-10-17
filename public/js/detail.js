@@ -271,6 +271,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const successModal = document.getElementById("success-modal");
   const successList = document.getElementById("success-list");
   const successOkButton = document.getElementById("success-ok-button");
+  // Mode halaman: WC (pakai arbpl+werks+nik) vs PRO (pakai aufnr+nik)
+  const isWCMode = AUFNRS.length === 0 && !!IV_ARBPL;
 
   // BUDAT controls
   const budatInput = document.getElementById("budat-input"); // hidden yyyy-mm-dd
@@ -292,6 +294,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const periodTo = document.getElementById("periodTo");
   const applyPeriod = document.getElementById("applyPeriod");
   const clearFilterBtn = document.getElementById("clearFilter");
+
+  // tombol yang tidak digunakan
+  fltToday?.classList.add("hidden");
+  fltPeriod?.classList.add("hidden");
+  periodPicker?.classList.add("hidden");
 
   // Header: PERNR/AUFNR/WC
   if (headAUFNR) {
@@ -546,23 +553,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(meinh)})</div>
         </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.PERNR || IV_PERNR || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || '-'}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || '-'}</td>
-
-        <!-- NEW: LTIME & LTIMEX (menit) -->
+        <td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
-
+        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.PERNR || IV_PERNR || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
       </tr>`;
     })
     .join("");
+
+  /* === WC MODE: sembunyikan kolom Work Center (header + semua sel) === */
+  if (isWCMode) {
+    document.querySelectorAll(".col-workcenter").forEach((el) => {
+      // gunakan style agar tidak bergantung ke Tailwind di runtime
+      el.style.display = "none";
+    });
+  }
+  /* === END hide Work Center === */
 
   // === SEARCH/FILTER berbasis data-search + quick date filters ===
   const normTxt = (s) => String(s || "").toLowerCase();
@@ -658,11 +671,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     searchInput.focus();
   });
 
-  // --- Default: aktifkan "All date" saat pertama kali masuk halaman
-  setActive(fltAllDate);      // tampilkan state tombolnya
-  dateFilterMode = "none";    // mode tanpa filter tanggal = semua data
-  periodPicker?.classList.add("hidden");
-  applyFilters();             // hitung ulang tampilan & counter
+  // --- Default: mode-based quick filter
+  if (isWCMode) {
+    // WC mode => Outgoing otomatis
+    dateFilterMode = "outgoing";
+    setActive(fltOutgoing);
+    periodPicker?.classList.add("hidden");
+  } else {
+    // PRO mode => All date (seperti sebelumnya)
+    dateFilterMode = "none";
+    setActive(fltAllDate);
+    periodPicker?.classList.add("hidden");
+  }
+  applyFilters(); // hitung ulang tampilan & counter
 
   // ===== Quick Date Filter handlers =====
   function setActive(btn) {

@@ -88,15 +88,15 @@
             <div class="w-full md:w-auto">
               <div class="flex flex-wrap items-center gap-2">
                 <button id="fltToday"
-                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
                   Today
                 </button>
                 <button id="fltOutgoing"
                         class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
-                  Outgoing
+                  On Proses
                 </button>
                 <button id="fltPeriod"
-                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
                   Period
                 </button>
 
@@ -198,16 +198,16 @@
                   {{-- ====== AKHIR TAMBAHAN ====== --}}
 
                   <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Qty Input</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">MRP</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">Control Key</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Material</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">Description</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Work Center</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">NIK Operator</th>
-                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Nama Operator</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Start Date</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Finish Date</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">Material</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">Description</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Min</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-workcenter">Work Center</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">NIK Operator</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Nama Operator</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">MRP</th>
+                  <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">Control Key</th>
                   <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">Sales Order / Item</th>
 
 
