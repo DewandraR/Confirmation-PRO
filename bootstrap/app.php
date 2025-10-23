@@ -6,24 +6,27 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',      // <- pastikan baris ini ada
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Daftarkan default middleware groups
+        // Daftarkan group bawaan
         $middleware->web();
         $middleware->api();
 
-        // Tambahkan middleware custom ke group "web" (untuk routes/web.php kamu)
-        // Middleware ini akan menghapus cookie remember_* dan mencegah auto-login via remember
-        $middleware->appendToGroup('web', [
-            
+        // 👉 Alias middleware khusus kita
+        $middleware->alias([
+            'countdown' => \App\Http\Middleware\EnforceCountdown::class,
         ]);
 
-        // (opsional) alias custom bisa ditambahkan di sini
-        // $middleware->alias(['auth.admin' => \App\Http\Middleware\AdminOnly::class]);
+        // (Opsional) kalau kamu ingin menambah middleware global ke group 'web',
+        // taruh di sini. Untuk kasus kita, TIDAK perlu append countdown ke 'web'
+        // agar halaman login tetap bebas dari pemaksaan expired.
+        // $middleware->appendToGroup('web', [
+        //     \App\Http\Middleware\SomethingGlobal::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

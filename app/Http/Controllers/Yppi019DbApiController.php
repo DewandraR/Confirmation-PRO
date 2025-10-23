@@ -6,6 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\ConnectionException;
 use Throwable;
+use App\Jobs\ConfirmProJob;
+use App\Models\Yppi019ConfirmMonitor;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Crypt;
 
 class Yppi019DbApiController extends Controller
 {
@@ -153,7 +158,7 @@ class Yppi019DbApiController extends Controller
             'arbpl' => $arbpl,
             'werks' => $werks,
         ], fn($v) => $v !== null && $v !== '');
-        
+
         if ($limit !== null) {
             $queryParams['limit'] = $limit;
         }
@@ -252,7 +257,7 @@ class Yppi019DbApiController extends Controller
             'gltrp' => 'nullable|string',
             'budat' => 'required|string',
             'charg' => 'nullable|string',
-            'arbpl0'=> 'nullable|string',
+            'arbpl0' => 'nullable|string',
         ]);
 
         $payload['vornr'] = $this->padVornr($payload['vornr'] ?? null);
@@ -334,5 +339,98 @@ class Yppi019DbApiController extends Controller
         } catch (Throwable $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+    public function confirmAsync(Request $req)
+    {
+        $data = $req->validate([
+            'budat'                  => ['required', 'regex:/^\d{8}$/'], // yyyymmdd
+            'items'                  => ['required', 'array', 'min:1'],
+            'items.*.aufnr'          => ['required', 'string', 'size:12'],
+            'items.*.vornr'          => ['nullable', 'string', 'max:4'],
+            'items.*.pernr'          => ['required', 'string', 'max:32'],
+            'items.*.operator_name'  => ['nullable', 'string', 'max:120'],
+            'items.*.qty_confirm'    => ['required', 'numeric', 'gt:0'],
+            'items.*.qty_pro'        => ['nullable', 'numeric'],
+            'items.*.meinh'          => ['nullable', 'string', 'max:8'],
+            'items.*.arbpl0'         => ['nullable', 'string', 'max:40'],
+            'items.*.charg'          => ['nullable', 'string', 'max:40'],
+        ]);
+
+        // Track SAP user dari sesi saat ini
+        $sapUser = (string) session('sap.username');
+        $sapPass = (string) session('sap.password');
+
+        if ($sapUser === '' || $sapPass === '') {
+            return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
+        }
+
+        // Simpan credential terenkripsi agar bisa dipakai di Job (bukan plain text)
+        $sapAuthBlob = Crypt::encryptString(json_encode(['u' => $sapUser, 'p' => $sapPass]));
+
+        $ids = [];
+        foreach ($data['items'] as $it) {
+            $rec = Yppi019ConfirmMonitor::create([
+                'aufnr'              => $it['aufnr'],
+                'vornr'              => $this->padVornr($it['vornr'] ?? null),
+                'meinh'              => $this->mapUnitForSap($it['meinh'] ?? 'ST'),
+                'qty_pro'            => Arr::get($it, 'qty_pro'),
+                'qty_confirm'        => $it['qty_confirm'],
+                'confirmation_date'  => now()->toDateString(),
+                'operator_nik'       => $it['pernr'],
+                'operator_name'      => $it['operator_name'] ?? null,
+                'sap_user'           => $sapUser, // tracking siapa yang login SAP
+                'status'             => 'PENDING',
+                'request_payload'    => [
+                    'budat'   => $data['budat'],
+                    'arbpl0'  => $it['arbpl0'] ?? null,
+                    'charg'   => $it['charg'] ?? null,
+                    'sap_auth' => $sapAuthBlob, // terenkripsi
+                ],
+            ]);
+            ConfirmProJob::dispatch($rec->id);
+            $ids[] = $rec->id;
+        }
+
+        return response()->json(['queued' => $ids], 202);
+    }
+
+    // GET /api/yppi019/confirm-monitor
+    public function confirmMonitor(Request $req)
+    {
+        $pernr = $req->query('pernr');
+        $limit = min((int)$req->query('limit', 100), 500);
+
+        // Ambil SAP user dari sesi saat ini
+        $sapUser = (string) session('sap.username');                     // ⬅
+        if ($sapUser === '') {                                           // ⬅
+            // selaras dengan sapHeaders(): paksa login ulang jika sesi SAP hilang
+            return response()->json(['error' => 'Sesi SAP habis atau belum login'], 440);
+        }
+
+        $q = Yppi019ConfirmMonitor::query()
+            // ->whereDate('confirmation_date', now()->toDateString())
+            // Filter hanya milik SAP user yang login (case-insensitive)       ⬅
+            ->whereRaw('LOWER(sap_user) = ?', [Str::lower($sapUser)])          // ⬅
+            ->when($pernr, fn($qq) => $qq->where('operator_nik', $pernr))
+            ->orderByDesc('id')
+            ->limit($limit);
+
+        return response()->json([
+            'data' => $q->get([
+                'id',
+                'aufnr',
+                'vornr',
+                'meinh',
+                'qty_pro',
+                'qty_confirm',
+                'operator_nik',
+                'operator_name',
+                'sap_user',
+                'status',
+                'status_message',
+                'processed_at',
+                'created_at'
+            ])
+        ]);
     }
 }
