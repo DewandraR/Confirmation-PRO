@@ -401,17 +401,30 @@ class Yppi019DbApiController extends Controller
         $limit = min((int)$req->query('limit', 100), 500);
 
         // Ambil SAP user dari sesi saat ini
-        $sapUser = (string) session('sap.username');                     // ⬅
-        if ($sapUser === '') {                                           // ⬅
-            // selaras dengan sapHeaders(): paksa login ulang jika sesi SAP hilang
+        $sapUser = (string) session('sap.username');
+        if ($sapUser === '') {
             return response()->json(['error' => 'Sesi SAP habis atau belum login'], 440);
         }
 
+        // cutoff: mulai dari awal hari (today - 7 hari)
+        $cutoff = now()->startOfDay()->subDays(7);
+
         $q = Yppi019ConfirmMonitor::query()
-            // ->whereDate('confirmation_date', now()->toDateString())
-            // Filter hanya milik SAP user yang login (case-insensitive)       ⬅
-            ->whereRaw('LOWER(sap_user) = ?', [Str::lower($sapUser)])          // ⬅
+            // hanya milik SAP user yang login (case-insensitive)
+            ->whereRaw('LOWER(sap_user) = ?', [Str::lower($sapUser)])
             ->when($pernr, fn($qq) => $qq->where('operator_nik', $pernr))
+            // 🔽 tampilkan hanya 7 hari terakhir (pakai processed_at jika ada,
+            // fallback ke created_at jika processed_at masih null)
+            ->where(function ($qq) use ($cutoff) {
+                $qq->where(function ($q) use ($cutoff) {
+                    $q->whereNotNull('processed_at')
+                        ->where('processed_at', '>=', $cutoff);
+                })
+                    ->orWhere(function ($q) use ($cutoff) {
+                        $q->whereNull('processed_at')
+                            ->where('created_at', '>=', $cutoff);
+                    });
+            })
             ->orderByDesc('id')
             ->limit($limit);
 

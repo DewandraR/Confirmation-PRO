@@ -1313,6 +1313,31 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    function pad2(n) {
+        return String(n).padStart(2, "0");
+    }
+
+    // dd/mm/yyyy
+    function fmtD(d) {
+        return `${pad2(d.getDate())}/${pad2(
+            d.getMonth() + 1
+        )}/${d.getFullYear()}`;
+    }
+
+    // window monitor: today-7 .. today (inklusif)
+    function getMonitorWindow() {
+        const today = new Date();
+        // pakai awal hari lokal supaya konsisten tampilan
+        const end = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+        const start = new Date(end);
+        start.setDate(end.getDate() - 7);
+        return { start, end };
+    }
+
     async function loadMonitor() {
         if (!monitorBody) return;
 
@@ -1342,10 +1367,14 @@ document.addEventListener("DOMContentLoaded", () => {
                   )
                 : rows;
 
-            if (monitorMeta)
-                monitorMeta.textContent = data.length
-                    ? `${data.length} entri`
-                    : "tidak ada data";
+            if (monitorMeta) {
+                const { start, end } = getMonitorWindow();
+                // opsional: tampilkan NIK jika terfilter
+                const nikSuffix = pernrFromQS ? ` • NIK ${pernrFromQS}` : "";
+                monitorMeta.textContent = `${data.length} entri • ${fmtD(
+                    start
+                )} – ${fmtD(end)}${nikSuffix}`;
+            }
 
             if (!data.length) {
                 monitorBody.innerHTML = `<tr><td colspan="8" class="px-4 py-6 text-center text-slate-500">Belum ada data</td></tr>`;

@@ -6,6 +6,8 @@ php artisan queue:work --queue=default -v
 php artisan queue:restart
 """
 # yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS + LTIME/LTIMEX (minutes)
+# yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS + LTIME/LTIMEX (minutes)
+
 import os, re, json, logging, decimal, datetime, base64
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -15,6 +17,7 @@ from dotenv import load_dotenv
 import mysql.connector
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
 from flask import jsonify, request
+from contextlib import closing  # <— tambahan
 
 load_dotenv()
 app = Flask(__name__)
@@ -40,7 +43,7 @@ def connect_mysql():
     return mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
         user=os.getenv("DB_USERNAME", "root"),
-        password=os.getenv("DB_PASSWORD", ""),
+        password=os.getenv("DB_PASSWORD", "singgampang"),
         database=os.getenv("DB_DATABASE", "yppi019"),
         port=int(os.getenv("DB_PORT", "3306")),
     )
@@ -64,7 +67,6 @@ def _fetch_scalar(cur):
     except Exception:
         pass
     return val
-
 
 def acquire_mutex(cur, key: str, timeout: int = 8):
     """Ambil mutex bernama yppi019:<key>. Timeout detik."""
@@ -121,7 +123,6 @@ def connect_sap(username: Optional[str] = None, password: Optional[str] = None) 
 
 # ---------------- Kredensial helper ----------------
 def _try_basic_auth_header() -> Optional[Tuple[str, str]]:
-    
     auth = request.headers.get("Authorization") or ""
     if auth.startswith("Basic "):
         try:
@@ -210,8 +211,9 @@ def humanize_rfc_error(err: Exception) -> str:
 
 # ---------------- DDL & Persist ----------------
 def ensure_tables():
-    with connect_mysql() as db:
-        with db.cursor() as cur:
+    # <<<— diganti ke closing() agar lintas-driver
+    with closing(connect_mysql()) as db:
+        with closing(db.cursor()) as cur:
             cur.execute("""
             CREATE TABLE IF NOT EXISTS yppi019_data (
               id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -286,6 +288,7 @@ def ensure_tables():
               KEY idx_pernr (PERNR)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
+
             # --- Lightweight migration if the columns already exist / or DB created earlier
             try:
                 cur.execute("ALTER TABLE yppi019_data ADD COLUMN LTIME DECIMAL(18,3) NULL AFTER SSSLD")
@@ -349,7 +352,6 @@ def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
         "fetched_at": datetime.datetime.now(),
     }
 
-
 # ---------------- READ from SAP & sync ----------------
 def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], arbpl: Optional[str], werks: Optional[str]) -> List[Dict[str, Any]]:
     def _call(args):
@@ -380,7 +382,6 @@ def fetch_from_sap(sap: Connection, aufnr: Optional[str], pernr: Optional[str], 
         if arbpl: args["IV_ARBPL"] = str(arbpl)
         if werks: args["IV_WERKS"] = str(werks)
 
-    
     rows = _call(args)  # biarkan error propagate ke caller
     if pernr:
         for r in rows:
@@ -411,8 +412,9 @@ def sync_from_sap(
 
     # --- Pastikan kolom baru ada (migrasi ringan, idempotent) ---
     try:
-        with connect_mysql() as _db_mig:
-            with _db_mig.cursor() as _cur_mig:
+        # <<<— diganti ke closing()
+        with closing(connect_mysql()) as _db_mig:
+            with closing(_db_mig.cursor()) as _cur_mig:
                 # Beberapa MySQL belum punya "ADD COLUMN IF NOT EXISTS"
                 # jadi kita pakai try/except biar idempotent.
                 try:
@@ -663,7 +665,12 @@ def root():
 def sap_login():
     try:
         u, p = get_credentials_from_request()
-        with connect_sap(u, p) as conn: conn.ping()
+        # Aman juga kalau mau manual (tanpa with) agar konsisten:
+        conn = connect_sap(u, p)
+        try:
+            conn.ping()
+        finally:
+            conn.close()
         return jsonify({"status": "connected"}), 200
     except ValueError as ve: return jsonify({"error": str(ve)}), 401
     except Exception as e: logger.exception("SAP login failed"); return jsonify({"error": str(e)}), 401
@@ -711,8 +718,9 @@ def api_get_yppi019():
     data_sql  = f"SELECT * {base_from}{where_sql}{order_sql}"     # <— TANPA LIMIT
     count_sql = f"SELECT COUNT(*) AS total {base_from}{where_sql}"
 
-    with connect_mysql() as db:
-        with db.cursor(dictionary=True) as cur:
+    # <<<— diganti ke closing()
+    with closing(connect_mysql()) as db:
+        with closing(db.cursor(dictionary=True)) as cur:
             cur.execute(count_sql, tuple(args))
             total = int((cur.fetchone() or {"total": 0})["total"])
 
@@ -764,8 +772,6 @@ def api_sync():
     res["refreshed"] = bool(res.get("ok"))
     return jsonify(to_jsonable(res)), status
 
-
-
 # --- helper kecil (taruh sekali saja di file ini, di atas route) ---
 def _is_message_table(rows) -> bool:
     """
@@ -782,7 +788,6 @@ def _is_message_table(rows) -> bool:
     }
     keys = {str(k).upper() for k in first.keys()}
     return keys.issubset(msg_keys)
-
 
 # --- ENDPOINT FINAL: /api/yppi019/hasil ---
 @app.get("/api/yppi019/hasil")
@@ -1084,7 +1089,6 @@ def api_confirm():
             cur.close()
         if db:
             db.close()
-
 
 @app.post("/api/yppi019/backdate-log")
 def api_backdate_log():
