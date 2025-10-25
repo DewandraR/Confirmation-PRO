@@ -23,7 +23,7 @@ class EnforceCountdown
 
                 return redirect()
                     ->route('login')
-                    ->withErrors(['login' => 'Sesi Anda telah habis (5 menit). Silakan login kembali.']);
+                    ->withErrors(['login' => 'Sesi Anda telah habis (10 menit). Silakan login kembali.']);
             }
         }
 
