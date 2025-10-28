@@ -1109,7 +1109,20 @@ def api_confirm():
 
 @app.post("/api/yppi019/backdate-log")
 def api_backdate_log():
+    """
+    Simpan histori backdate konfirmasi ke MySQL.
+    - Robust: apabila FE tidak mengirim 'maktx', server akan fallback ke snapshot yppi019_data
+      dengan COALESCE(MAKTX, MAKTX0). ARBPL0 juga difallback bila kosong.
+    - Validasi tanggal: budat (YYYYMMDD) tidak boleh di masa depan. Jika sama dengan today → skip.
+    Body JSON minimal:
+      {aufnr, budat(YYYYMMDD), today(YYYYMMDD)}
+    Opsional:
+      vornr, pernr, qty, meinh, arbpl0, maktx, sap_return(any), confirmed_at(ISO)
+    Response: 200 OK {"ok": True} | 422 | 400 | 500
+    """
     b = request.get_json(force=True) or {}
+
+    # ---- Validasi field wajib (string non-kosong) ----
     for k in ("aufnr", "budat", "today"):
         if not str(b.get(k) or "").strip():
             return jsonify({"ok": False, "error": f"missing field: {k}"}), 400
@@ -1126,6 +1139,7 @@ def api_backdate_log():
     sap_ret = b.get("sap_return")
     confirmed_at_s = (str(b.get("confirmed_at") or "").strip() or None)
 
+    # ---- Parse & validasi tanggal ----
     from datetime import datetime, date
     try:
         budat_dt: date = datetime.strptime(budat_s, "%Y%m%d").date()
@@ -1136,8 +1150,10 @@ def api_backdate_log():
     if budat_dt > today_dt:
         return jsonify({"ok": False, "error": "BUDAT cannot be in the future"}), 422
     if budat_dt == today_dt:
+        # tidak perlu masuk log backdate bila tanggal sama dengan hari ini
         return jsonify({"ok": True, "skipped": True})
 
+    # ---- Parse confirmed_at (opsional, ISO) ----
     confirmed_dt = None
     if confirmed_at_s:
         try:
@@ -1145,14 +1161,40 @@ def api_backdate_log():
         except Exception:
             confirmed_dt = None
 
-    # 1. Deklarasikan db dan cur sebagai None di luar try
+    # ---- Fallback server-side untuk maktx/arbpl0 bila kosong ----
+    if maktx is None or not maktx or arbpl0 is None or not arbpl0:
+        try:
+            with closing(connect_mysql()) as _db, closing(_db.cursor(dictionary=True)) as _cur:
+                # Cari snapshot terbaru per AUFNR (opsional filter VORNRX)
+                _cur.execute(
+                    """
+                    SELECT
+                        COALESCE(MAKTX, MAKTX0) AS NAME,
+                        ARBPL0
+                    FROM yppi019_data
+                    WHERE AUFNR=%s AND (%s IS NULL OR VORNRX=%s)
+                    ORDER BY fetched_at DESC
+                    LIMIT 1
+                    """,
+                    (aufnr, vornr, vornr),
+                )
+                snap = _cur.fetchone()
+                if snap:
+                    if (maktx is None or not maktx) and snap.get("NAME"):
+                        maktx = str(snap["NAME"]).strip() or None
+                    if (arbpl0 is None or not arbpl0) and snap.get("ARBPL0"):
+                        arbpl0 = str(snap["ARBPL0"]).strip() or None
+        except Exception:
+            # fallback ini tidak boleh menggagalkan proses utama
+            pass
+
+    # ---- Simpan ke tabel log ----
     db = None
     cur = None
     try:
-        # 2. Buka koneksi dan cursor secara manual
         db = connect_mysql()
         cur = db.cursor()
-        
+
         cur.execute(
             """
             INSERT INTO yppi019_backdate_log
@@ -1169,24 +1211,18 @@ def api_backdate_log():
             ),
         )
         db.commit()
-        
-        # 'finally' akan berjalan setelah return ini
         return jsonify({"ok": True}), 200
-    
+
     except Exception as e:
         logger.exception("Error api_backdate_log")
         try:
-            # Coba rollback jika terjadi error sebelum commit
             if db:
                 db.rollback()
         except Exception:
-            pass # Abaikan error pada rollback
-        
-        # 'finally' akan berjalan setelah return ini
+            pass
         return jsonify({"ok": False, "error": str(e)}), 500
-    
+
     finally:
-        # 3. Selalu tutup cursor dan koneksi
         if cur:
             cur.close()
         if db:
