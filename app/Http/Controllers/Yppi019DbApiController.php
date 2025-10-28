@@ -319,12 +319,18 @@ class Yppi019DbApiController extends Controller
     public function backdateHistory(Request $req)
     {
         // Param yang dipakai FE: pernr (disarankan), aufnr (opsional), limit (default 50), order (asc|desc)
+        $pernr = trim((string)$req->query('pernr', ''));
+        $aufnr = trim((string)$req->query('aufnr', ''));
+        $limit = $req->query('limit'); // bisa null
+        $order = $req->query('order', 'desc');
+
         $query = array_filter([
-            'pernr' => trim((string)$req->query('pernr', '')),
-            'aufnr' => trim((string)$req->query('aufnr', '')),
-            'limit' => $req->query('limit', 50),
-            'order' => $req->query('order', 'desc'),
-        ]);
+            'pernr' => $pernr,
+            'aufnr' => $aufnr,
+            'order' => $order,
+            // hanya tambahkan 'limit' jika user mengirimkannya
+            'limit' => $limit !== null ? (int)$limit : null,
+        ], fn($v) => $v !== null && $v !== '');
 
         try {
             // Endpoint Flask ini hanya baca MySQL, tidak butuh kredensial SAP.

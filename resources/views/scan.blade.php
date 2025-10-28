@@ -2,7 +2,7 @@
 @extends('layout')
 
 @push('head')
-    <meta name="client-timeout-ms" content="240000">
+    <meta name="client-timeout-ms" content="2400000">
     {{-- kirim SAP user aktif ke JS --}}
     <meta name="sap-user" content="{{ session('sap_user') ?? (config('sap.user') ?? '') }}">
 @endpush
@@ -542,7 +542,7 @@
                     </button>
                 </div>
                 <div id="historyMeta" class="text-[11px] text-white/80 mt-1">
-                    Semua operator • Maks 50 data terbaru
+                    Semua operator • Menampilkan seluruh histori
                 </div>
             </div>
 

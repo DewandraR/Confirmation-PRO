@@ -232,7 +232,7 @@ def ensure_tables():
               MAKTX VARCHAR(200) NULL,
               -- ➕ FG (level-0) dari SAP
               MATNR0 VARCHAR(40) NULL,
-              MATTX0 VARCHAR(200) NULL,
+              MAKTX0 VARCHAR(200) NULL,
               MEINH VARCHAR(10) NULL,
               QTY_SPK DECIMAL(18,3) NULL,
               WEMNG DECIMAL(18,3) NULL,
@@ -303,7 +303,7 @@ def ensure_tables():
             except Exception:
                 pass
             try:
-                cur.execute("ALTER TABLE yppi019_data ADD COLUMN MATTX0 VARCHAR(200) NULL AFTER MATNR0")
+                cur.execute("ALTER TABLE yppi019_data ADD COLUMN MAKTX0 VARCHAR(200) NULL AFTER MATNR0")
             except Exception:
                 pass
             try:
@@ -406,7 +406,7 @@ def sync_from_sap(
       1) Panggil RFC read, kelompokkan hasil per AUFNR
       2) (Mode WC) Hapus AUFNR 'stale' untuk kombinasi ARBPL0+WERKS+PERNR
       3) Per AUFNR: kunci advisory (GET_LOCK), hapus snapshot lama,
-         INSERT ... ON DUPLICATE KEY UPDATE baris terbaru (dengan MATNR0/MATTX0)
+         INSERT ... ON DUPLICATE KEY UPDATE baris terbaru (dengan MATNR0/MAKTX0)
     """
     ensure_tables()
 
@@ -455,7 +455,7 @@ def sync_from_sap(
                 "note": "no data from SAP; local data untouched",
             }
 
-        # --- Tambahkan MATNR0/MATTX0 ke setiap row (kalau ada di SAP/RAW_JSON) ---
+        # --- Tambahkan MATNR0/MAKTX0 ke setiap row (kalau ada di SAP/RAW_JSON) ---
         for r in rows:
             # Kalau sudah ada, biarkan; kalau tidak, coba ambil dari RAW_JSON
             if r.get("MATNR0") is None or r.get("MATNR0") == "":
@@ -465,10 +465,10 @@ def sync_from_sap(
                     r["MATNR0"] = (raw.get("MATNR0") or raw.get("MATNR") or raw.get("MATNRX") or None)
                 except Exception:
                     r.setdefault("MATNR0", None)
-            if r.get("MAKT0") is None or r.get("MAKTX0") == "":
+            if r.get("MAKTX0") is None or r.get("MAKTX0") == "":
                 try:
                     raw = json.loads(r.get("RAW_JSON") or "{}")
-                    # preferensi: MATTX0 bila ada; fallback MAKTX
+                    # preferensi: MAKTX0 bila ada; fallback MAKTX
                     r["MAKTX0"] = (raw.get("MAKTX0") or raw.get("MAKTX") or None)
                 except Exception:
                     r.setdefault("MAKTX0", None)
@@ -1168,18 +1168,6 @@ def api_backdate_log():
                 confirmed_dt
             ),
         )
-        cur.execute("""
-        DELETE b
-        FROM yppi019_backdate_log b
-        JOIN (
-            SELECT id FROM (
-                SELECT id
-                FROM yppi019_backdate_log
-                ORDER BY COALESCE(CONFIRMED_AT, CREATED_AT) DESC, id DESC
-                LIMIT 18446744073709551615 OFFSET 50
-            ) t
-        ) old ON old.id = b.id
-        """)
         db.commit()
         
         # 'finally' akan berjalan setelah return ini
@@ -1209,10 +1197,9 @@ def api_backdate_history():
     ensure_tables()
     pernr = (request.args.get("pernr") or "").strip()
     aufnr = (request.args.get("aufnr") or "").strip()
-    limit = request.args.get("limit", type=int) or 50
+    limit = request.args.get("limit", type=int)  # None jika tidak diberikan
     order = (request.args.get("order") or "desc").lower()
     order_sql = "ASC" if order == "asc" else "DESC"
-    limit = max(1, min(int(limit), 500))
 
     # 1. Deklarasikan db dan cur sebagai None di luar try
     db = None
@@ -1230,8 +1217,10 @@ def api_backdate_history():
             where.append("AUFNR=%s"); args.append(aufnr)
         if where:
             sql += " WHERE " + " AND ".join(where)
-        sql += f" ORDER BY COALESCE(CONFIRMED_AT, CREATED_AT) {order_sql} LIMIT %s"
-        args.append(limit)
+        sql += f" ORDER BY COALESCE(CONFIRMED_AT, CREATED_AT) {order_sql}"
+        if isinstance(limit, int) and limit > 0:
+            sql += " LIMIT %s"
+            args.append(limit)
         
         cur.execute(sql, tuple(args))
         rows = cur.fetchall()

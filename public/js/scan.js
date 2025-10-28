@@ -1210,12 +1210,13 @@ document.addEventListener("DOMContentLoaded", () => {
         historyList.innerHTML = "";
         historyEmpty.classList.add("hidden");
         historyLoading.classList.remove("hidden");
-        historyMeta.textContent = "Semua operator • Maks 50 data terbaru";
+        historyMeta.textContent =
+            "Semua operator • Menampilkan seluruh histori";
 
         historyModal.classList.remove("hidden");
         historyModal.classList.add("flex");
 
-        fetch("/api/yppi019/backdate-history?limit=50&order=desc", {
+        fetch("/api/yppi019/backdate-history?order=desc", {
             headers: {
                 Accept: "application/json",
                 "X-Requested-With": "XMLHttpRequest",
