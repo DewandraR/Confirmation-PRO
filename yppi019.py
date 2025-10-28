@@ -331,7 +331,7 @@ def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
         "MAKTX": r.get("MAKTX"),
         # ➕ FG (level-0)
         "MATNR0": r.get("MATNR0"),
-        "MATTX0": r.get("MATTX0"),
+        "MAKTX0": r.get("MAKTX0"),
         "MEINH": r.get("MEINH"),
         "QTY_SPK": parse_num(r.get("QTY_SPK")),
         "WEMNG": parse_num(r.get("WEMNG")),
@@ -400,7 +400,7 @@ def sync_from_sap(
     """
     Sinkron dari SAP ke MySQL (granular per-AUFNR) + dukungan kolom FG:
       - MATNR0 (kode FG)
-      - MATTX0 (deskripsi FG)
+      - MAKTX0 (deskripsi FG)
 
     Perilaku:
       1) Panggil RFC read, kelompokkan hasil per AUFNR
@@ -425,14 +425,14 @@ def sync_from_sap(
                     pass
                 try:
                     _cur_mig.execute(
-                        "ALTER TABLE yppi019_data ADD COLUMN MATTX0 VARCHAR(200) NULL AFTER MAKTX"
+                        "ALTER TABLE yppi019_data ADD COLUMN MAKTX0 VARCHAR(200) NULL AFTER MAKTX"
                     )
                 except Exception:
                     pass
             _db_mig.commit()
     except Exception:
         # Jangan gagalkan sync hanya karena migrasi kolom gagal
-        logger.exception("Lightweight migration for MATNR0/MATTX0 failed (ignored)")
+        logger.exception("Lightweight migration for MATNR0/MAKTX0 failed (ignored)")
 
     # --- Ambil dari SAP ---
     sap = None
@@ -465,13 +465,13 @@ def sync_from_sap(
                     r["MATNR0"] = (raw.get("MATNR0") or raw.get("MATNR") or raw.get("MATNRX") or None)
                 except Exception:
                     r.setdefault("MATNR0", None)
-            if r.get("MATTX0") is None or r.get("MATTX0") == "":
+            if r.get("MAKT0") is None or r.get("MAKTX0") == "":
                 try:
                     raw = json.loads(r.get("RAW_JSON") or "{}")
                     # preferensi: MATTX0 bila ada; fallback MAKTX
-                    r["MATTX0"] = (raw.get("MATTX0") or raw.get("MAKTX") or None)
+                    r["MAKTX0"] = (raw.get("MAKTX0") or raw.get("MAKTX") or None)
                 except Exception:
-                    r.setdefault("MATTX0", None)
+                    r.setdefault("MAKTX0", None)
 
         # Kelompokkan per AUFNR
         by_aufnr: Dict[str, List[Dict[str, Any]]] = {}
@@ -566,7 +566,7 @@ def sync_from_sap(
                         cur_main.execute("DELETE FROM yppi019_data WHERE AUFNR=%s", (a,))
                     wiped = cur_main.rowcount
 
-                    # upsert fresh rows (dengan MATNR0, MATTX0)
+                    # upsert fresh rows (dengan MATNR0, MAKTX0)
                     cur_main.executemany(
                         """
 INSERT INTO yppi019_data
@@ -576,7 +576,7 @@ INSERT INTO yppi019_data
   QTY_SPK,WEMNG,QTY_SPX,LTXA1,SNAME,
   GSTRP,GLTRP,SSAVD,SSSLD,LTIME,LTIMEX,
   ISDZ,IEDZ,RAW_JSON,fetched_at,
-  MATNR0,MATTX0)
+  MATNR0,MAKTX0)
 VALUES
  (%(AUFNR)s,%(VORNRX)s,%(PERNR)s,%(ARBPL0)s,%(DISPO)s,%(STEUS)s,%(WERKS)s,
   %(KDAUF)s,%(KDPOS)s,
@@ -584,7 +584,7 @@ VALUES
   %(QTY_SPK)s,%(WEMNG)s,%(QTY_SPX)s,%(LTXA1)s,%(SNAME)s,
   %(GSTRP)s,%(GLTRP)s,%(SSAVD)s,%(SSSLD)s,%(LTIME)s,%(LTIMEX)s,
   %(ISDZ)s,%(IEDZ)s,%(RAW_JSON)s,%(fetched_at)s,
-  %(MATNR0)s,%(MATTX0)s)
+  %(MATNR0)s,%(MAKTX0)s)
 ON DUPLICATE KEY UPDATE
   PERNR=VALUES(PERNR),
   ARBPL0=VALUES(ARBPL0),
@@ -612,7 +612,7 @@ ON DUPLICATE KEY UPDATE
   RAW_JSON=VALUES(RAW_JSON),
   fetched_at=VALUES(fetched_at),
   MATNR0=VALUES(MATNR0),
-  MATTX0=VALUES(MATTX0),
+  MAKTX0=VALUES(MAKTX0),
   QTY_SPX=CASE
     WHEN VALUES(QTY_SPX) IS NULL THEN QTY_SPX
     WHEN QTY_SPX IS NULL THEN VALUES(QTY_SPX)
@@ -645,7 +645,7 @@ ON DUPLICATE KEY UPDATE
             "saved": saved_total,
             "wiped": wiped_total,
             "prev_count": prev_total,
-            "note": "replaced with fresh data from SAP (per-AUFNR locked, with MATNR0/MATTX0)",
+            "note": "replaced with fresh data from SAP (per-AUFNR locked, with MATNR0/MAKTX0)",
         }
 
     except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
@@ -1000,10 +1000,27 @@ def api_confirm():
                 msgs = _collect_msgs(sap_ret)
                 err = next((m for m in msgs if str(m.get("TYPE","")).upper() in ("E","A")), None)
                 if err:
+                    # Pastikan perubahan SAP tidak di-commit jika ada error
+                    try:
+                        sap.call("BAPI_TRANSACTION_ROLLBACK")
+                    except Exception:
+                        pass
                     db.rollback()
-                    return jsonify({"ok": False,
-                                    "error": err.get("MESSAGE") or "SAP returned error",
-                                    "sap_return": to_jsonable(sap_ret)}), 500
+                    return jsonify({
+                        "ok": False,
+                        "error": err.get("MESSAGE") or "SAP returned error",
+                        "sap_return": to_jsonable(sap_ret)
+                    }), 500
+
+                # ✅ Commit transaksi SAP agar konfirmasi persisten
+                try:
+                    commit_ret = sap.call("BAPI_TRANSACTION_COMMIT", WAIT="X")
+                    logger.info("BAPI_TRANSACTION_COMMIT result: %s", commit_ret)
+                except Exception as ce:
+                    # Jika COMMIT gagal, batalkan perubahan lokal dan kembalikan error
+                    db.rollback()
+                    logger.exception("Failed to commit SAP transaction")
+                    return jsonify({"ok": False, "error": f"Gagal COMMIT di SAP: {str(ce)}"}), 500
 
             except (ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError) as e:
                 db.rollback()

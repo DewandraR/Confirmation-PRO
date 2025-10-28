@@ -136,7 +136,7 @@
                 {{-- Isi form input data --}}
                 <div class="p-5">
                     <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get"
-                        data-timeout-ms="240000">
+                        data-timeout-ms="2400000">
 
                         <!-- Work Center & Plant (match PRO style) -->
                         <div class="space-y-2">
