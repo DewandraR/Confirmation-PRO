@@ -70,29 +70,85 @@ class Yppi019DbApiController extends Controller
 
     public function sync(Request $req)
     {
-        $aufnr = trim((string) $req->input('aufnr', ''));
-        $pernr = trim((string) $req->input('pernr', ''));
-        $arbpl = trim((string) $req->input('arbpl', ''));
-        $werks = trim((string) $req->input('werks', ''));
+        $aufnrRaw = trim((string) $req->input('aufnr', ''));
+        $pernr    = trim((string) $req->input('pernr', ''));
+        $arbpl    = trim((string) $req->input('arbpl', ''));
+        $werks    = trim((string) $req->input('werks', ''));
 
-        if ($pernr === '') return response()->json(['ok' => false, 'error' => 'pernr wajib'], 400);
+        if ($pernr === '') {
+            return response()->json(['ok' => false, 'error' => 'pernr wajib'], 400);
+        }
 
-        $body = array_filter([
-            'aufnr' => $aufnr,
-            'pernr' => $pernr,
-            'arbpl' => $arbpl,
-            'werks' => $werks,
-        ]);
+        // Normalisasi & pecah aufnr kotor (spasi/tab/newline/beruntun) -> array unik
+        $aufnrList = array_values(array_filter(array_unique(
+            preg_split('/\s+/', $aufnrRaw, flags: PREG_SPLIT_NO_EMPTY)
+        )));
 
-        if (empty($body['aufnr']) && empty($body['arbpl'])) {
+        // Validasi minimal salah satu: aufnr ATAU arbpl
+        $hasAufnr = count($aufnrList) > 0;
+        if (!$hasAufnr && $arbpl === '') {
             return response()->json(['ok' => false, 'error' => 'aufnr atau arbpl wajib'], 400);
         }
 
         try {
-            $res = Http::withHeaders($this->sapHeaders())
+            $http = fn(array $body) => Http::withHeaders($this->sapHeaders())
                 ->acceptJson()->timeout(500)
                 ->post($this->flaskBase() . '/api/yppi019/sync', $body);
 
+            // Common body di luar aufnr
+            $common = array_filter([
+                'pernr' => $pernr,
+                'arbpl' => $arbpl,
+                'werks' => $werks,
+            ]);
+
+            // CASE 1: hanya satu aufnr -> perilaku lama (forward apa adanya)
+            if ($hasAufnr && count($aufnrList) === 1) {
+                $body = $common + ['aufnr' => $aufnrList[0]];
+                $res  = $http($body);
+
+                return response($res->body(), $res->status())
+                    ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+            }
+
+            // CASE 2: banyak aufnr -> kirim satu-satu dan gabungkan hasilnya
+            if ($hasAufnr && count($aufnrList) > 1) {
+                $results = [];
+                $anyFailed = false;
+
+                foreach ($aufnrList as $n) {
+                    $res = $http($common + ['aufnr' => $n]);
+                    $contentType = $res->header('Content-Type', 'application/json');
+
+                    // Coba decode JSON; kalau gagal, simpan body mentah
+                    $payload = $res->json();
+                    if ($payload === null) {
+                        $payload = $res->body();
+                    }
+
+                    $results[] = [
+                        'aufnr'       => $n,
+                        'status'      => $res->status(),
+                        'contentType' => $contentType,
+                        'data'        => $payload,
+                    ];
+
+                    if ($res->failed()) {
+                        $anyFailed = true;
+                    }
+                }
+
+                // 207 kalau ada yang gagal, 200 kalau semua sukses
+                $status = $anyFailed ? 207 : 200;
+                return response()->json([
+                    'ok'      => !$anyFailed,
+                    'count'   => count($results),
+                    'results' => $results,
+                ], $status);
+            }
+
+            // CASE 3: tidak ada aufnr, hanya arbpl -> perilaku lama
+            $res = $http($common);
             return response($res->body(), $res->status())
                 ->header('Content-Type', $res->header('Content-Type', 'application/json'));
         } catch (ConnectionException $e) {
