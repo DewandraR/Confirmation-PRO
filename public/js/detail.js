@@ -486,6 +486,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const sisaSPK = Math.max(qtySPK - weMng, 0);
             const maxAllow = Math.max(0, Math.min(qtySPX, sisaSPK));
             const meinh = (r.MEINH || "ST").toUpperCase();
+            const ltxa1 = String(
+                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
+            ).trim();
+            const wcRaw = r.ARBPL0 || r.ARBPL || IV_ARBPL || "-";
+            const wcWithDesc = ltxa1 ? `${wcRaw} / ${ltxa1}` : wcRaw;
 
             // ========= PREFILL MAX (FIX: cek plant dari data baris) =========
             const dispo = String(r.DISPO || "").toUpperCase();
@@ -554,6 +559,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 soItem, // "1110001101/10"
                 (r.KDAUF || "") + "/" + kdpos6,
                 (r.KDAUF || "") + kdpos6, // tanpa slash juga bisa
+                wcWithDesc,
             ]
                 .map(toKey)
                 .join(" ");
@@ -568,6 +574,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
         data-ltimex="${ltimexStr}"
         data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
+        data-ltxa1="${(r.LTXA1 || "-").replace(/"/g, "&quot;")}"
         data-charg="${r.CHARG || ""}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-qtyspk="${qtySPK}"
@@ -611,8 +618,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${
-            r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"
+        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${wcWithDesc}</td>
+        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter-desc">${
+            ltxa1 || "-"
         }</td>
         <td class="px-3 py-3 text-sm text-slate-700">${
             r.PERNR || IV_PERNR || "-"
@@ -625,12 +633,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
         .join("");
 
+    // === WC mode: tampilkan " / LTXA1" di header (sebelah WC) ===
+    if (isWCMode && headAUFNR) {
+        // Ambil LTXA1 pertama yang tidak kosong (fallback untuk variasi nama field)
+        const getOpDesc = (r) =>
+            String(
+                r.LTXA1 ??
+                    r.ltxa1 ??
+                    r.OPDESC ?? // possible alias
+                    r.OPR_TXT ?? // possible alias
+                    r.LTXA1X ?? // possible alias
+                    ""
+            ).trim();
+
+        const uniqueDesc = [...new Set(rowsAll.map(getOpDesc).filter(Boolean))];
+        if (uniqueDesc.length) {
+            // jika banyak deskripsi, tampilkan satu + penanda jumlah lainnya
+            const first = uniqueDesc[0];
+            const more =
+                uniqueDesc.length > 1
+                    ? ` (+${uniqueDesc.length - 1} lainnya)`
+                    : "";
+            const nikPrefix = IV_PERNR ? `${IV_PERNR} / ` : "";
+            headAUFNR.textContent = `${nikPrefix}WC: ${IV_ARBPL} / ${first}${more}`;
+        }
+    }
+
     /* === WC MODE: sembunyikan kolom Work Center (header + semua sel) === */
     if (isWCMode) {
-        document.querySelectorAll(".col-workcenter").forEach((el) => {
-            // gunakan style agar tidak bergantung ke Tailwind di runtime
-            el.style.display = "none";
-        });
+        document
+            .querySelectorAll(".col-workcenter, .col-workcenter-desc")
+            .forEach((el) => {
+                // gunakan style agar tidak bergantung ke Tailwind di runtime
+                el.style.display = "none";
+            });
     }
     /* === END hide Work Center === */
 
