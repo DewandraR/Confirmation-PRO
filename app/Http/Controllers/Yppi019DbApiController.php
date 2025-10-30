@@ -11,6 +11,7 @@ use App\Models\Yppi019ConfirmMonitor;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 class Yppi019DbApiController extends Controller
 {
@@ -549,51 +550,44 @@ class Yppi019DbApiController extends Controller
         $pernr = $req->query('pernr');
         $limit = min((int)$req->query('limit', 100), 500);
 
-        // Ambil SAP user dari sesi saat ini
         $sapUser = (string) session('sap.username');
         if ($sapUser === '') {
             return response()->json(['error' => 'Sesi SAP habis atau belum login'], 440);
         }
 
-        // cutoff: mulai dari awal hari (today - 7 hari)
         $cutoff = now()->startOfDay()->subDays(7);
 
         $q = Yppi019ConfirmMonitor::query()
-            // hanya milik SAP user yang login (case-insensitive)
             ->whereRaw('LOWER(sap_user) = ?', [Str::lower($sapUser)])
             ->when($pernr, fn($qq) => $qq->where('operator_nik', $pernr))
-            // 🔽 tampilkan hanya 7 hari terakhir (pakai processed_at jika ada,
-            // fallback ke created_at jika processed_at masih null)
             ->where(function ($qq) use ($cutoff) {
                 $qq->where(function ($q) use ($cutoff) {
-                    $q->whereNotNull('processed_at')
-                        ->where('processed_at', '>=', $cutoff);
-                })
-                    ->orWhere(function ($q) use ($cutoff) {
-                        $q->whereNull('processed_at')
-                            ->where('created_at', '>=', $cutoff);
-                    });
+                    $q->whereNotNull('processed_at')->where('processed_at', '>=', $cutoff);
+                })->orWhere(function ($q) use ($cutoff) {
+                    $q->whereNull('processed_at')->where('created_at', '>=', $cutoff);
+                });
             })
             ->orderByDesc('id')
             ->limit($limit);
 
-        return response()->json([
-            'data' => $q->get([
-                'id',
-                'aufnr',
-                'vornr',
-                'meinh',
-                'qty_pro',
-                'qty_confirm',
-                'operator_nik',
-                'operator_name',
-                'sap_user',
-                'status',
-                'status_message',
-                'processed_at',
-                'created_at'
-            ])
+        // 👉 kembalikan waktu dalam WIB (+07:00)
+        $data = $q->get([
+            'id',
+            'aufnr',
+            'vornr',
+            'meinh',
+            'qty_pro',
+            'qty_confirm',
+            'operator_nik',
+            'operator_name',
+            'sap_user',
+            'status',
+            'status_message',
+            DB::raw("DATE_ADD(processed_at, INTERVAL 7 HOUR) as processed_at"),
+            DB::raw("DATE_ADD(created_at,   INTERVAL 7 HOUR) as created_at"),
         ]);
+
+        return response()->json(['data' => $data]);
     }
 
     private function ymdToDate(?string $ymd): ?string
