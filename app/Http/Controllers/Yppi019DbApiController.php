@@ -404,9 +404,11 @@ class Yppi019DbApiController extends Controller
     }
     public function confirmAsync(Request $req)
     {
+        // 1) Validasi payload dasar
         $data = $req->validate([
             'budat'                  => ['required', 'regex:/^\d{8}$/'], // yyyymmdd
             'items'                  => ['required', 'array', 'min:1'],
+
             'items.*.aufnr'          => ['required', 'string', 'size:12'],
             'items.*.vornr'          => ['nullable', 'string', 'max:4'],
             'items.*.pernr'          => ['required', 'string', 'max:32'],
@@ -416,43 +418,128 @@ class Yppi019DbApiController extends Controller
             'items.*.meinh'          => ['nullable', 'string', 'max:8'],
             'items.*.arbpl0'         => ['nullable', 'string', 'max:40'],
             'items.*.charg'          => ['nullable', 'string', 'max:40'],
+
+            // metadata opsional yang akan ikut disimpan
+            'items.*.werks'          => ['nullable', 'string', 'max:8'],
+            'items.*.ltxa1'          => ['nullable', 'string', 'max:200'],
+            'items.*.matnrx'         => ['nullable', 'string', 'max:40'],
+            'items.*.maktx'          => ['nullable', 'string', 'max:200'],
+            'items.*.maktx0'         => ['nullable', 'string', 'max:200'],
+            'items.*.dispo'          => ['nullable', 'string', 'max:10'],
+            'items.*.steus'          => ['nullable', 'string', 'max:10'],
+            'items.*.soitem'         => ['nullable', 'string', 'max:30'], // contoh: "4500.../10"
+            'items.*.kaufn'          => ['nullable', 'string', 'max:20'], // Sales Order (jika FE kirim terpisah)
+            'items.*.kdpos'          => ['nullable', 'string', 'max:6'],  // Item 6 digit (jika FE kirim terpisah)
+            'items.*.ssavd'          => ['nullable', 'string', 'max:10'], // yyyymmdd atau variasi
+            'items.*.sssld'          => ['nullable', 'string', 'max:10'],
+            'items.*.ltimex'         => ['nullable', 'numeric'],
+            'items.*.gstrp'          => ['nullable', 'string', 'max:10'],
+            'items.*.gltrp'          => ['nullable', 'string', 'max:10'],
         ]);
 
-        // Track SAP user dari sesi saat ini
+        // 2) Pastikan SAP session tersedia
         $sapUser = (string) session('sap.username');
         $sapPass = (string) session('sap.password');
-
         if ($sapUser === '' || $sapPass === '') {
             return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
         }
 
-        // Simpan credential terenkripsi agar bisa dipakai di Job (bukan plain text)
-        $sapAuthBlob = Crypt::encryptString(json_encode(['u' => $sapUser, 'p' => $sapPass]));
+        // 3) Enkripsi credential agar bisa dipakai di Job
+        $sapAuthBlob = \Illuminate\Support\Facades\Crypt::encryptString(
+            json_encode(['u' => $sapUser, 'p' => $sapPass])
+        );
 
+        // 4) Siapkan array id antrian
         $ids = [];
+        $budatYMD = preg_replace('/\D/', '', $data['budat']); // jaga-jaga
+
         foreach ($data['items'] as $it) {
-            $rec = Yppi019ConfirmMonitor::create([
-                'aufnr'              => $it['aufnr'],
-                'vornr'              => $this->padVornr($it['vornr'] ?? null),
-                'meinh'              => $this->mapUnitForSap($it['meinh'] ?? 'ST'),
-                'qty_pro'            => Arr::get($it, 'qty_pro'),
-                'qty_confirm'        => $it['qty_confirm'],
-                'confirmation_date'  => now()->toDateString(),
-                'operator_nik'       => $it['pernr'],
-                'operator_name'      => $it['operator_name'] ?? null,
-                'sap_user'           => $sapUser, // tracking siapa yang login SAP
-                'status'             => 'PENDING',
-                'request_payload'    => [
-                    'budat'   => $data['budat'],
-                    'arbpl0'  => $it['arbpl0'] ?? null,
-                    'charg'   => $it['charg'] ?? null,
-                    'sap_auth' => $sapAuthBlob, // terenkripsi
+            // ---- Derive Sales Order / Item 6 digit ----
+            $salesOrder = $it['kaufn'] ?? null;    // kalau FE sudah kirim terpisah
+            $soItem     = $it['kdpos'] ?? null;    // kalau FE sudah kirim terpisah
+
+            if ($soItem !== null && $soItem !== '') {
+                $soItem = str_pad((string) $soItem, 6, '0', STR_PAD_LEFT);
+            }
+
+            if (!$salesOrder || !$soItem) {
+                // fallback parse dari "soitem" (contoh "4500123456/10")
+                [$soParsed, $itemParsed] = $this->splitSoItem($it['soitem'] ?? null);
+                $salesOrder = $salesOrder ?: $soParsed;
+                $soItem     = $soItem     ?: $itemParsed; // sudah 6 digit dari helper
+            }
+
+            // ---- Simpan ke DB (lengkap sesuai migrasi baru) ----
+            $rec = \App\Models\Yppi019ConfirmMonitor::create([
+                'aufnr'             => (string) $it['aufnr'],
+                'vornr'             => $this->padVornr($it['vornr'] ?? null),
+                'meinh'             => $this->mapUnitForSap($it['meinh'] ?? 'ST'), // ST -> PC
+                'qty_pro'           => \Illuminate\Support\Arr::get($it, 'qty_pro'),
+                'qty_confirm'       => $it['qty_confirm'],
+                'confirmation_date' => now()->toDateString(),
+                'posting_date'      => $this->ymdToDate($budatYMD),
+
+                'operator_nik'      => $it['pernr'],
+                'operator_name'     => $it['operator_name'] ?? null,
+                'sap_user'          => $sapUser,
+                'status'            => 'PENDING',
+
+                // metadata bisnis
+                'plant'             => \Illuminate\Support\Arr::get($it, 'werks'),
+                'work_center'       => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                'op_desc'           => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+
+                'material'          => \Illuminate\Support\Arr::get($it, 'matnrx'),
+                'material_desc'     => \Illuminate\Support\Arr::get($it, 'maktx'),
+                'fg_desc'           => \Illuminate\Support\Arr::get($it, 'maktx0'),
+
+                'mrp_controller'    => \Illuminate\Support\Arr::get($it, 'dispo'),
+                'control_key'       => \Illuminate\Support\Arr::get($it, 'steus'),
+
+                'sales_order'       => $salesOrder,
+                'so_item'           => $soItem,
+                'batch_no'          => \Illuminate\Support\Arr::get($it, 'charg'),
+
+                'start_date_plan'   => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'ssavd')),
+                'finish_date_plan'  => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'sssld')),
+                'minutes_plan'      => \Illuminate\Support\Arr::get($it, 'ltimex'),
+
+                // payload yang diperlukan Job (termasuk sap_auth terenkripsi)
+                'request_payload'   => [
+                    'budat'    => $budatYMD,
+                    'arbpl0'   => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                    'charg'    => \Illuminate\Support\Arr::get($it, 'charg'),
+                    'sap_auth' => $sapAuthBlob,
+                ],
+
+                // snapshot tampilan popup (audit trail)
+                'row_meta'          => [
+                    'wc'     => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                    'ltxa1'  => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+                    'matnrx' => \Illuminate\Support\Arr::get($it, 'matnrx'),
+                    'maktx'  => \Illuminate\Support\Arr::get($it, 'maktx'),
+                    'maktx0' => \Illuminate\Support\Arr::get($it, 'maktx0'),
+                    'soitem' => \Illuminate\Support\Arr::get($it, 'soitem'),
+                    'kaufn'  => $salesOrder,
+                    'kdpos'  => $soItem,
+                    'ssavd'  => \Illuminate\Support\Arr::get($it, 'ssavd'),
+                    'sssld'  => \Illuminate\Support\Arr::get($it, 'sssld'),
+                    'ltimex' => \Illuminate\Support\Arr::get($it, 'ltimex'),
+                    'dispo'  => \Illuminate\Support\Arr::get($it, 'dispo'),
+                    'steus'  => \Illuminate\Support\Arr::get($it, 'steus'),
+                    'werks'  => \Illuminate\Support\Arr::get($it, 'werks'),
+                    'gstrp'  => \Illuminate\Support\Arr::get($it, 'gstrp'),
+                    'gltrp'  => \Illuminate\Support\Arr::get($it, 'gltrp'),
                 ],
             ]);
-            ConfirmProJob::dispatch($rec->id);
+
+            // 5) Dispatch job pemrosesan ke background
+            \App\Jobs\ConfirmProJob::dispatch($rec->id);
+
             $ids[] = $rec->id;
         }
 
+        // 6) Response: daftar id yang di-antri-kan
         return response()->json(['queued' => $ids], 202);
     }
 
@@ -507,5 +594,28 @@ class Yppi019DbApiController extends Controller
                 'created_at'
             ])
         ]);
+    }
+
+    private function ymdToDate(?string $ymd): ?string
+    {
+        if (!$ymd) return null;
+        $s = preg_replace('/\D/', '', $ymd);
+        if (!preg_match('/^\d{8}$/', $s)) return null;
+        return substr($s, 0, 4) . '-' . substr($s, 4, 2) . '-' . substr($s, 6, 2);
+    }
+    private function splitSoItem(?string $s): array
+    {
+        // support "4500123456/10" atau "4500123456" + item 6 digit tersembunyi
+        $so = null;
+        $item = null;
+        if (!$s) return [$so, $item];
+        if (preg_match('~^\s*(\d+)\s*/\s*(\d+)\s*$~', $s, $m)) {
+            $so = $m[1];
+            $item = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+        } else {
+            // terakhir: semua digit => SO saja
+            if (preg_match('~^\d+$~', $s)) $so = $s;
+        }
+        return [$so, $item];
     }
 }

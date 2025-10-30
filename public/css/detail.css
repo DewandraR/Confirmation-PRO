@@ -81,17 +81,50 @@ input[type="number"] {
 }
 
 /* ===== Layering modal (popup detail di bawah warning/error/confirm) ===== */
+#row-detail-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.55); /* semacam slate-950/55 */
+    z-index: 1035; /* di bawah modals lain */
+}
+
+/* Kontainer modal (overlay) */
 #row-detail-modal {
-    z-index: 1040;
-} /* popup detail row */
+    position: fixed;
+    inset: 0; /* full-screen overlay */
+    display: none; /* akan aktif saat .hidden dihapus */
+    align-items: center; /* center vertikal */
+    justify-content: center; /* center horizontal */
+    padding: 1rem; /* ruang tepi agar tidak nempel */
+    z-index: 1040; /* di atas backdrop, di bawah warn/error/confirm */
+    overscroll-behavior: contain; /* cegah scroll background saat modal aktif */
+}
+
+/* Saat modal ditampilkan (class .hidden dihapus oleh JS) */
+#row-detail-modal:not(.hidden) {
+    display: flex;
+}
+
+/* Panel/isi modal — pilih yang ada; fallback ke anak <div> teratas */
+#row-detail-modal .modal-panel,
+#row-detail-modal .modal-card,
+#row-detail-modal .modal,
+#row-detail-modal > .card,
+#row-detail-modal > .panel,
+#row-detail-modal > div {
+    width: min(820px, 96vw); /* responsif */
+    max-height: 92vh; /* agar tidak kepotong */
+    overflow: auto; /* bisa scroll kalau konten tinggi */
+    border-radius: 0.75rem; /* rounded cantik */
+    background: #fff; /* jaga-jaga kalau belum putih */
+    transform: translateZ(0); /* render tajam (anti blur) */
+}
+
+/* Urutan layer untuk modal lain tetap di atas detail */
 #confirm-modal,
 #warning-modal,
 #error-modal {
     z-index: 1050;
-} /* selalu di atas popup detail */
-
-#row-detail-backdrop {
-    z-index: 1035;
 }
 #confirm-backdrop,
 #warning-backdrop,

@@ -42,6 +42,11 @@ function apiPost(url, payload) {
 }
 
 // ===== Helpers umum =====
+const nz = (v) => {
+    const s = (v ?? "").toString().trim();
+    return s === "" || s === "-" ? null : s;
+};
+
 const padVornr = (v) => String(parseInt(v || "0", 10)).padStart(4, "0");
 // NEW: pad item SO ke 6 digit
 const padKdpos = (v) => {
@@ -594,6 +599,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-dispo="${r.DISPO || ""}"
         data-steus="${r.STEUS || ""}"
         data-soitem="${soItem.replace(/"/g, "&quot;")}"
+        data-kdauf="${r.KDAUF || ""}"
+        data-kdpos="${r.KDPOS || ""}"
+        data-werks="${werksRow || ""}"
         data-search="${searchStr}">
         <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
           <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
@@ -633,12 +641,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${wcWithDesc}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${
             r.PERNR || IV_PERNR || "-"
         }</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${wcWithDesc}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
       </tr>`;
@@ -796,13 +804,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
       </div>
       <div>
-        <div class="text-[11px] text-slate-500">Work Center</div>
-        <div class="font-semibold">
-    ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
-  </div>
-      </div>
-
-      <div>
         <div class="text-[11px] text-slate-500">Material</div>
         <div class="font-semibold">${esc(data.matnrx)}</div>
       </div>
@@ -841,6 +842,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div>
         <div class="text-[11px] text-slate-500">MRP</div>
         <div class="font-semibold">${esc(data.dispo)}</div>
+      </div><div>
+        <div class="text-[11px] text-slate-500">Work Center</div>
+        <div class="font-semibold">
+    ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
+  </div>
       </div>
       <div>
         <div class="text-[11px] text-slate-500">Control Key</div>
@@ -1395,16 +1401,47 @@ document.addEventListener("DOMContentLoaded", async () => {
             const qty = parseFloat(
                 row.querySelector('input[name="QTY_SPX"]').value || "0"
             );
+
+            // tanggal plan sudah 8 digit di dataset (hasil toYYYYMMDD)
+            const ssavd = (row.dataset.ssavd || "").replace(/\D/g, "") || null;
+            const sssld = (row.dataset.sssld || "").replace(/\D/g, "") || null;
+
             return {
+                // --- yang lama ---
                 aufnr: row.dataset.aufnr || "",
                 vornr: row.dataset.vornr || "",
-                pernr: row.dataset.pernr || "", // NIK
-                operator_name: row.dataset.sname || null, // Nama operator
-                qty_confirm: qty, // Qty konfirmasi (input user)
-                qty_pro: parseFloat(row.dataset.qtyspk || "0"), // Qty PRO
+                pernr: row.dataset.pernr || "",
+                operator_name: row.dataset.sname || null,
+                qty_confirm: qty,
+                qty_pro: parseFloat(row.dataset.qtyspk || "0"),
                 meinh: row.dataset.meinh || "ST",
-                arbpl0: row.dataset.arbpl0 || null,
+                arbpl0: nz(row.dataset.arbpl0),
                 charg: row.dataset.charg || null,
+
+                // --- metadata TAMBAHAN (WAJIB agar kolom DB tidak NULL) ---
+                werks: row.dataset.werks || null, // plant
+                ltxa1: nz(row.dataset.ltxa1), // op_desc
+                matnrx: row.dataset.matnrx || null, // material
+                maktx: nz(row.dataset.maktx), // material_desc
+                maktx0: nz(row.dataset.maktx0), // fg_desc
+                dispo: row.dataset.dispo || null, // mrp_controller
+                steus: row.dataset.steus || null, // control_key
+
+                soitem: row.dataset.soitem || null, // "SO/Item" gabungan
+                kaufn: row.dataset.kdauf || null, // !!! controller pakai 'kaufn' (bukan kdauf)
+                kdpos: row.dataset.kdpos || null, // item, BE akan pad ke 6 digit
+
+                ssavd: ssavd, // start_date_plan (yyyymmdd)
+                sssld: sssld, // finish_date_plan (yyyymmdd)
+                ltimex: (() => {
+                    const v = nz(row.dataset.ltimex);
+                    return v == null
+                        ? null
+                        : parseFloat(String(v).replace(",", "."));
+                })(), // minutes_plan (string angka)
+
+                gstrp: (row.dataset.gstrp || "").replace(/\D/g, "") || null, // optional
+                gltrp: (row.dataset.gltrp || "").replace(/\D/g, "") || null, // optional
             };
         });
 

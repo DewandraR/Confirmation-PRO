@@ -239,9 +239,6 @@
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Min</th>
                                         <th
-                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-workcenter">
-                                            Work Center</th>
-                                        <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             NIK Operator</th>
                                         <th
@@ -250,6 +247,9 @@
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             MRP</th>
+                                        <th
+                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-workcenter">
+                                            Work Center</th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             Control Key</th>

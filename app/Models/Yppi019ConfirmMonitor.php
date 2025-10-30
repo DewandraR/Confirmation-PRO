@@ -7,6 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class Yppi019ConfirmMonitor extends Model
 {
     protected $table = 'yppi019_confirm_monitor';
+    protected $casts = [
+        'request_payload'  => 'array',
+        'sap_return'       => 'array',
+        'row_meta'         => 'array',
+        'qty_pro'          => 'decimal:3',
+        'qty_confirm'      => 'decimal:3',
+        'minutes_plan'     => 'decimal:3',
+        'posting_date'     => 'date',
+        'start_date_plan'  => 'date',
+        'finish_date_plan' => 'date',
+    ];
+
     protected $fillable = [
         'aufnr',
         'vornr',
@@ -21,12 +33,24 @@ class Yppi019ConfirmMonitor extends Model
         'status_message',
         'request_payload',
         'sap_return',
-        'processed_at'
-    ];
-    protected $casts = [
-        'request_payload' => 'array',
-        'sap_return'      => 'array',
-        'confirmation_date' => 'date',
-        'processed_at'      => 'datetime',
+        'processed_at',
+
+        // kolom baru
+        'plant',
+        'work_center',
+        'op_desc',
+        'material',
+        'material_desc',
+        'fg_desc',
+        'mrp_controller',
+        'control_key',
+        'sales_order',
+        'so_item',
+        'batch_no',
+        'start_date_plan',
+        'finish_date_plan',
+        'minutes_plan',
+        'posting_date',
+        'row_meta',
     ];
 }
