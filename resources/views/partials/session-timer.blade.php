@@ -1,8 +1,8 @@
 {{-- resources/views/partials/session-timer.blade.php --}}
-@php $exp = session('expires_at'); @endphp
+{{-- @php $exp = session('expires_at'); @endphp
 @if ($exp)
     <div id="session-timer"
-        class="fixed bottom-4 right-4 z-[50] bg-white/90 backdrop-blur border border-slate-200 shadow-lg rounded-2xl px-3 py-2 text-sm text-slate-700">
+        class="fixed up-4 right-4 z-[50] bg-white/90 backdrop-blur border border-slate-200 shadow-lg rounded-2xl px-3 py-2 text-sm text-slate-700">
         <span class="font-medium">Sisa waktu sesi:</span>
         <span id="timer-mmss" class="font-bold tabular-nums">--:--</span>
         <form id="autoLogoutForm" method="POST" action="{{ route('logout') }}" class="hidden">
@@ -37,4 +37,4 @@
             setInterval(tick, 1000);
         })();
     </script>
-@endif
+@endif --}}

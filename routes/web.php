@@ -25,7 +25,7 @@ Route::middleware('guest')->group(function () {
 });
 
 // === AUTH (sudah login) ===
-Route::middleware(['auth', 'countdown'])->group(function () {
+Route::middleware(['auth', /*'countdown']*/])->group(function () {
     Route::get('/scan',   [ScanController::class,  'show'])->name('scan');
     Route::get('/detail', [DetailController::class, 'show'])->name('detail');
     Route::get('/hasil', fn() => view('hasil'))->name('hasil');

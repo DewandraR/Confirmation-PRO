@@ -1,5 +1,5 @@
 {{-- resources/views/partials/queue-modal.blade.php --}}
-@php $ticket = session('queue.ticket'); @endphp
+{{-- @php $ticket = session('queue.ticket'); @endphp
 
 @if ($ticket)
     <div id="queue-overlay" class="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center">
@@ -146,4 +146,4 @@
             startPolling();
         })();
     </script>
-@endif
+@endif --}}

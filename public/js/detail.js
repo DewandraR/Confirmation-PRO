@@ -211,6 +211,8 @@ window.onerror = function (msg, src, line, col) {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
+    const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+
     // --- URL params ---
     const p = new URLSearchParams(location.search);
     const rawList = p.get("aufnrs") || "";
@@ -474,6 +476,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     totalItems.textContent = String(rowsAll.length);
 
+    const esc = (s) =>
+        String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
     // helper normalisasi untuk data-search
     const toKey = (s) => String(s ?? "").toLowerCase();
 
@@ -579,6 +589,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
         data-qtyspk="${qtySPK}"
         data-sname="${(r.SNAME || "").replace(/"/g, "&quot;")}"
+        data-matnrx="${r.MATNRX || ""}"
+        data-maktx0="${(r.MAKTX0 || "").replace(/"/g, "&quot;")}"
+        data-dispo="${r.DISPO || ""}"
+        data-steus="${r.STEUS || ""}"
+        data-soitem="${soItem.replace(/"/g, "&quot;")}"
         data-search="${searchStr}">
         <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
           <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
@@ -619,9 +634,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
         <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${wcWithDesc}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter-desc">${
-            ltxa1 || "-"
-        }</td>
         <td class="px-3 py-3 text-sm text-slate-700">${
             r.PERNR || IV_PERNR || "-"
         }</td>
@@ -728,6 +740,342 @@ document.addEventListener("DOMContentLoaded", async () => {
         selectedCountSpan.textContent = count;
         confirmButton.disabled = count === 0;
     }
+
+    // ============ MOBILE ROW DETAIL POPUP ============
+    const rowDetailModal = document.getElementById("row-detail-modal");
+    const rowDetailBody = document.getElementById("row-detail-body");
+    const rowDetailClose = document.getElementById("row-detail-close");
+    const rowDetailCancel = document.getElementById("row-detail-cancel");
+    const rowDetailSave = document.getElementById("row-detail-save");
+    const rowDetailSelect = document.getElementById("row-detail-select");
+
+    let currentRow = null; // <tr> aktif saat modal
+
+    function ymdToDMY(ymd) {
+        return ymd && /^\d{8}$/.test(ymd)
+            ? `${ymd.slice(6, 8)}/${ymd.slice(4, 6)}/${ymd.slice(0, 4)}`
+            : "-";
+    }
+
+    // buka modal untuk 1 row
+    function openRowDetail(tr) {
+        currentRow = tr;
+
+        // ambil data dari dataset + elemen input qty
+        const qtyInput = tr.querySelector('input[name="QTY_SPX"]');
+        const cb = tr.querySelector(".row-checkbox");
+        const data = {
+            aufnr: tr.dataset.aufnr || "-",
+            vornr: tr.dataset.vornr || "-",
+            wc: tr.dataset.arbpl0 || "-",
+            ltxa1: tr.dataset.ltxa1 || "",
+            maktx: tr.dataset.maktx || "-",
+            maktx0: tr.dataset.maktx0 || "-",
+            matnrx: tr.dataset.matnrx || "-",
+            soitem: tr.dataset.soitem || "-",
+            pernr: tr.dataset.pernr || "-",
+            sname: tr.dataset.sname || "-",
+            dispo: tr.dataset.dispo || "-",
+            steus: tr.dataset.steus || "-",
+            ltimex: tr.dataset.ltimex || "-",
+            ssavd: ymdToDMY((tr.dataset.ssavd || "").replace(/\D/g, "")),
+            sssld: ymdToDMY((tr.dataset.sssld || "").replace(/\D/g, "")),
+            qtyspk: tr.dataset.qtyspk || "0",
+            meinh: tr.dataset.meinh || "ST",
+            qtycur: qtyInput ? qtyInput.value || "0" : "0",
+            max: qtyInput ? qtyInput.dataset.max || "0" : "0",
+            checked: cb ? cb.checked : false,
+        };
+
+        const unitNamePopup = getUnitName(data.meinh);
+        // isi konten modal
+        rowDetailBody.innerHTML = `
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <div class="text-[11px] text-slate-500">PRO</div>
+        <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Work Center</div>
+        <div class="font-semibold">
+    ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
+  </div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Material</div>
+        <div class="font-semibold">${esc(data.matnrx)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Description</div>
+        <div class="font-semibold">${esc(data.maktx)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Deskripsi FG</div>
+        <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Sales Order / Item</div>
+        <div class="font-semibold font-mono">${esc(data.soitem)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Start Date</div>
+        <div class="font-semibold">${esc(data.ssavd)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Finish Date</div>
+        <div class="font-semibold">${esc(data.sssld)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Qty PRO</div>
+        <div class="font-semibold">${esc(data.qtyspk)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Menit</div>
+        <div class="font-semibold">${esc(data.ltimex)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">MRP</div>
+        <div class="font-semibold">${esc(data.dispo)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Control Key</div>
+        <div class="font-semibold">${esc(data.steus)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">NIK Operator</div>
+        <div class="font-semibold">${esc(data.pernr)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Nama Operator</div>
+        <div class="font-semibold">${esc(data.sname)}</div>
+      </div>
+    </div>
+
+    <div class="mt-3">
+  <label class="text-[11px] text-slate-500 block mb-1">
+    Qty Input (${esc(unitNamePopup)})
+  </label>
+  <input id="row-detail-qty" type="number"
+         inputmode="${
+             (data.meinh || "").toUpperCase() === "M3" ? "decimal" : "numeric"
+         }"
+         class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
+         step="${(data.meinh || "").toUpperCase() === "M3" ? "0.001" : "1"}"
+         min="0"
+         placeholder="${esc(data.max)}"
+         value="${esc(data.qtycur)}"
+         data-max="${esc(data.max)}"
+         data-meinh="${esc(data.meinh)}">
+  <div class="mt-1 text-[11px] text-slate-500">
+    Maks: <b>${esc(data.max)}</b> (${esc(unitNamePopup)})
+  </div>
+</div>
+  `;
+        const modalQty = document.getElementById("row-detail-qty");
+        const maxAllow = parseFloat(modalQty.dataset.max || "0") || 0;
+        const unit = String(modalQty.dataset.meinh || "ST").toUpperCase();
+
+        // auto-clear "0" saat fokus
+        modalQty.addEventListener("focus", function () {
+            if (this.value === "0") this.value = "";
+        });
+
+        // validasi realtime: jangan lebih dari max
+        modalQty.addEventListener("input", function () {
+            const v = parseFloat(String(this.value).replace(",", "."));
+            if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
+                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+                pendingResetInput = this; // biar tombol OK bisa reset/fokus balik
+                isWarningOpen = true;
+                // pastikan modal warning muncul di atas (lihat CSS z-index di bawah)
+                warningModal.classList.remove("hidden");
+                this.blur(); // tutup keypad agar pengguna melihat peringatan
+            }
+        });
+
+        // normalisasi saat blur (ikut aturan sama spt tabel)
+        modalQty.addEventListener("blur", function () {
+            if (this.value.trim() === "") this.value = "0";
+            let v = parseFloat(String(this.value).replace(",", "."));
+            if (isNaN(v) || v < 0) v = 0;
+            if (
+                unit === "ST" ||
+                unit === "PC" ||
+                unit === "PCS" ||
+                unit === "EA"
+            ) {
+                v = Math.floor(v);
+            } else if (unit === "M3") {
+                v = Math.round(v * 1000) / 1000;
+            }
+            // biarkan v apa adanya di sini; kalau >max user akan melihat warning saat klik Simpan
+            this.value = String(v);
+        });
+
+        const inputModal = rowDetailBody.querySelector("#row-detail-qty");
+
+        // 1) Auto-clear "0" saat fokus (biar user tidak perlu hapus manual)
+        inputModal.addEventListener("focus", function () {
+            if (this.value === "0") this.value = "";
+            // Select seluruh isi kalau bukan "0"
+            this.select && this.value && this.select();
+        });
+
+        // 2) Validasi real-time: peringatkan jika > Maks
+        inputModal.addEventListener("input", function () {
+            if (this.value === "" || this.value === "-" || this.value === ".")
+                return;
+
+            const v = parseFloat(String(this.value).replace(",", "."));
+            const maxAllow = parseFloat(this.dataset.max || "0");
+
+            if (!Number.isNaN(v) && v > maxAllow && !isWarningOpen) {
+                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+                pendingResetInput = this; // supaya saat OK kita reset
+                isWarningOpen = true;
+                warningModal.classList.remove("hidden");
+                this.blur();
+            }
+        });
+
+        // 3) Normalisasi saat blur (bulatkan & clamp, serta larang negatif)
+        inputModal.addEventListener("blur", function () {
+            if (this.value.trim() === "") this.value = "0";
+
+            let v = parseFloat(this.value.replace(",", ".") || "0");
+            if (Number.isNaN(v)) v = 0;
+
+            const maxAllow = parseFloat(this.dataset.max || "0");
+            if (v > maxAllow || v < 0) {
+                if (!isWarningOpen) {
+                    warningMessage.textContent =
+                        v > maxAllow
+                            ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
+                            : "Nilai tidak boleh negatif.";
+                    pendingResetInput = this;
+                    isWarningOpen = true;
+                    warningModal.classList.remove("hidden");
+                }
+                return;
+            }
+
+            const u = (this.dataset.meinh || "ST").toUpperCase();
+            if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
+            else if (u === "M3") v = Math.round(v * 1000) / 1000;
+
+            this.value = String(v);
+        });
+
+        // 4) Enter = klik "Simpan" (biar cepat)
+        inputModal.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                rowDetailSave?.click();
+            }
+        });
+
+        // label tombol pilih
+        rowDetailSelect.textContent = data.checked
+            ? "Batalkan Pilih"
+            : "Pilih Item Ini";
+
+        // tampilkan modal
+        rowDetailModal.classList.remove("hidden");
+    }
+
+    // close helper
+    function closeRowDetail() {
+        rowDetailModal.classList.add("hidden");
+        currentRow = null;
+    }
+
+    // klik pada row (khusus mobile & bukan klik ke elemen interaktif)
+    tableBody.addEventListener("click", (e) => {
+        if (!isMobile()) return;
+
+        const tag = e.target.tagName.toLowerCase();
+        const isInteractive =
+            ["input", "button", "label", "svg", "path"].includes(tag) ||
+            e.target.closest("button");
+        if (isInteractive) return;
+
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+
+        openRowDetail(tr);
+    });
+
+    // tombol tutup
+    [rowDetailClose, rowDetailCancel].forEach((btn) =>
+        btn?.addEventListener("click", closeRowDetail)
+    );
+
+    // tombol pilih/batal pilih
+    rowDetailSelect.addEventListener("click", () => {
+        if (!currentRow) return;
+        const cb = currentRow.querySelector(".row-checkbox");
+        if (!cb) return;
+        cb.checked = !cb.checked;
+
+        // sinkronkan state Select All & tombol konfirmasi
+        const vis = visibleRowCheckboxes();
+        const visChecked = vis.filter((x) => x.checked).length;
+        selectAll.checked = vis.length > 0 && visChecked === vis.length;
+        selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        updateConfirmButtonState();
+
+        rowDetailSelect.textContent = cb.checked
+            ? "Batalkan Pilih"
+            : "Pilih Item Ini";
+    });
+
+    // tombol simpan (Qty Input)
+    rowDetailSave.addEventListener("click", () => {
+        if (!currentRow) return;
+        const inputModal = document.getElementById("row-detail-qty");
+        const rowInput = currentRow.querySelector('input[name="QTY_SPX"]');
+        if (!rowInput || !inputModal) return;
+
+        let v = parseFloat(String(inputModal.value).replace(",", "."));
+        if (isNaN(v)) v = 0;
+
+        const maxAllow =
+            parseFloat(inputModal.dataset.max || rowInput.dataset.max || "0") ||
+            0;
+        const u = String(
+            inputModal.dataset.meinh || rowInput.dataset.meinh || "ST"
+        ).toUpperCase();
+
+        if (u === "ST" || u === "PC" || u === "PCS" || u === "EA")
+            v = Math.floor(v);
+        else if (u === "M3") v = Math.round(v * 1000) / 1000;
+
+        if (v <= 0) {
+            warningMessage.textContent = "Kuantitas harus lebih dari 0.";
+            isWarningOpen = true;
+            pendingResetInput = inputModal;
+            warningModal.classList.remove("hidden");
+            return;
+        }
+
+        if (v > maxAllow) {
+            warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+            isWarningOpen = true;
+            pendingResetInput = inputModal;
+            warningModal.classList.remove("hidden");
+            return;
+        }
+
+        // valid → salin ke input baris & tutup popup
+        rowInput.value = String(v);
+        closeRowDetail();
+    });
 
     function applyFilters() {
         let shown = 0;
@@ -913,6 +1261,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         if (pendingResetInput) {
             pendingResetInput.value = "0";
+            pendingResetInput.focus();
+            if (pendingResetInput.select) pendingResetInput.select();
             pendingResetInput = null;
         }
         isWarningOpen = false;

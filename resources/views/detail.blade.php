@@ -190,7 +190,7 @@
                         </div>
 
                         <div class="overflow-auto max-h-[70vh] rounded-xl border border-slate-200">
-                            <table class="w-full">
+                            <table class="w-full data-table">
                                 <thead class="bg-green-700/90 sticky top-0 z-10">
                                     <tr>
                                         <th
@@ -241,9 +241,6 @@
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-workcenter">
                                             Work Center</th>
-                                        <th
-                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px] col-workcenter-desc">
-                                            Desc WC</th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             NIK Operator</th>
@@ -351,6 +348,41 @@
             <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
                 <button id="success-ok-button" type="button"
                     class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== Modal Detail Baris (Mobile) ===== --}}
+    <div id="row-detail-modal"
+        class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
+        <div
+            class="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
+            <div
+                class="bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 py-3 border-b border-emerald-200 flex items-center justify-between">
+                <h4 class="text-base md:text-lg font-semibold text-emerald-800">Detail Item</h4>
+                <button id="row-detail-close" class="w-8 h-8 rounded-full hover:bg-emerald-100 text-emerald-700"
+                    title="Tutup">✕</button>
+            </div>
+
+            <div id="row-detail-body" class="p-4 space-y-3 text-sm">
+                <!-- diisi dinamis oleh JS -->
+            </div>
+
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button id="row-detail-select" type="button"
+                    class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+                    Pilih Item Ini
+                </button>
+                <div class="flex items-center gap-2">
+                    <button id="row-detail-save" type="button"
+                        class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">
+                        Simpan
+                    </button>
+                    <button id="row-detail-cancel" type="button"
+                        class="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold">
+                        Tutup
+                    </button>
+                </div>
             </div>
         </div>
     </div>

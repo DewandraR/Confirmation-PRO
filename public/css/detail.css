@@ -1,4 +1,100 @@
+/* ===== Number input: hilangkan spinner ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
 
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type="number"] { -moz-appearance: textfield; }
+/* ===== Tabel utama ===== */
+.data-table {
+    border-collapse: separate; /* supaya sticky header + border rapi */
+    border-spacing: 0;
+    width: 100%;
+    min-width: 1200px; /* <-- memaksa horizontal scroll di layar kecil */
+}
+
+/* Header: sedikit lebih besar & selalu di atas */
+.data-table thead th {
+    position: -webkit-sticky; /* iOS */
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    text-transform: uppercase;
+    padding-top: 0.9rem !important; /* lebih lega dari py-3 Tailwind */
+    padding-bottom: 0.9rem !important;
+    border-bottom: 1px solid #34d3991a; /* halus; selaras border tailwind */
+}
+
+/* Garis bawah tiap sel */
+.data-table thead th,
+.data-table tbody td {
+    border-bottom: 1px solid #e2e8f0; /* slate-200 */
+}
+
+/* Sticky kolom pertama (body). Di markup Anda sudah "sticky left-0",
+   di sini hanya menambah z-index + efek garis di tepi kiri beku. */
+.data-table tbody td:first-child {
+    z-index: 9;
+    background: inherit;
+    box-shadow: 1px 0 0 #e2e8f0; /* garis pemisah di tepi sticky */
+}
+
+/* Hover baris */
+.data-table tbody tr:hover td {
+    background-color: rgba(16, 185, 129, 0.06); /* emerald-500/6 */
+}
+
+/* Input QTY di sel: lebar default & rata tengah */
+.data-table input[name="QTY_SPX"] {
+    width: 7rem;
+    text-align: center;
+}
+
+/* Hint 'Maks:' di bawah input — rapih & kecil */
+.data-table .max-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #64748b; /* slate-500 */
+    line-height: 1.1;
+}
+
+/* Wrapper scroll (div overflow-auto) — momentum scrolling di mobile */
+.overflow-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ===== Mobile: tampilkan SEMUA kolom, cukup horizontal scroll ===== */
+@media (max-width: 768px) {
+    .data-table {
+        min-width: 1200px;
+    } /* pastikan bisa di-scroll */
+    .data-table thead th {
+        font-size: 12px;
+    }
+    .data-table tbody td {
+        font-size: 13px;
+    }
+}
+
+/* ===== Layering modal (popup detail di bawah warning/error/confirm) ===== */
+#row-detail-modal {
+    z-index: 1040;
+} /* popup detail row */
+#confirm-modal,
+#warning-modal,
+#error-modal {
+    z-index: 1050;
+} /* selalu di atas popup detail */
+
+#row-detail-backdrop {
+    z-index: 1035;
+}
+#confirm-backdrop,
+#warning-backdrop,
+#error-backdrop {
+    z-index: 1045;
+}

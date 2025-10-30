@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // 👉 Alias middleware khusus kita
         $middleware->alias([
-            'countdown' => \App\Http\Middleware\EnforceCountdown::class,
+            //'countdown' => \App\Http\Middleware\EnforceCountdown::class,
         ]);
 
         // (Opsional) kalau kamu ingin menambah middleware global ke group 'web',
