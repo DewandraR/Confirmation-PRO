@@ -40,9 +40,9 @@ class Yppi019DbApiController extends Controller
         $u = strtoupper(trim($meinh));
         $integerUnits = ['PC', 'EA', 'PCS', 'UNIT', 'ST'];
         if (in_array($u, $integerUnits, true)) {
-            return (string) round($f);              // "1"
+            return (string) round($f);             // "1"
         }
-        return number_format($f, 3, ',', '');       // "0,500"
+        return number_format($f, 3, ',', '');         // "0,500"
     }
 
     /** Map ST -> PC */
@@ -52,29 +52,34 @@ class Yppi019DbApiController extends Controller
         return $m === 'ST' ? 'PC' : $m;
     }
 
-    private function sapHeaders(): array
+    /**
+     * PERBAIKAN KRUSIAL: Ambil dari request attributes, bukan dari session()
+     * Ini mencegah session blocking.
+     */
+    private function sapHeaders(Request $request): array
     {
-        $u = session('sap.username');
-        $p = session('sap.password');
+        // Ambil dari Request Attributes yang sudah diisi oleh sap_auth middleware
+        $u = $request->attributes->get('sap_username');
+        $p = $request->attributes->get('sap_password');
 
-        // Kalau sesi hilang/expired, hentikan lebih awal.
+        // Middleware seharusnya sudah menangani error 440, ini hanya guard
         if (!$u || !$p) {
-            abort(440, 'Sesi SAP habis atau belum login. Silakan login ulang.'); // 440 = login timeout (konvensi)
+            abort(440, 'Sesi SAP habis atau belum login. Silakan login ulang.');
         }
 
         return [
             'X-SAP-Username' => $u,
             'X-SAP-Password' => $p,
-            'Content-Type'   => 'application/json',
+            'Content-Type'      => 'application/json',
         ];
     }
 
     public function sync(Request $req)
     {
         $aufnrRaw = trim((string) $req->input('aufnr', ''));
-        $pernr    = trim((string) $req->input('pernr', ''));
-        $arbpl    = trim((string) $req->input('arbpl', ''));
-        $werks    = trim((string) $req->input('werks', ''));
+        $pernr       = trim((string) $req->input('pernr', ''));
+        $arbpl       = trim((string) $req->input('arbpl', ''));
+        $werks       = trim((string) $req->input('werks', ''));
 
         if ($pernr === '') {
             return response()->json(['ok' => false, 'error' => 'pernr wajib'], 400);
@@ -92,7 +97,8 @@ class Yppi019DbApiController extends Controller
         }
 
         try {
-            $http = fn(array $body) => Http::withHeaders($this->sapHeaders())
+            // UBAH: Kirim $req ke sapHeaders
+            $http = fn(array $body) => Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()->timeout(500)
                 ->post($this->flaskBase() . '/api/yppi019/sync', $body);
 
@@ -129,9 +135,9 @@ class Yppi019DbApiController extends Controller
 
                     $results[] = [
                         'aufnr'       => $n,
-                        'status'      => $res->status(),
+                        'status'       => $res->status(),
                         'contentType' => $contentType,
-                        'data'        => $payload,
+                        'data'           => $payload,
                     ];
 
                     if ($res->failed()) {
@@ -142,8 +148,8 @@ class Yppi019DbApiController extends Controller
                 // 207 kalau ada yang gagal, 200 kalau semua sukses
                 $status = $anyFailed ? 207 : 200;
                 return response()->json([
-                    'ok'      => !$anyFailed,
-                    'count'   => count($results),
+                    'ok'       => !$anyFailed,
+                    'count'       => count($results),
                     'results' => $results,
                 ], $status);
             }
@@ -161,7 +167,7 @@ class Yppi019DbApiController extends Controller
 
     public function syncBulk(Request $req)
     {
-        $list  = $req->input('aufnr_list', []);
+        $list     = $req->input('aufnr_list', []);
         $pernr = trim((string) $req->input('pernr', ''));
         $arbpl = trim((string) $req->input('arbpl', ''));
 
@@ -172,7 +178,8 @@ class Yppi019DbApiController extends Controller
         if ($arbpl !== '') $payload['arbpl'] = $arbpl;
 
         try {
-            $res = Http::withHeaders($this->sapHeaders())
+            // UBAH: Kirim $req ke sapHeaders
+            $res = Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()->timeout(420)
                 ->post($this->flaskBase() . '/api/yppi019/sync_bulk', $payload);
 
@@ -187,11 +194,11 @@ class Yppi019DbApiController extends Controller
 
     public function material(Request $req)
     {
-        $aufnr    = $req->query('aufnr');
+        $aufnr       = $req->query('aufnr');
         $limit = $req->has('limit') ? (int) $req->query('limit') : null;
-        $pernr    = trim((string) $req->query('pernr', ''));
-        $arbpl    = $req->query('arbpl');
-        $werks    = $req->query('werks');
+        $pernr       = trim((string) $req->query('pernr', ''));
+        $arbpl       = $req->query('arbpl');
+        $werks       = $req->query('werks');
         $autoSync = filter_var($req->query('auto_sync', '0'), FILTER_VALIDATE_BOOL);
 
         // Validasi input
@@ -236,7 +243,8 @@ class Yppi019DbApiController extends Controller
             ]);
 
             if (!empty($syncPayload['aufnr']) || (!empty($syncPayload['arbpl']) && !empty($syncPayload['werks']))) {
-                $sync = Http::withHeaders($this->sapHeaders())
+                // UBAH: Kirim $req ke sapHeaders
+                $sync = Http::withHeaders($this->sapHeaders($req))
                     ->acceptJson()->timeout(500)
                     ->post($base . '/api/yppi019/sync', $syncPayload);
 
@@ -285,7 +293,8 @@ class Yppi019DbApiController extends Controller
         }
 
         try {
-            $res = Http::withHeaders($this->sapHeaders())
+            // UBAH: Kirim $req ke sapHeaders
+            $res = Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()
                 ->timeout(180)
                 ->get($this->flaskBase() . '/api/yppi019/hasil', [
@@ -324,7 +333,8 @@ class Yppi019DbApiController extends Controller
         }
 
         try {
-            $res = Http::withHeaders($this->sapHeaders())
+            // UBAH: Kirim $req ke sapHeaders
+            $res = Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()->timeout(180)
                 ->post($this->flaskBase() . '/api/yppi019/confirm', $payload);
 
@@ -345,21 +355,22 @@ class Yppi019DbApiController extends Controller
             'aufnr'        => 'required|string',
             'vornr'        => 'nullable|string',
             'pernr'        => 'required|string',
-            'qty'          => 'required|numeric',
+            'qty'            => 'required|numeric',
             'meinh'        => 'nullable|string',
-            'budat'        => 'required|string',   // format 'YYYYMMDD' dari FE
-            'today'        => 'required|string',   // format 'YYYYMMDD'
-            'arbpl0'       => 'nullable|string',
+            'budat'        => 'required|string',     // format 'YYYYMMDD' dari FE
+            'today'        => 'required|string',     // format 'YYYYMMDD'
+            'arbpl0'        => 'nullable|string',
             'maktx'        => 'nullable|string',
-            'sap_return'   => 'nullable',          // biarkan sebagai array/mixed
-            'confirmed_at' => 'nullable|string',   // ISO timestamp dari FE
+            'sap_return' => 'nullable',         // biarkan sebagai array/mixed
+            'confirmed_at' => 'nullable|string',     // ISO timestamp dari FE
         ]);
 
         // Normalisasi vornr -> 4 digit
         $payload['vornr'] = $this->padVornr($payload['vornr'] ?? null);
 
         try {
-            $res = Http::withHeaders($this->sapHeaders())
+            // UBAH: Kirim $req ke sapHeaders
+            $res = Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()->timeout(30)
                 ->post($this->flaskBase() . '/api/yppi019/backdate-log', $payload);
 
@@ -375,7 +386,7 @@ class Yppi019DbApiController extends Controller
     /** ➕ Baru: proxy ambil histori backdate untuk modal FE (TANPA header SAP) */
     public function backdateHistory(Request $req)
     {
-        // Param yang dipakai FE: pernr (disarankan), aufnr (opsional), limit (default 50), order (asc|desc)
+        // ... (Kode ini tidak perlu diubah karena tidak memanggil sapHeaders)
         $pernr = trim((string)$req->query('pernr', ''));
         $aufnr = trim((string)$req->query('aufnr', ''));
         $limit = $req->query('limit'); // bisa null
@@ -407,40 +418,43 @@ class Yppi019DbApiController extends Controller
     {
         // 1) Validasi payload dasar
         $data = $req->validate([
-            'budat'                  => ['required', 'regex:/^\d{8}$/'], // yyyymmdd
-            'items'                  => ['required', 'array', 'min:1'],
+            'budat'             => ['required', 'regex:/^\d{8}$/'], // yyyymmdd
+            'items'             => ['required', 'array', 'min:1'],
 
-            'items.*.aufnr'          => ['required', 'string', 'size:12'],
-            'items.*.vornr'          => ['nullable', 'string', 'max:4'],
-            'items.*.pernr'          => ['required', 'string', 'max:32'],
-            'items.*.operator_name'  => ['nullable', 'string', 'max:120'],
-            'items.*.qty_confirm'    => ['required', 'numeric', 'gt:0'],
+            'items.*.aufnr'        => ['required', 'string', 'size:12'],
+            'items.*.vornr'        => ['nullable', 'string', 'max:4'],
+            'items.*.pernr'        => ['required', 'string', 'max:32'],
+            'items.*.operator_name' => ['nullable', 'string', 'max:120'],
+            'items.*.qty_confirm'     => ['required', 'numeric', 'gt:0'],
             'items.*.qty_pro'        => ['nullable', 'numeric'],
-            'items.*.meinh'          => ['nullable', 'string', 'max:8'],
-            'items.*.arbpl0'         => ['nullable', 'string', 'max:40'],
-            'items.*.charg'          => ['nullable', 'string', 'max:40'],
+            'items.*.meinh'        => ['nullable', 'string', 'max:8'],
+            'items.*.arbpl0'        => ['nullable', 'string', 'max:40'],
+            'items.*.charg'        => ['nullable', 'string', 'max:40'],
 
             // metadata opsional yang akan ikut disimpan
-            'items.*.werks'          => ['nullable', 'string', 'max:8'],
-            'items.*.ltxa1'          => ['nullable', 'string', 'max:200'],
-            'items.*.matnrx'         => ['nullable', 'string', 'max:40'],
-            'items.*.maktx'          => ['nullable', 'string', 'max:200'],
-            'items.*.maktx0'         => ['nullable', 'string', 'max:200'],
-            'items.*.dispo'          => ['nullable', 'string', 'max:10'],
-            'items.*.steus'          => ['nullable', 'string', 'max:10'],
-            'items.*.soitem'         => ['nullable', 'string', 'max:30'], // contoh: "4500.../10"
-            'items.*.kaufn'          => ['nullable', 'string', 'max:20'], // Sales Order (jika FE kirim terpisah)
-            'items.*.kdpos'          => ['nullable', 'string', 'max:6'],  // Item 6 digit (jika FE kirim terpisah)
-            'items.*.ssavd'          => ['nullable', 'string', 'max:10'], // yyyymmdd atau variasi
-            'items.*.sssld'          => ['nullable', 'string', 'max:10'],
-            'items.*.ltimex'         => ['nullable', 'numeric'],
-            'items.*.gstrp'          => ['nullable', 'string', 'max:10'],
-            'items.*.gltrp'          => ['nullable', 'string', 'max:10'],
+            'items.*.werks'        => ['nullable', 'string', 'max:8'],
+            'items.*.ltxa1'        => ['nullable', 'string', 'max:200'],
+            'items.*.matnrx'        => ['nullable', 'string', 'max:40'],
+            'items.*.maktx'        => ['nullable', 'string', 'max:200'],
+            'items.*.maktx0'        => ['nullable', 'string', 'max:200'],
+            'items.*.dispo'        => ['nullable', 'string', 'max:10'],
+            'items.*.steus'        => ['nullable', 'string', 'max:10'],
+            'items.*.soitem'        => ['nullable', 'string', 'max:30'], // contoh: "4500.../10"
+            'items.*.kaufn'        => ['nullable', 'string', 'max:20'], // Sales Order (jika FE kirim terpisah)
+            'items.*.kdpos'        => ['nullable', 'string', 'max:6'],     // Item 6 digit (jika FE kirim terpisah)
+            'items.*.ssavd'        => ['nullable', 'string', 'max:10'], // yyyymmdd atau variasi
+            'items.*.sssld'        => ['nullable', 'string', 'max:10'],
+            'items.*.ltimex'        => ['nullable', 'numeric'],
+            'items.*.gstrp'        => ['nullable', 'string', 'max:10'],
+            'items.*.gltrp'        => ['nullable', 'string', 'max:10'],
         ]);
 
         // 2) Pastikan SAP session tersedia
-        $sapUser = (string) session('sap.username');
-        $sapPass = (string) session('sap.password');
+        // PERBAIKAN: Ambil dari request attributes, bukan langsung dari session()
+        $sapUser = (string) $req->attributes->get('sap_username');
+        $sapPass = (string) $req->attributes->get('sap_password');
+
+        // Guard manual untuk kasus ini
         if ($sapUser === '' || $sapPass === '') {
             return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
         }
@@ -456,8 +470,8 @@ class Yppi019DbApiController extends Controller
 
         foreach ($data['items'] as $it) {
             // ---- Derive Sales Order / Item 6 digit ----
-            $salesOrder = $it['kaufn'] ?? null;    // kalau FE sudah kirim terpisah
-            $soItem     = $it['kdpos'] ?? null;    // kalau FE sudah kirim terpisah
+            $salesOrder = $it['kaufn'] ?? null;     // kalau FE sudah kirim terpisah
+            $soItem     = $it['kdpos'] ?? null;     // kalau FE sudah kirim terpisah
 
             if ($soItem !== null && $soItem !== '') {
                 $soItem = str_pad((string) $soItem, 6, '0', STR_PAD_LEFT);
@@ -472,65 +486,65 @@ class Yppi019DbApiController extends Controller
 
             // ---- Simpan ke DB (lengkap sesuai migrasi baru) ----
             $rec = \App\Models\Yppi019ConfirmMonitor::create([
-                'aufnr'             => (string) $it['aufnr'],
-                'vornr'             => $this->padVornr($it['vornr'] ?? null),
-                'meinh'             => $this->mapUnitForSap($it['meinh'] ?? 'ST'), // ST -> PC
-                'qty_pro'           => \Illuminate\Support\Arr::get($it, 'qty_pro'),
-                'qty_confirm'       => $it['qty_confirm'],
+                'aufnr'               => (string) $it['aufnr'],
+                'vornr'               => $this->padVornr($it['vornr'] ?? null),
+                'meinh'               => $this->mapUnitForSap($it['meinh'] ?? 'ST'), // ST -> PC
+                'qty_pro'               => \Illuminate\Support\Arr::get($it, 'qty_pro'),
+                'qty_confirm'          => $it['qty_confirm'],
                 'confirmation_date' => now()->toDateString(),
-                'posting_date'      => $this->ymdToDate($budatYMD),
+                'posting_date'          => $this->ymdToDate($budatYMD),
 
-                'operator_nik'      => $it['pernr'],
+                'operator_nik'          => $it['pernr'],
                 'operator_name'     => $it['operator_name'] ?? null,
-                'sap_user'          => $sapUser,
-                'status'            => 'PENDING',
+                'sap_user'               => $sapUser,
+                'status'               => 'PENDING',
 
                 // metadata bisnis
-                'plant'             => \Illuminate\Support\Arr::get($it, 'werks'),
-                'work_center'       => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                'op_desc'           => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+                'plant'               => \Illuminate\Support\Arr::get($it, 'werks'),
+                'work_center'          => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                'op_desc'               => \Illuminate\Support\Arr::get($it, 'ltxa1'),
 
-                'material'          => \Illuminate\Support\Arr::get($it, 'matnrx'),
+                'material'               => \Illuminate\Support\Arr::get($it, 'matnrx'),
                 'material_desc'     => \Illuminate\Support\Arr::get($it, 'maktx'),
-                'fg_desc'           => \Illuminate\Support\Arr::get($it, 'maktx0'),
+                'fg_desc'               => \Illuminate\Support\Arr::get($it, 'maktx0'),
 
-                'mrp_controller'    => \Illuminate\Support\Arr::get($it, 'dispo'),
-                'control_key'       => \Illuminate\Support\Arr::get($it, 'steus'),
+                'mrp_controller'     => \Illuminate\Support\Arr::get($it, 'dispo'),
+                'control_key'          => \Illuminate\Support\Arr::get($it, 'steus'),
 
-                'sales_order'       => $salesOrder,
-                'so_item'           => $soItem,
-                'batch_no'          => \Illuminate\Support\Arr::get($it, 'charg'),
+                'sales_order'          => $salesOrder,
+                'so_item'               => $soItem,
+                'batch_no'               => \Illuminate\Support\Arr::get($it, 'charg'),
 
-                'start_date_plan'   => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'ssavd')),
-                'finish_date_plan'  => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'sssld')),
-                'minutes_plan'      => \Illuminate\Support\Arr::get($it, 'ltimex'),
+                'start_date_plan'     => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'ssavd')),
+                'finish_date_plan'     => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'sssld')),
+                'minutes_plan'          => \Illuminate\Support\Arr::get($it, 'ltimex'),
 
                 // payload yang diperlukan Job (termasuk sap_auth terenkripsi)
-                'request_payload'   => [
-                    'budat'    => $budatYMD,
-                    'arbpl0'   => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                    'charg'    => \Illuminate\Support\Arr::get($it, 'charg'),
+                'request_payload'     => [
+                    'budat'     => $budatYMD,
+                    'arbpl0'     => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                    'charg'     => \Illuminate\Support\Arr::get($it, 'charg'),
                     'sap_auth' => $sapAuthBlob,
                 ],
 
                 // snapshot tampilan popup (audit trail)
-                'row_meta'          => [
-                    'wc'     => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                    'ltxa1'  => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+                'row_meta'               => [
+                    'wc'      => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                    'ltxa1'     => \Illuminate\Support\Arr::get($it, 'ltxa1'),
                     'matnrx' => \Illuminate\Support\Arr::get($it, 'matnrx'),
-                    'maktx'  => \Illuminate\Support\Arr::get($it, 'maktx'),
+                    'maktx'     => \Illuminate\Support\Arr::get($it, 'maktx'),
                     'maktx0' => \Illuminate\Support\Arr::get($it, 'maktx0'),
                     'soitem' => \Illuminate\Support\Arr::get($it, 'soitem'),
-                    'kaufn'  => $salesOrder,
-                    'kdpos'  => $soItem,
-                    'ssavd'  => \Illuminate\Support\Arr::get($it, 'ssavd'),
-                    'sssld'  => \Illuminate\Support\Arr::get($it, 'sssld'),
+                    'kaufn'     => $salesOrder,
+                    'kdpos'     => $soItem,
+                    'ssavd'     => \Illuminate\Support\Arr::get($it, 'ssavd'),
+                    'sssld'     => \Illuminate\Support\Arr::get($it, 'sssld'),
                     'ltimex' => \Illuminate\Support\Arr::get($it, 'ltimex'),
-                    'dispo'  => \Illuminate\Support\Arr::get($it, 'dispo'),
-                    'steus'  => \Illuminate\Support\Arr::get($it, 'steus'),
-                    'werks'  => \Illuminate\Support\Arr::get($it, 'werks'),
-                    'gstrp'  => \Illuminate\Support\Arr::get($it, 'gstrp'),
-                    'gltrp'  => \Illuminate\Support\Arr::get($it, 'gltrp'),
+                    'dispo'     => \Illuminate\Support\Arr::get($it, 'dispo'),
+                    'steus'     => \Illuminate\Support\Arr::get($it, 'steus'),
+                    'werks'     => \Illuminate\Support\Arr::get($it, 'werks'),
+                    'gstrp'     => \Illuminate\Support\Arr::get($it, 'gstrp'),
+                    'gltrp'     => \Illuminate\Support\Arr::get($it, 'gltrp'),
                 ],
             ]);
 
@@ -550,7 +564,8 @@ class Yppi019DbApiController extends Controller
         $pernr = $req->query('pernr');
         $limit = min((int)$req->query('limit', 100), 500);
 
-        $sapUser = (string) session('sap.username');
+        // PERBAIKAN: Ambil dari request attributes
+        $sapUser = (string) $req->attributes->get('sap_username');
         if ($sapUser === '') {
             return response()->json(['error' => 'Sesi SAP habis atau belum login'], 440);
         }
@@ -584,7 +599,7 @@ class Yppi019DbApiController extends Controller
             'status',
             'status_message',
             DB::raw("DATE_ADD(processed_at, INTERVAL 7 HOUR) as processed_at"),
-            DB::raw("DATE_ADD(created_at,   INTERVAL 7 HOUR) as created_at"),
+            DB::raw("DATE_ADD(created_at, 	INTERVAL 7 HOUR) as created_at"),
         ]);
 
         return response()->json(['data' => $data]);

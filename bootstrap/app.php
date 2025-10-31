@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // 👉 Alias middleware khusus kita
         $middleware->alias([
             //'countdown' => \App\Http\Middleware\EnforceCountdown::class,
+            'sap_auth' => \App\Http\Middleware\AttachSapCredentials::class, // TAMBAH INI
         ]);
 
         // (Opsional) kalau kamu ingin menambah middleware global ke group 'web',
