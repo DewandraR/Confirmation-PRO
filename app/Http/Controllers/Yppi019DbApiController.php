@@ -99,7 +99,7 @@ class Yppi019DbApiController extends Controller
         try {
             // UBAH: Kirim $req ke sapHeaders
             $http = fn(array $body) => Http::withHeaders($this->sapHeaders($req))
-                ->acceptJson()->timeout(500)
+                ->acceptJson()->timeout(500000)
                 ->post($this->flaskBase() . '/api/yppi019/sync', $body);
 
             // Common body di luar aufnr
@@ -245,7 +245,7 @@ class Yppi019DbApiController extends Controller
             if (!empty($syncPayload['aufnr']) || (!empty($syncPayload['arbpl']) && !empty($syncPayload['werks']))) {
                 // UBAH: Kirim $req ke sapHeaders
                 $sync = Http::withHeaders($this->sapHeaders($req))
-                    ->acceptJson()->timeout(500)
+                    ->acceptJson()->timeout(5000)
                     ->post($base . '/api/yppi019/sync', $syncPayload);
 
                 if (!$sync->ok() || !($sync->json('ok') ?? false)) {
