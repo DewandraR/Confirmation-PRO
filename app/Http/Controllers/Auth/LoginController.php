@@ -44,7 +44,7 @@ class LoginController extends Controller
         // 2) SAP AUTH via Flask (tetap)
         $sapId      = $request->input('sap_id');
         $sapPass    = $request->input('password');
-        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://127.0.0.1:5036/api/sap-login'));
+        $sapAuthUrl = config('services.sap.login_url', env('SAP_AUTH_URL', 'http://192.168.90.27:5005/api/sap-login'));
 
         try {
             $resp = Http::timeout(30)->acceptJson()->asJson()->post($sapAuthUrl, [
