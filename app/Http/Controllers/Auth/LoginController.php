@@ -115,7 +115,7 @@ class LoginController extends Controller
 
         // Aktifkan "remember me" agar tidak auto-logout oleh timer aplikasi ini.
         // (Catatan: tetap tunduk ke konfigurasi session Laravel & masa berlaku cookie browser.)
-        Auth::login($user, true); // <-- perhatikan argumen "true" untuk remember
+        Auth::login($user, false); // <-- perhatikan argumen "true" untuk remember
 
         // Jangan hapus recaller cookie (kebalikan dari kode lama)
         // Cookie::queue(Cookie::forget(Auth::getRecallerName()));
@@ -140,6 +140,14 @@ class LoginController extends Controller
         // (Jika ingin paksa hapus juga: Cookie::queue(Cookie::forget(Auth::getRecallerName())) )
 
         return redirect()->route('login');
+    }
+
+    public function destroyViaBeacon(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return response()->noContent(); // 204, ringan untuk sendBeacon
     }
 
     /* =========================

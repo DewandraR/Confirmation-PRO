@@ -75,8 +75,82 @@
         // Smooth scrolling
         document.documentElement.style.scrollBehavior = 'smooth';
     </script>
+
     @auth
+        {{-- (Opsional) session countdown milikmu --}}
         @include('partials.session-timer')
+
+        {{-- ===== Logout Beacon saat TAB TERAKHIR ditutup ===== --}}
+        <script id="session-exit-beacon">
+            (() => {
+                const KEY = 'app_open_tabs';
+                const id = Math.random().toString(36).slice(2);
+
+                const getSet = () => new Set((localStorage.getItem(KEY) || '').split(',').filter(Boolean));
+                const saveSet = (s) => localStorage.setItem(KEY, Array.from(s).join(','));
+
+                // Daftarkan tab ini
+                const tabs = getSet();
+                tabs.add(id);
+                saveSet(tabs);
+
+                function maybeLogoutOnClose() {
+                    const s = getSet();
+                    s.delete(id);
+                    saveSet(s);
+                    if (s.size === 0) {
+                        // Hanya saat tab terakhir yang tertutup
+                        try {
+                            navigator.sendBeacon('/logout-beacon', new Blob([], {
+                                type: 'text/plain'
+                            }));
+                        } catch (_) {
+                            // fallback (best-effort)
+                            fetch('/logout-beacon', {
+                                method: 'POST',
+                                keepalive: true,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            }).catch(() => {});
+                        }
+                    }
+                }
+
+                // pagehide lebih andal untuk bbrp browser dibanding beforeunload
+                window.addEventListener('pagehide', maybeLogoutOnClose);
+                window.addEventListener('beforeunload', maybeLogoutOnClose);
+            })
+            ();
+        </script>
+
+        {{-- ===== Interceptor XHR: bila 401/419 → balik ke /login ===== --}}
+        <script id="auth-interceptor">
+            (function() {
+                // Axios
+                if (window.axios) {
+                    axios.interceptors.response.use(
+                        r => r,
+                        err => {
+                            const s = err && err.response && err.response.status;
+                            if (s === 401 || s === 419) window.location.href = '/login';
+                            return Promise.reject(err);
+                        }
+                    );
+                }
+                // Fetch wrapper (opsional, hanya untuk contoh pemakaian)
+                window.fetchWithAuth = async function(input, init) {
+                    const res = await fetch(input, init);
+                    if (res.status === 401 || res.status === 419) {
+                        window.location.href = '/login';
+                        return new Response(null, {
+                            status: res.status
+                        });
+                    }
+                    return res;
+                }
+            })();
+        </script>
     @endauth
 
 </body>
