@@ -1386,32 +1386,48 @@ document.addEventListener("DOMContentLoaded", () => {
                 .map((x, i) => {
                     const uom = mapUom(x.meinh ?? "");
                     return `
-    <tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors">
-      <td class="px-3 py-2 text-center">${i + 1}</td>
-      <td class="px-3 py-2 font-mono truncate">${x.aufnr || "-"}</td>
-      <td class="px-3 py-2 font-mono">${fmtQtyByUom(x.qty_pro, uom)}</td>
-      <td class="px-3 py-2 font-mono">${fmtQtyByUom(
-          x.qty_confirm,
-          uom
-      )} ${uom}</td>
-      <td class="px-3 py-2">
-        <div class="truncate max-w-[60vw] sm:max-w-none">
-          ${x.operator_nik ?? "-"}${
+  <tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors">
+    <td class="px-3 py-2 text-center">${i + 1}</td>
+    <td class="px-3 py-2 font-mono truncate">${x.aufnr || "-"}</td>
+    <td class="px-3 py-2 font-mono">${fmtQtyByUom(x.qty_pro, uom)}</td>
+    <td class="px-3 py-2 font-mono">${fmtQtyByUom(
+        x.qty_confirm,
+        uom
+    )} ${uom}</td>
+
+    <!-- ➕ kolom baru -->
+    <td class="px-3 py-2 font-mono" title="${(x.material_desc ?? "").replace(
+        /"/g,
+        "&quot;"
+    )}">
+      ${x.material ?? "-"}
+    </td>
+    <td class="px-3 py-2">
+      <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
+          x.fg_desc ?? ""
+      ).replace(/"/g, "&quot;")}">
+        ${x.fg_desc ?? "-"}
+      </div>
+    </td>
+
+    <td class="px-3 py-2">
+      <div class="truncate max-w-[60vw] sm:max-w-none">
+        ${x.operator_nik ?? "-"}${
                         x.operator_name ? " / " + x.operator_name : ""
                     }
-        </div>
-      </td>
-      <td class="px-3 py-2">${badgeStatus(x.status)}</td>
-      <td class="px-3 py-2">
+      </div>
+    </td>
+    <td class="px-3 py-2">${badgeStatus(x.status)}</td>
+    <td class="px-3 py-2">
       <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
           x.status_message ?? ""
       ).replace(/"/g, "&quot;")}">
         ${x.status_message ?? "-"}
       </div>
     </td>
-      <td class="px-3 py-2 whitespace-nowrap">${fmtDT(x.processed_at)}</td>
-    </tr>
-  `;
+    <td class="px-3 py-2 whitespace-nowrap">${fmtDT(x.processed_at)}</td>
+  </tr>
+`;
                 })
                 .join("");
         } catch (e) {

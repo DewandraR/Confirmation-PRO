@@ -637,9 +637,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${
+            r.MAKTX0 || "-"
+        }</td>
+<td class="px-3 py-3 text-sm text-slate-700">${
+                r.MATNRX || "-"
+            }</td>
+<td class="px-3 py-3 text-sm text-slate-700">${
+                r.MAKTX || "-"
+            }</td>
+
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${
             r.PERNR || IV_PERNR || "-"

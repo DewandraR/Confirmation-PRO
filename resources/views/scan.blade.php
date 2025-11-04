@@ -393,21 +393,24 @@
                                 <th class="px-3 py-2 text-center text-[10px] sm:text-xs uppercase tracking-wider w-10">#
                                 </th>
                                 <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[18%]">
-                                    PRO
-                                </th>
+                                    PRO</th>
+                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[10%]">
+                                    PRO Qty</th>
                                 <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[12%]">
-                                    PRO
-                                    Qty</th>
-                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[18%]">
                                     Confirm Qty</th>
-                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[28%]">
+
+                                <!-- ➕ kolom baru -->
+                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[14%]">
+                                    Material</th>
+                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[20%]">FG
+                                    Desc</th>
+
+                                <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[24%]">
                                     Operator</th>
                                 <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[12%]">
-                                    Status
-                                </th>
+                                    Status</th>
                                 <th class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[28%]">
-                                    Massage
-                                </th>
+                                    Massage</th>
                                 <th
                                     class="px-3 py-2 text-left  text-[10px] sm:text-xs uppercase tracking-wider w-[12%] whitespace-nowrap">
                                     Processed At</th>

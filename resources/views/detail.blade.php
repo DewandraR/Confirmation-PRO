@@ -227,14 +227,17 @@
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Finish Date</th>
                                         <th
+                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">
+                                            Deskripsi FG
+                                        </th>
+                                        <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">
-                                            Material</th>
+                                            Material
+                                        </th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">
-                                            Description</th>
-                                        <th
-                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[200px]">
-                                            Deskripsi FG</th>
+                                            Description
+                                        </th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Min</th>

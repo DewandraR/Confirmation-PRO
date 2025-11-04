@@ -593,13 +593,16 @@ class Yppi019DbApiController extends Controller
             'meinh',
             'qty_pro',
             'qty_confirm',
+            'material',
+            'fg_desc',
+            'material_desc',
             'operator_nik',
             'operator_name',
             'sap_user',
             'status',
             'status_message',
             DB::raw("DATE_ADD(processed_at, INTERVAL 7 HOUR) as processed_at"),
-            DB::raw("DATE_ADD(created_at, 	INTERVAL 7 HOUR) as created_at"),
+            DB::raw("DATE_ADD(created_at,  INTERVAL 7 HOUR) as created_at"),
         ]);
 
         return response()->json(['data' => $data]);
