@@ -584,58 +584,49 @@
 
     {{-- ⬇️ Modal Hasil Konfirmasi (baru) --}}
     <!-- Modal Hasil Konfirmasi -->
-    <div id="hasilModal" class="fixed inset-0 z-[100] hidden" aria-hidden="true">
-        <!-- backdrop -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
+    <div id="hasilModal"
+        class="fixed inset-0 z-[100] hidden p-4 flex items-center justify-center bg-black/40 backdrop-blur-[1px]"
+        aria-hidden="true">
 
-        <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-                <div class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-blue-900 text-white">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
-                        </svg>
-                        <h3 class="font-semibold">Hasil Konfirmasi</h3>
-                    </div>
-                    <p class="text-white/80 text-xs">Masukkan NIK dan tanggal untuk membuka halaman hasil.</p>
+        {{-- HAPUS div backdrop dan div wrapper yang sebelumnya ada di sini --}}
+
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-blue-900 text-white">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    <h3 class="font-semibold">Hasil Konfirmasi</h3>
                 </div>
+                <p class="text-white/80 text-xs">Masukkan NIK dan tanggal untuk membuka halaman hasil.</p>
+            </div>
 
-                <form id="hasilForm" class="px-5 py-4 space-y-3">
-                    <div>
-                        <label class="text-xs text-slate-600">NIK Operator<span class="text-red-600">*</span></label>
-                        <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="contoh: 100234" required>
+            <form id="hasilForm" class="px-5 py-4 space-y-3">
+                <div>
+                    <label class="text-xs text-slate-600">NIK Operator<span class="text-red-600">*</span></label>
+                    <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
+                        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="contoh: 100234" required>
+                </div>
+                <!-- ganti blok ini SAJA -->
+                <div>
+                    <label class="text-xs text-slate-600">Periode Tanggal<span class="text-red-600">*</span></label>
+                    <div class="relative mt-1">
+                        <input id="hasil-daterange" name="daterange" type="text"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            placeholder="Pilih rentang tanggal..." required>
+
+                        <svg class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            stroke-width="2">
+
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+
+                        </svg>
                     </div>
-                    <!-- ganti blok ini SAJA -->
-                    <div>
-                        <label class="text-xs text-slate-600">
-                            Tanggal<span class="text-red-600">*</span>
-                        </label>
-
-                        <!-- ikon dulu, lalu kolom tanggal (dd/mm/yyyy), dan native date tersembunyi -->
-                        <div class="mt-1 flex items-center gap-2">
-                            <!-- tombol ikon kalender -->
-                            <button id="hasil-budat-btn" type="button" title="Pilih tanggal"
-                                class="inline-flex items-center justify-center w-10 h-10 rounded-lg
-                   border border-slate-300 text-slate-700 hover:bg-slate-50">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </button>
-
-                            <!-- input tampilan dd/mm/yyyy (bisa diketik manual) -->
-                            <input id="hasil-budat-display" type="text" inputmode="numeric"
-                                pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/yyyy" required
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2
-                  focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-
-                            <!-- native date picker untuk memunculkan kalender -->
-                            <input id="hasil-budat-native" type="date" class="sr-only">
-                        </div>
-                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
 
 
                     <div class="flex items-center justify-end gap-2 pt-2">
@@ -644,9 +635,9 @@
                         <button type="submit"
                             class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Lanjutkan</button>
                     </div>
-                </form>
-            </div>
+            </form>
         </div>
+    </div>
     </div>
 
     <!-- Overlay Loading -->
@@ -674,9 +665,13 @@
 
 {{-- ↓ Tidak ada CSS inline. Semua style khusus halaman dipindah ke scan.css --}}
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/scan.css') }}?v={{ filemtime(public_path('css/scan.css')) }}">
+    {{-- Kita ganti 'v' nya secara manual untuk memaksa browser download ulang --}}
+    <link rel="stylesheet" href="{{ asset('css/scan.css') }}?v=kmi-theme-v1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 @endpush
 
 @push('scripts')
     <script src="{{ asset('js/scan.js') }}?v={{ filemtime(public_path('js/scan.js')) }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 @endpush

@@ -1466,135 +1466,101 @@ document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("hasilModal");
     const form = document.getElementById("hasilForm");
     const inpPernr = document.getElementById("hasil-pernr");
-
-    const inpBudatTxt =
-        document.getElementById("hasil-budat") ||
-        document.getElementById("hasil-budat-display");
-    const btnBudat = document.getElementById("hasil-budat-btn");
-    const inpBudatNative = document.getElementById("hasil-budat-native");
-
+    const inpDaterange = document.getElementById("hasil-daterange");
     const btnCancel = document.getElementById("hasilCancel");
-    if (!btnOpen || !modal || !form || !inpBudatTxt) return;
 
-    // helpers
-    const toDMY = (d) => {
-        const dd = String(d.getDate()).padStart(2, "0");
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const yy = d.getFullYear();
-        return `${dd}/${mm}/${yy}`;
-    };
-    const dmyToYmdNoDash = (s) => {
-        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
-        return m ? `${m[3]}${m[2]}${m[1]}` : "";
-    };
-    const dmyToIso = (s) => {
-        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
-        return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
-    };
-    const isoToDmy = (iso) => {
-        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
-        return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
-    };
+    if (!btnOpen || !modal || !form || !inpDaterange) return;
+
+    let flatpickrInstance = null; // Helper untuk format YYYYMMDD
+
+    const dateToYmd = (d) => {
+        if (!d || !(d instanceof Date)) return "";
+        const pad2 = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(
+            d.getDate()
+        )}`;
+    }; // Helper ambil NIK terakhir
+
     const getLastPernr = () => {
         try {
             return localStorage.getItem("last_pernr") || "";
         } catch {
             return "";
         }
-    };
-
-    // default hari ini ke keduanya
-    function ensureTodayIfEmpty() {
-        if (!inpBudatTxt.value) inpBudatTxt.value = toDMY(new Date());
-        if (inpBudatNative && !inpBudatNative.value) {
-            try {
-                inpBudatNative.value = new Date().toISOString().slice(0, 10);
-            } catch {}
-        }
-    }
-
-    // sinkronisasi dua input
-    function syncTxtToNative() {
-        if (!inpBudatNative) return;
-        const iso = dmyToIso(inpBudatTxt.value);
-        if (iso) inpBudatNative.value = iso;
-    }
-    function syncNativeToTxt() {
-        const dmy = isoToDmy(inpBudatNative.value);
-        if (dmy) inpBudatTxt.value = dmy;
-    }
+    }; // Tampilkan modal
 
     const show = () => {
-        ensureTodayIfEmpty();
-        syncTxtToNative();
-
+        // Isi NIK terakhir
         if (inpPernr && !inpPernr.value) {
             const last = getLastPernr();
             if (last) inpPernr.value = last;
+        } // Inisialisasi flatpickr jika belum
+
+        if (!flatpickrInstance && window.flatpickr) {
+            // Cek apakah locale 'id' sudah di-load
+            const locale = window.flatpickr.l10ns.id ? "id" : "default";
+
+            flatpickrInstance = flatpickr(inpDaterange, {
+                mode: "range",
+                dateFormat: "d/m/Y",
+                defaultDate: [new Date(), new Date()], // Default hari ini
+                maxDate: new Date(), // Tidak bisa pilih tgl di masa depan
+                locale: locale,
+
+                className: "flatpickr-kmi-theme",
+            });
         }
-        try {
-            if (inpBudatNative)
-                inpBudatNative.max = new Date().toISOString().slice(0, 10);
-        } catch {}
 
         modal.classList.remove("hidden");
         setTimeout(() => inpPernr?.focus(), 50);
-    };
+    }; // Sembunyikan modal
 
-    const hide = () => modal.classList.add("hidden");
+    const hide = () => {
+        if (flatpickrInstance) {
+            flatpickrInstance.close(); // Tutup kalender jika terbuka
+        }
+        modal.classList.add("hidden");
+    }; // Events
 
-    // events
     btnOpen.addEventListener("click", show);
     btnCancel?.addEventListener("click", hide);
     modal.addEventListener("click", (e) => {
         if (e.target === modal) hide();
-    });
-
-    btnBudat?.addEventListener("click", () => {
-        if (!inpBudatNative) return;
-        syncTxtToNative();
-        try {
-            inpBudatNative.showPicker
-                ? inpBudatNative.showPicker()
-                : inpBudatNative.click();
-        } catch {
-            inpBudatNative.click();
-        }
-    });
-
-    inpBudatNative?.addEventListener("change", syncNativeToTxt);
-    inpBudatTxt.addEventListener("blur", syncTxtToNative);
+    }); // Submit form
 
     form.addEventListener("submit", (e) => {
         e.preventDefault();
         const pernr = (inpPernr.value || "").trim();
-        const dmy = (inpBudatTxt.value || "").trim();
+
+        if (!flatpickrInstance) {
+            alert("Pemilih tanggal belum siap.");
+            return;
+        }
+        const selectedDates = flatpickrInstance.selectedDates;
 
         if (!pernr) {
             alert("NIK Operator wajib diisi.");
-            inpPernr.focus();
-            return;
-        }
-        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dmy)) {
-            alert("Tanggal tidak valid. Gunakan dd/mm/yyyy.");
-            inpBudatTxt.focus();
-            return;
+            return inpPernr.focus();
         }
 
-        const budat = dmyToYmdNoDash(dmy); // YYYYMMDD
+        if (selectedDates.length < 2) {
+            alert("Anda harus memilih rentang tanggal (dari dan sampai).");
+            return;
+        }
+        const fromDate = selectedDates[0];
+        const toDate = selectedDates[1]; // Simpan NIK terakhir
+
         try {
             localStorage.setItem("last_pernr", pernr);
-        } catch {}
+        } catch {} // Ubah ke format YYYYMMDD
 
-        const url = `/hasil?pernr=${encodeURIComponent(
-            pernr
-        )}&budat=${encodeURIComponent(budat)}`;
-        window.location.assign(url);
+        const from = dateToYmd(fromDate);
+        const to = dateToYmd(toDate);
+
+        location.assign(
+            `/hasil?pernr=${encodeURIComponent(pernr)}&from=${from}&to=${to}`
+        );
     });
-
-    // prefilling awal
-    ensureTodayIfEmpty();
-    syncTxtToNative();
 })();
 
 // ==== Overlay extras (non-intrusive) ====

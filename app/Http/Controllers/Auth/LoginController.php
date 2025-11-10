@@ -115,6 +115,7 @@ class LoginController extends Controller
 
         // Aktifkan "remember me" agar tidak auto-logout oleh timer aplikasi ini.
         // (Catatan: tetap tunduk ke konfigurasi session Laravel & masa berlaku cookie browser.)
+        // false karena sudah tidak di butuhkan
         Auth::login($user, false); // <-- perhatikan argumen "true" untuk remember
 
         // Jangan hapus recaller cookie (kebalikan dari kode lama)

@@ -630,4 +630,35 @@ class Yppi019DbApiController extends Controller
         }
         return [$so, $item];
     }
+    public function hasilRange(Request $req)
+    {
+        $pernr = trim((string)$req->query('pernr', ''));
+        // dukung from/to dan alias lain
+        $from  = preg_replace('/-/', '', (string)($req->query('from', $req->query('budat_from', $req->query('date_from', '')))));
+        $to    = preg_replace('/-/', '', (string)($req->query('to',   $req->query('budat_to',   $req->query('date_to',   '')))));
+
+        if ($pernr === '' || !preg_match('/^\d{8}$/', $from) || !preg_match('/^\d{8}$/', $to)) {
+            return response()->json(['ok' => false, 'error' => 'param pernr & from/to (YYYYMMDD) wajib'], 400);
+        }
+
+        try {
+            $res = \Illuminate\Support\Facades\Http::withHeaders($this->sapHeaders($req))
+                ->acceptJson()
+                ->timeout(300)
+                ->get($this->flaskBase() . '/api/yppi019/hasil-range', [
+                    'pernr' => $pernr,
+                    'from'  => $from,
+                    'to'    => $to,
+                    // opsional: forward aufnr kalau Anda mau
+                    'aufnr' => $req->query('aufnr'),
+                ]);
+
+            return response($res->body(), $res->status())
+                ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }

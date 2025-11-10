@@ -18,6 +18,7 @@ import mysql.connector
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
 from flask import jsonify, request
 from contextlib import closing  # <— tambahan
+from datetime import datetime, timedelta
 
 load_dotenv()
 app = Flask(__name__)
@@ -30,8 +31,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
-HTTP_PORT = int(os.getenv("HTTP_PORT", "5036"))
+HTTP_HOST = os.getenv("HTTP_HOST", "0.0.0.0")
+HTTP_PORT = int(os.getenv("HTTP_PORT", "5005"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM
 RFC_H = "Z_FM_YPPR062"      # HASIL (baru)
@@ -41,8 +42,8 @@ CONFIRM_LOG_KEEP_DAYS = int(os.getenv("CONFIRM_LOG_KEEP_DAYS", "0"))
 # ---------------- MySQL ----------------
 def connect_mysql():
     return mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USERNAME", "root"),
+        host=os.getenv("DB_HOST", "192.168.90.105"),
+        user=os.getenv("DB_USERNAME", "python_client"),
         password=os.getenv("DB_PASSWORD", "singgampang"),
         database=os.getenv("DB_DATABASE", "yppi019"),
         port=int(os.getenv("DB_PORT", "3306")),
@@ -871,6 +872,89 @@ def api_hasil():
         # 3. Blok 'finally' ini akan SELALU dieksekusi
         if sap:
             # 4. Tutup koneksi jika koneksi berhasil dibuat
+            sap.close()
+
+def _ymd_clean(s: str) -> str:
+    return re.sub(r'\D', '', (s or '').strip())
+
+@app.get("/api/yppi019/hasil-range")
+def api_hasil_range():
+    # Ambil kredensial SAP dari header/Basic/JSON (sama seperti endpoint lain)
+    try:
+        username, password = get_credentials_from_request()
+    except ValueError as ve:
+        return jsonify({"ok": False, "error": str(ve)}), 401
+
+    pernr = (request.args.get("pernr") or "").strip()
+    frm   = _ymd_clean(request.args.get("from") or request.args.get("budat_from") or request.args.get("date_from") or "")
+    to    = _ymd_clean(request.args.get("to")   or request.args.get("budat_to")   or request.args.get("date_to")   or "")
+    aufnr = (request.args.get("aufnr") or "").strip()
+
+    if not pernr or not re.match(r"^\d{8}$", frm) or not re.match(r"^\d{8}$", to):
+        return jsonify({"ok": False, "error": "param pernr & from/to(YYYYMMDD) wajib"}), 400
+
+    # Normalisasi rentang
+    d1 = datetime.strptime(frm, "%Y%m%d").date()
+    d2 = datetime.strptime(to,  "%Y%m%d").date()
+    if d1 > d2:
+        d1, d2 = d2, d1
+
+    MAX_DAYS = int(os.getenv("HASIL_RANGE_MAX_DAYS", "62"))
+    span = (d2 - d1).days + 1
+    if span > MAX_DAYS:
+        return jsonify({"ok": False, "error": f"Rentang terlalu panjang (> {MAX_DAYS} hari)"}), 413
+
+    sap = None
+    all_rows: List[Dict[str, Any]] = []
+    all_msgs: List[Dict[str, Any]] = []
+
+    try:
+        sap = connect_sap(username, password)
+        cur = d1
+        while cur <= d2:
+            ymd = cur.strftime("%Y%m%d")
+            args = {"P_PERNR": pernr, "P_BUDAT": ymd}
+            if aufnr:
+                args["P_AUFNR"] = pad_aufnr(aufnr)
+
+            res = sap.call("Z_FM_YPPR062", **args)
+            rows = res.get("T_DATA1", []) or []
+            msgs = res.get("RETURN", []) or []
+            all_msgs += [m for m in msgs if isinstance(m, dict)]
+
+            # Abort kalau ada pesan TYPE E/A
+            err = next((m for m in msgs if str(m.get("TYPE","")).upper() in ("E","A")), None)
+            if err:
+                return jsonify({"ok": False, "error": err.get("MESSAGE") or str(err), "messages": to_jsonable(all_msgs)}), 502
+
+            if _is_message_table(rows):
+                rows = []
+
+            # Tag tanggal asal
+            for r in rows:
+                try:
+                    r["BUDAT"] = ymd
+                except Exception:
+                    pass
+            all_rows.extend(rows)
+            cur += timedelta(days=1)
+
+        return jsonify({
+            "ok": True,
+            "from": d1.strftime("%Y%m%d"),
+            "to":   d2.strftime("%Y%m%d"),
+            "count": len(all_rows),
+            "rows": to_jsonable(all_rows),
+            "messages": to_jsonable(all_msgs),
+        }), 200
+
+    except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
+        return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
+    except Exception as e:
+        logger.exception("Error api_hasil_range")
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if sap:
             sap.close()
 
 # ---------------- Confirm & Other Endpoints ----------------
