@@ -8,7 +8,7 @@ php artisan queue:restart
 # yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS + LTIME/LTIMEX (minutes)
 # yppi019.py — FINAL (per-AUFNR advisory lock) + FIX "Unread result found" + KDAUF/KDPOS + LTIME/LTIMEX (minutes)
 
-import os, re, json, logging, decimal, datetime, base64
+import os, re, json, logging, decimal, base64
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, request, jsonify
@@ -18,7 +18,7 @@ import mysql.connector
 from pyrfc import Connection, ABAPApplicationError, ABAPRuntimeError, LogonError, CommunicationError
 from flask import jsonify, request
 from contextlib import closing  # <— tambahan
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 load_dotenv()
 app = Flask(__name__)
@@ -162,7 +162,7 @@ def parse_num(x: Any) -> Optional[float]:
 
 def parse_date(v: Any) -> Optional[str]:
     if not v: return None
-    if isinstance(v, (datetime.date, datetime.datetime)): return v.strftime("%d-%m-%Y")
+    if isinstance(v, (date, datetime)): return v.strftime("%d-%m-%Y")
     s = str(v).strip()
     if m := re.match(r"^(\d{2})\.(\d{2})\.(\d{4})$", s): return f"{m.groups()[2]}-{m.groups()[1]}-{m.groups()[0]}"
     if m2 := re.match(r"^(\d{4})(\d{2})(\d{2})$", s): return f"{m2.groups()[0]}-{m2.groups()[1]}-{m2.groups()[2]}"
@@ -191,7 +191,7 @@ def pad_kdpos(v: Any) -> str:
 def to_jsonable(o: Any) -> Any:
     if isinstance(o, (str, int, float, bool, type(None))): return o
     if isinstance(o, decimal.Decimal): return float(o)
-    if isinstance(o, (datetime.date, datetime.datetime)): return o.isoformat()
+    if isinstance(o, (date, datetime)): return o.isoformat()
     if isinstance(o, dict): return {k: to_jsonable(v) for k, v in o.items()}
     if isinstance(o, (list, tuple, set)): return [to_jsonable(x) for x in o]
     return str(o)
@@ -350,7 +350,7 @@ def map_tdata1_row(r: Dict[str, Any]) -> Dict[str, Any]:
         "ISDZ": r.get("ISDZ"),
         "IEDZ": r.get("IEDZ"),
         "RAW_JSON": json.dumps(to_jsonable(r), ensure_ascii=False),
-        "fetched_at": datetime.datetime.now(),
+        "fetched_at": datetime.now(),
     }
 
 # ---------------- READ from SAP & sync ----------------
@@ -1132,7 +1132,7 @@ def api_confirm():
                     parse_date(b.get("gltrp")),
                     parse_date(budat),
                     json.dumps(to_jsonable(sap_ret), ensure_ascii=False),
-                    datetime.datetime.now(),
+                    datetime.now(),
                 ),
             )
 
@@ -1224,7 +1224,6 @@ def api_backdate_log():
     confirmed_at_s = (str(b.get("confirmed_at") or "").strip() or None)
 
     # ---- Parse & validasi tanggal ----
-    from datetime import datetime, date
     try:
         budat_dt: date = datetime.strptime(budat_s, "%Y%m%d").date()
         today_dt: date = datetime.strptime(today_s, "%Y%m%d").date()

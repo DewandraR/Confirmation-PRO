@@ -43,7 +43,7 @@
 
                 {{-- ===== Bar aksi (geser ke kiri + tombol pilih tanggal) ===== --}}
                 <div class="px-5 py-4 flex flex-wrap gap-3 items-end">
-                    <div class="ml-auto flex gap-2">
+                    <div class="ml-auto flex flex-wrap justify-end gap-2">
                         <a href="/scan"
                             class="inline-flex items-center h-9 px-3 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
                             Kembali
@@ -53,9 +53,7 @@
                             class="inline-flex items-center h-9 px-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
                             Refresh
                         </button>
-
-                        {{-- ===== BARU: Input Date Range Picker ===== --}}
-                        <div class="relative" style="width: 250px;">
+                        <div class="relative w-full sm:w-[250px]">
                             <input id="hasil-daterange-picker" type="text"
                                 class="inline-flex h-9 w-full rounded-lg border border-slate-300 px-3 py-2 pl-10 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
                                 placeholder="Pilih rentang tanggal..." required>

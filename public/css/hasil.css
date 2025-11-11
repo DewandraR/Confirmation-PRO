@@ -1,9 +1,22 @@
 /* hasil.css */
 #hasil-table th,
 #hasil-table td {
-  border-bottom: 1px solid #e5e7eb; /* slate-200 */
+    border-bottom: 1px solid #e5e7eb; /* slate-200 */
 }
 
 #hasil-table tbody tr:hover {
-  background: #f8fafc; /* slate-50 */
+    background: #f8fafc; /* slate-50 */
+}
+@media (max-width: 640px) {
+    .flatpickr-calendar.open {
+        /* Paksa kalender ke tengah layar.
+          'transform' digunakan untuk menyeimbangkan posisinya.
+        */
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+
+        /* Pastikan kalender tidak lebih lebar dari layar HP */
+        max-width: 95vw;
+    }
 }

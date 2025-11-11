@@ -168,7 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
             locale: fpLocale
                 ? { ...fpLocale, rangeSeparator: " – " }
                 : { rangeSeparator: " – " },
-            disableMobile: true,
             onReady: function (selectedDates, dateStr, instance) {
                 // pastikan nilai input sesuai default di atas (beberapa versi perlu setDate manual)
                 if (defaultDates.length) instance.setDate(defaultDates, false);
