@@ -141,7 +141,7 @@
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/hasil.css') }}?v={{ filemtime(public_path('css/hasil.css')) }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
 @endpush
 
 @push('scripts')
