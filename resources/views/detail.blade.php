@@ -395,6 +395,9 @@
 @push('head')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="scan-url" content="{{ route('scan') }}">
+
+    {{-- SAP user saat ini (dipakai JS untuk kunci Posting Date) --}}
+    <meta name="sap-user" content="{{ $sapUser }}">
 @endpush
 
 {{-- ===== Styles ===== --}}

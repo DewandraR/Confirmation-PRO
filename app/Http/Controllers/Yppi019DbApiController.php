@@ -459,6 +459,14 @@ class Yppi019DbApiController extends Controller
             return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
         }
 
+        // 2b) Kunci Posting Date untuk SAP user tertentu (tidak boleh backdate)
+        $lockedBudatUsers = ['KMI-U138', 'KMI-U124'];
+
+        if (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
+            // paksa selalu hari ini (format: YYYYMMDD, sesuai validasi regex di atas)
+            $data['budat'] = now()->format('Ymd');
+        }
+
         // 3) Enkripsi credential agar bisa dipakai di Job
         $sapAuthBlob = \Illuminate\Support\Facades\Crypt::encryptString(
             json_encode(['u' => $sapUser, 'p' => $sapPass])

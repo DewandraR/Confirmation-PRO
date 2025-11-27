@@ -111,7 +111,12 @@ class LoginController extends Controller
         );
 
         // simpan kredensial bila perlu dipakai lagi
-        session(['sap.username' => $sapId, 'sap.password' => $sapPass]);
+        session([
+            'sap.username' => $sapId,
+            'sap.password' => $sapPass,
+            // alias untuk FE lama
+            'sap_user'     => $sapId,
+        ]);
 
         // Aktifkan "remember me" agar tidak auto-logout oleh timer aplikasi ini.
         // (Catatan: tetap tunduk ke konfigurasi session Laravel & masa berlaku cookie browser.)

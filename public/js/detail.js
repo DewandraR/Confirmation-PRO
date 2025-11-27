@@ -4,6 +4,17 @@
 // --- CSRF dari <meta>, tanpa fallback Blade ---
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
+function getCurrentSapUser() {
+    const el = document.querySelector('meta[name="sap-user"]');
+    return (el?.content || "").trim();
+}
+
+// contoh: "kmi-u138" -> "KMI-U138"
+const CUR_SAP_USER = getCurrentSapUser().toUpperCase();
+
+// daftar SAP user yang TIDAK boleh backdate
+const LOCK_BUDAT_USERS = ["KMI-U138", "KMI-U124"];
+
 /* =======================
    TIMEOUT HELPERS (NEW)
    ======================= */
@@ -306,6 +317,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     const budatInput = document.getElementById("budat-input"); // hidden yyyy-mm-dd
     const budatInputText = document.getElementById("budat-input-text"); // visible dd/mm/yyyy
     const budatOpen = document.getElementById("budat-open");
+
+    const isBudatLocked = LOCK_BUDAT_USERS.includes(CUR_SAP_USER);
+
+    if (isBudatLocked) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const ymd = `${yyyy}-${mm}-${dd}`; // yyyy-mm-dd
+
+        // paksa hidden input ke hari ini & tidak bisa diubah
+        if (budatInput) {
+            budatInput.value = ymd;
+            budatInput.setAttribute("max", ymd);
+            budatInput.disabled = true;
+        }
+
+        // paksa tampilan text ke hari ini & readonly
+        if (budatInputText) {
+            budatInputText.value = `${dd}/${mm}/${yyyy}`; // dd/mm/yyyy
+            budatInputText.readOnly = true;
+            budatInputText.classList.add("bg-slate-100", "cursor-not-allowed");
+        }
+
+        // matikan tombol picker kalender
+        if (budatOpen) {
+            budatOpen.disabled = true;
+            budatOpen.classList.add("opacity-60", "cursor-not-allowed");
+        }
+    }
 
     // Search controls
     const searchInput = document.getElementById("searchInput");
@@ -637,15 +678,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${
-            r.MAKTX0 || "-"
-        }</td>
-<td class="px-3 py-3 text-sm text-slate-700">${
-                r.MATNRX || "-"
-            }</td>
-<td class="px-3 py-3 text-sm text-slate-700">${
-                r.MAKTX || "-"
-            }</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
+<td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
+<td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
 
         <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${
