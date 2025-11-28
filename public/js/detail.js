@@ -13,7 +13,9 @@ function getCurrentSapUser() {
 const CUR_SAP_USER = getCurrentSapUser().toUpperCase();
 
 // daftar SAP user yang TIDAK boleh backdate
-const LOCK_BUDAT_USERS = ["KMI-U138", "KMI-U124"];
+const LOCK_BUDAT_USERS = [
+    /*"KMI-U138", "KMI-U124"*/
+];
 
 /* =======================
    TIMEOUT HELPERS (NEW)

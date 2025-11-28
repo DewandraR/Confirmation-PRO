@@ -460,7 +460,7 @@ class Yppi019DbApiController extends Controller
         }
 
         // 2b) Kunci Posting Date untuk SAP user tertentu (tidak boleh backdate)
-        $lockedBudatUsers = ['KMI-U138', 'KMI-U124'];
+        $lockedBudatUsers = [/*'KMI-U138', 'KMI-U124'*/];
 
         if (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
             // paksa selalu hari ini (format: YYYYMMDD, sesuai validasi regex di atas)
