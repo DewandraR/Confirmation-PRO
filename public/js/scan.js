@@ -1383,53 +1383,70 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             monitorBody.innerHTML = data
-                .map((x, i) => {
-                    const uom = mapUom(x.meinh ?? "");
-                    return `
-  <tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors">
-    <td class="px-3 py-2 text-center">${i + 1}</td>
-    <td class="px-3 py-2 font-mono truncate">${x.aufnr || "-"}</td>
-    <td class="px-3 py-2 font-mono">${fmtQtyByUom(x.qty_pro, uom)}</td>
-    <td class="px-3 py-2 font-mono">${fmtQtyByUom(
-        x.qty_confirm,
-        uom
-    )} ${uom}</td>
+    .map((x, i) => {
+        const uom = mapUom(x.meinh ?? "");
+        const pro = x.aufnr || "-";
+        const qtyPro = fmtQtyByUom(x.qty_pro, uom);
+        const qtyConfirm = `${fmtQtyByUom(x.qty_confirm, uom)} ${uom}`;
+        const material = x.material ?? "-";
+        const fgDesc = x.fg_desc ?? "-";
+        const operatorCombined =
+            (x.operator_nik ?? "-") +
+            (x.operator_name ? " / " + x.operator_name : "");
+        const status = (String(x.status || "").toUpperCase() || "PENDING");
+        const message = x.status_message ?? "-";
+        const processed = fmtDT(x.processed_at);
 
-    <!-- ➕ kolom baru -->
-    <td class="px-3 py-2 font-mono" title="${(x.material_desc ?? "").replace(
-        /"/g,
-        "&quot;"
-    )}">
-      ${x.material ?? "-"}
+        const esc = (v) => String(v ?? "").replace(/"/g, "&quot;");
+
+        return `
+  <tr class="monitor-row cursor-pointer odd:bg-white even:bg-slate-50 hover:bg-green-50/60 transition-colors"
+      data-pro="${esc(pro)}"
+      data-pro-qty="${esc(qtyPro)}"
+      data-confirm-qty="${esc(qtyConfirm)}"
+      data-material="${esc(material)}"
+      data-fg-desc="${esc(fgDesc)}"
+      data-operator="${esc(operatorCombined)}"
+      data-status="${esc(status)}"
+      data-message="${esc(message)}"
+      data-processed="${esc(processed)}"
+  >
+    <td class="px-3 py-2 text-center">${i + 1}</td>
+    <td class="px-3 py-2 font-mono truncate">${pro}</td>
+    <td class="px-3 py-2 font-mono">${qtyPro}</td>
+    <td class="px-3 py-2 font-mono">${qtyConfirm}</td>
+
+    <td class="px-3 py-2 font-mono" title="${esc(x.material_desc ?? "")}">
+      ${material}
     </td>
+
     <td class="px-3 py-2">
-      <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
-          x.fg_desc ?? ""
-      ).replace(/"/g, "&quot;")}">
-        ${x.fg_desc ?? "-"}
+      <div class="truncate max-w-[60vw] sm:max-w-none" title="${esc(fgDesc)}">
+        ${fgDesc}
       </div>
     </td>
 
     <td class="px-3 py-2">
       <div class="truncate max-w-[60vw] sm:max-w-none">
-        ${x.operator_nik ?? "-"}${
-                        x.operator_name ? " / " + x.operator_name : ""
-                    }
+        ${operatorCombined}
       </div>
     </td>
-    <td class="px-3 py-2">${badgeStatus(x.status)}</td>
+
+    <td class="px-3 py-2">${badgeStatus(status)}</td>
+
     <td class="px-3 py-2">
-      <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
-          x.status_message ?? ""
-      ).replace(/"/g, "&quot;")}">
-        ${x.status_message ?? "-"}
-      </div>
+        <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
+            x.status_message ?? ""
+        ).replace(/"/g, "&quot;")}">
+            ${x.status_message ?? "-"}
+        </div>
     </td>
-    <td class="px-3 py-2 whitespace-nowrap">${fmtDT(x.processed_at)}</td>
+
+    <td class="px-3 py-2 whitespace-nowrap">${processed}</td>
   </tr>
 `;
-                })
-                .join("");
+    })
+    .join("");
         } catch (e) {
             monitorBody.innerHTML = `<tr><td colspan="8" class="px-4 py-6 text-center text-red-600">
       Gagal memuat monitor: ${e?.message || e}
@@ -1450,6 +1467,67 @@ document.addEventListener("DOMContentLoaded", () => {
             monitorTimer = null;
         }
     }
+
+        // ===== DETAIL MONITOR (untuk tampilan mobile) =====
+    const monitorDetailModal = document.getElementById("monitorDetailModal");
+    const monitorDetailClose = document.getElementById("monitorDetailClose");
+    const mdMeta = document.getElementById("monitorDetailMeta");
+    const mdPro = document.getElementById("monitorDetailPro");
+    const mdProQty = document.getElementById("monitorDetailProQty");
+    const mdConfirmQty = document.getElementById("monitorDetailConfirmQty");
+    const mdMaterial = document.getElementById("monitorDetailMaterial");
+    const mdFgDesc = document.getElementById("monitorDetailFgDesc");
+    const mdOperator = document.getElementById("monitorDetailOperator");
+    const mdStatusPill = document.getElementById("monitorDetailStatusPill");
+    const mdMessage = document.getElementById("monitorDetailMessage");
+
+    function openMonitorDetail(tr) {
+        if (!monitorDetailModal || !tr) return;
+
+        // Fokus untuk HP / layar kecil
+        if (window.innerWidth > 768) return;
+
+        const g = (name) => tr.dataset[name] || "-";
+
+        if (mdPro) mdPro.textContent = g("pro");
+        if (mdProQty) mdProQty.textContent = g("proQty");
+        if (mdConfirmQty) mdConfirmQty.textContent = g("confirmQty");
+        if (mdMaterial) mdMaterial.textContent = g("material");
+        if (mdFgDesc) mdFgDesc.textContent = g("fgDesc");
+        if (mdOperator) mdOperator.textContent = g("operator");
+        if (mdMessage) mdMessage.textContent = g("message");
+
+        const status = g("status");
+        const processed = g("processed");
+
+        if (mdStatusPill) {
+            mdStatusPill.innerHTML = badgeStatus(status);
+        }
+        if (mdMeta) {
+            mdMeta.textContent = processed
+                ? `${processed} • ${status}`
+                : status;
+        }
+
+        monitorDetailModal.classList.remove("hidden");
+    }
+
+    function closeMonitorDetail() {
+        monitorDetailModal?.classList.add("hidden");
+    }
+
+    // Delegasi klik baris tabel
+    monitorBody?.addEventListener("click", (e) => {
+        const tr = e.target.closest("tr");
+        if (!tr || !tr.classList.contains("monitor-row")) return;
+        openMonitorDetail(tr);
+    });
+
+    monitorDetailClose?.addEventListener("click", closeMonitorDetail);
+    monitorDetailModal?.addEventListener("click", (e) => {
+        if (e.target === monitorDetailModal) closeMonitorDetail();
+    });
+
 
     monitorRefreshBtn?.addEventListener("click", () => loadMonitor());
     document.addEventListener("visibilitychange", () => {

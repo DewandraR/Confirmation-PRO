@@ -386,7 +386,10 @@
 
             {{-- isi tabel (tanpa horizontal scroll) --}}
             <div class="p-3">
-                <div class="rounded-xl border border-slate-200 overflow-x-auto">
+                <div
+                    class="rounded-xl border border-slate-200
+                    overflow-x-auto overflow-y-auto
+                    max-h-[60vh]">
                     <table class="w-full text-[11.5px] sm:text-sm leading-tight" id="monitorTable">
                         <thead class="bg-green-700/90 text-white sticky top-0 z-10">
                             <tr>
@@ -581,6 +584,81 @@
             </div>
         </div>
     </div>
+
+    {{-- ⬇️ Modal Detail Monitor (khusus view mobile) --}}
+    <div id="monitorDetailModal"
+        class="fixed inset-0 hidden z-[80] bg-black/50 backdrop-blur-[1px] p-4
+            flex items-center justify-center">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div
+                class="px-4 py-3 bg-gradient-to-r from-green-700 to-blue-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex w-7 h-7 items-center justify-center rounded-xl bg-white/20">
+                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m5-9a2 2 0 00-2-2h-3l-1-2.5A1 1 0 0013 2h-2a1 1 0 00-.9.6L9 4H6a2 2 0 00-2 2v9a2 2 0 002 2h11a2 2 0 002-2V7z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-semibold leading-tight">Detail Konfirmasi</h3>
+                        <div id="monitorDetailMeta" class="text-[11px] text-emerald-100/90"></div>
+                    </div>
+                </div>
+                <button id="monitorDetailClose"
+                    class="ml-3 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25
+                           text-[11px] font-semibold">
+                    Tutup
+                </button>
+            </div>
+
+            <div class="p-4 space-y-3 text-xs text-slate-700">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">PRO</span>
+                    <span id="monitorDetailPro" class="font-mono text-right"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">PRO Qty</div>
+                        <div id="monitorDetailProQty" class="mt-0.5 font-mono"></div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Confirm Qty</div>
+                        <div id="monitorDetailConfirmQty" class="mt-0.5 font-mono"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Material</div>
+                    <div id="monitorDetailMaterial" class="mt-0.5 font-mono"></div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">FG Desc</div>
+                    <div id="monitorDetailFgDesc" class="mt-0.5 leading-snug"></div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Operator</div>
+                        <div id="monitorDetailOperator" class="mt-0.5 leading-snug"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Status</div>
+                        <div id="monitorDetailStatusPill" class="mt-0.5"></div>
+                    </div>
+                </div>
+
+                <div class="pt-2 mt-1 border-t border-slate-200">
+                    <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">Message</div>
+                    <div id="monitorDetailMessage"
+                        class="text-xs leading-snug whitespace-pre-wrap break-words text-slate-800"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     {{-- ⬇️ Modal Hasil Konfirmasi (baru) --}}
     <!-- Modal Hasil Konfirmasi -->
