@@ -1027,7 +1027,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const nativeOptions = Array.from(
             select.querySelectorAll("option")
-        ).filter((o) => o.value !== "");
+        );
         nativeOptions.forEach((o) =>
             ul.appendChild(makeItem(o.textContent.trim(), o.value))
         );

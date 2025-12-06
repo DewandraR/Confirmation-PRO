@@ -37,10 +37,6 @@ class LoginController extends Controller
         $lng = (float) $request->input('lng');
         $acc = (float) $request->input('acc', 9999);
 
-        // Tidak memaksa sesi habis saat browser ditutup lagi.
-        // Biarkan default dari config/session.php atau pakai remember-me (di bawah).
-        // config(['session.expire_on_close' => false]);
-
         // 2) SAP AUTH via Flask (tetap)
         $sapId      = $request->input('sap_id');
         $sapPass    = $request->input('password');
@@ -51,6 +47,7 @@ class LoginController extends Controller
                 'username' => $sapId,
                 'password' => $sapPass,
             ]);
+
             if (!$resp->successful()) {
                 $raw = $resp->json('error') ?? $resp->json('message') ?? $resp->body();
                 $msg = $this->normalizeSapError((string) $raw, $resp->status());
@@ -61,47 +58,91 @@ class LoginController extends Controller
             return back()->withErrors(['login' => $msg])->onlyInput('sap_id');
         }
 
-        // 3) Validasi lokasi kantor (tetap)
-        $sites   = array_values(array_filter(config('office.sites', [])));
-        $maxAccM = (int) config('office.max_accuracy_m', 300);
+        // ================================
+        // 3) Validasi lokasi kantor + BYPASS untuk admin tertentu
+        // ================================
 
-        if ($maxAccM > 0 && $acc > $maxAccM) {
-            return back()->withErrors([
-                'location' => "Akurasi lokasi terlalu rendah (> {$maxAccM} m). Aktifkan GPS/high accuracy dan coba lagi."
-            ])->onlyInput('sap_id');
-        }
-        if (empty($sites)) {
-            return back()->withErrors(['location' => 'Konfigurasi kantor belum diatur.'])->onlyInput('sap_id');
-        }
+        // Daftar SAP ID yang boleh login di luar kantor
+        $adminBypassSapIds = ['abaper01', 'auto_email'];
 
-        $allowed = false;
+        // Case-insensitive check
+        $isAdminBypass = in_array(strtolower($sapId), array_map('strtolower', $adminBypassSapIds), true);
+
+        // Akan dipakai di bawah untuk simpan nama kantor ke session (kalau ada)
         $matched = null;
-        $closest = null;
-        foreach ($sites as $site) {
-            if (!isset($site['lat'], $site['lng'], $site['radius_m'])) continue;
-            $d = $this->haversineMeters($lat, $lng, (float)$site['lat'], (float)$site['lng']);
-            if ($closest === null || $d < $closest['distance']) $closest = ['site' => $site, 'distance' => $d];
-            if ($d <= (int) $site['radius_m']) {
-                $allowed = true;
-                $matched = ['site' => $site, 'distance' => $d];
-                break;
-            }
-        }
-        if (!$allowed) {
-            if ($closest) {
-                $nearName   = $closest['site']['name'] ?? ($closest['site']['code'] ?? 'kantor terdekat');
-                $nearRadius = (int) ($closest['site']['radius_m'] ?? 0);
-                $dist       = round($closest['distance']);
+
+        if (!$isAdminBypass) {
+            // HANYA user biasa yang lewat cek akurasi & radius kantor
+
+            $sites   = array_values(array_filter(config('office.sites', [])));
+            $maxAccM = (int) config('office.max_accuracy_m', 300);
+
+            if ($maxAccM > 0 && $acc > $maxAccM) {
                 return back()->withErrors([
-                    'location' => "Di luar area kantor. Terdekat: {$nearName} (~{$dist} m, batas {$nearRadius} m)."
+                    'location' => "Akurasi lokasi terlalu rendah (> {$maxAccM} m). Aktifkan GPS/high accuracy dan coba lagi."
                 ])->onlyInput('sap_id');
             }
-            return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('sap_id');
+
+            if (empty($sites)) {
+                return back()->withErrors(['location' => 'Konfigurasi kantor belum diatur.'])->onlyInput('sap_id');
+            }
+
+            $allowed = false;
+            $closest = null;
+
+            foreach ($sites as $site) {
+                if (!isset($site['lat'], $site['lng'], $site['radius_m'])) {
+                    continue;
+                }
+
+                $d = $this->haversineMeters(
+                    $lat,
+                    $lng,
+                    (float) $site['lat'],
+                    (float) $site['lng']
+                );
+
+                if ($closest === null || $d < $closest['distance']) {
+                    $closest = [
+                        'site'     => $site,
+                        'distance' => $d,
+                    ];
+                }
+
+                if ($d <= (int) $site['radius_m']) {
+                    $allowed = true;
+                    $matched = [
+                        'site'     => $site,
+                        'distance' => $d,
+                    ];
+                    break;
+                }
+            }
+
+            if (!$allowed) {
+                if ($closest) {
+                    $nearName   = $closest['site']['name'] ?? ($closest['site']['code'] ?? 'kantor terdekat');
+                    $nearRadius = (int) ($closest['site']['radius_m'] ?? 0);
+                    $dist       = round($closest['distance']);
+
+                    return back()->withErrors([
+                        'location' => "Di luar area kantor. Terdekat: {$nearName} (~{$dist} m, batas {$nearRadius} m)."
+                    ])->onlyInput('sap_id');
+                }
+
+                return back()->withErrors(['location' => 'Di luar area kantor.'])->onlyInput('sap_id');
+            }
+        } else {
+            // OPSIONAL: kalau mau tandai di session bahwa ini login admin bypass
+            $matched = [
+                'site'     => ['name' => 'Admin (Bypass Geofence)', 'code' => 'ADMIN'],
+                'distance' => 0,
+            ];
+            // Tidak ada return error lokasi untuk admin
         }
 
         // ================================
-        // 4) HILANGKAN BATAS & ANTREAN
-        //    (Tidak ada pengecekan kapasitas/queue sama sekali)
+        // 4) HILANGKAN BATAS & ANTREAN (tetap seperti kode kamu)
         // ================================
 
         // 5) SAP OK → buat/ambil user lokal & login TANPA timer custom
@@ -118,16 +159,13 @@ class LoginController extends Controller
             'sap_user'     => $sapId,
         ]);
 
-        // Aktifkan "remember me" agar tidak auto-logout oleh timer aplikasi ini.
-        // (Catatan: tetap tunduk ke konfigurasi session Laravel & masa berlaku cookie browser.)
-        // false karena sudah tidak di butuhkan
-        Auth::login($user, false); // <-- perhatikan argumen "true" untuk remember
+        // Login tanpa remember-me (false seperti kode kamu sekarang)
+        Auth::login($user, false);
 
-        // Jangan hapus recaller cookie (kebalikan dari kode lama)
-        // Cookie::queue(Cookie::forget(Auth::getRecallerName()));
-
-        if ($matched) {
-            session(['login_office' => ($matched['site']['name'] ?? $matched['site']['code'] ?? 'unknown')]);
+        if (!empty($matched)) {
+            session([
+                'login_office' => ($matched['site']['name'] ?? $matched['site']['code'] ?? 'unknown')
+            ]);
         }
 
         return redirect()->intended(route('scan'));
