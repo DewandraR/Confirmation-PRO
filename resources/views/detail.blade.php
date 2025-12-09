@@ -252,10 +252,18 @@
                                             MRP</th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-workcenter">
-                                            Work Center</th>
+                                            Work Center
+                                        </th>
+
+                                        <th
+                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] col-wc-anak hidden">
+                                            WC Anak
+                                        </th>
+
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
-                                            Control Key</th>
+                                            Control Key
+                                        </th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Sales Order / Item</th>
@@ -311,12 +319,21 @@
             <div class="p-4 space-y-4">
                 <p id="error-message" class="text-sm text-slate-700"></p>
             </div>
-            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-                <button id="error-ok-button" type="button"
-                    class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors">OK</button>
-            </div>
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-2">
+            <!-- tombol copy WI, default disembunyikan -->
+            <button id="error-copy-wi-button" type="button"
+                class="hidden px-3 py-2 rounded-lg border border-emerald-500 text-emerald-700 text-xs font-semibold hover:bg-emerald-50 transition-colors">
+                Copy Kode WI
+            </button>
+
+            <button id="error-ok-button" type="button"
+                class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
+                OK
+            </button>
+        </div>
         </div>
     </div>
+
 
     {{-- ===== Modal Warning ===== --}}
     <div id="warning-modal"

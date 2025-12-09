@@ -217,6 +217,27 @@ function mapServerErrorMessage(result) {
     return msg;
 }
 
+// === Helper: deteksi kode WI dari pesan error & setup tombol copy ===
+function extractWiCodeFromMessage(msg) {
+    if (!msg) return null;
+    // cari pola: kode WI "WIH0000002"
+    const m = msg.match(/kode WI\s*"([^"]+)"/i);
+    return m ? m[1] : null;
+}
+
+function prepareWiCopy(msg) {
+    if (!errorCopyWiButton) return;
+
+    const wiCode = extractWiCodeFromMessage(msg);
+    if (wiCode) {
+        errorCopyWiButton.dataset.wiCode = wiCode;
+        errorCopyWiButton.classList.remove("hidden");
+    } else {
+        errorCopyWiButton.dataset.wiCode = "";
+        errorCopyWiButton.classList.add("hidden");
+    }
+}
+
 // Tangkap error global
 window.onerror = function (msg, src, line, col) {
     const em = document.getElementById("error-message");
@@ -235,6 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const p = new URLSearchParams(location.search);
     const rawList = p.get("aufnrs") || "";
     const single = p.get("aufnr") || "";
+    const WI_CODE = p.get("wi_code") || ""; // <--- TAMBAHAN
     const IV_PERNR = p.get("pernr") || "";
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
@@ -303,6 +325,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const errorModal = document.getElementById("error-modal");
     const errorMessage = document.getElementById("error-message");
     const errorOkButton = document.getElementById("error-ok-button");
+    const errorCopyWiButton = document.getElementById("error-copy-wi-button");
     const warningModal = document.getElementById("warning-modal");
     const warningMessage = document.getElementById("warning-message");
     const warningList = document.getElementById("warning-list");
@@ -313,14 +336,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const successList = document.getElementById("success-list");
     const successOkButton = document.getElementById("success-ok-button");
     // Mode halaman: WC (pakai arbpl+werks+nik) vs PRO (pakai aufnr+nik)
-    const isWCMode = AUFNRS.length === 0 && !!IV_ARBPL;
+    const isWiMode = !!WI_CODE;
+    const isWCMode = AUFNRS.length === 0 && !!IV_ARBPL && !isWiMode;
 
     // BUDAT controls
     const budatInput = document.getElementById("budat-input"); // hidden yyyy-mm-dd
     const budatInputText = document.getElementById("budat-input-text"); // visible dd/mm/yyyy
     const budatOpen = document.getElementById("budat-open");
 
-    const isBudatLocked = LOCK_BUDAT_USERS.includes(CUR_SAP_USER);
+    const isBudatLocked = LOCK_BUDAT_USERS.includes(CUR_SAP_USER) || isWiMode;
 
     if (isBudatLocked) {
         const today = new Date();
@@ -371,12 +395,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     fltPeriod?.classList.add("hidden");
     periodPicker?.classList.add("hidden");
 
-    // Header: PERNR/AUFNR/WC
+    // Header: PERNR/AUFNR/WC/WI
     if (headAUFNR) {
         let headText = "-";
-        if (AUFNRS.length > 0) headText = AUFNRS.join(", ");
-        else if (IV_ARBPL) headText = `WC: ${IV_ARBPL}`;
-        if (IV_PERNR) headText = `${IV_PERNR} / ${headText}`;
+
+        if (isWiMode) {
+            headText = WI_CODE; // bisa diganti `WI: ${WI_CODE}` kalau mau
+        } else if (AUFNRS.length > 0) {
+            headText = AUFNRS.join(", ");
+        } else if (IV_ARBPL) {
+            headText = `WC: ${IV_ARBPL}`;
+        }
+
+        // Kalau mau NIK tetap muncul di WI, hapus pengecekan !isWiMode
+        if (IV_PERNR && !isWiMode) {
+            headText = `${IV_PERNR} / ${headText}`;
+        }
+
         headAUFNR.textContent = headText.replace(/ \/ -$/, "");
     }
 
@@ -432,8 +467,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     // --- Ambil data ---
     let rowsAll = [],
         failures = [];
+
     try {
-        if (AUFNRS.length > 0) {
+        if (isWiMode) {
+            // ===== MODE WI: panggil endpoint Laravel yang mapping WI API =====
+            const url = `/api/wi/material?wi_code=${encodeURIComponent(
+                WI_CODE
+            )}`;
+            const res = await fetchWithTimeout(url, {
+                headers: { Accept: "application/json" },
+            });
+
+            let json;
+            try {
+                json = await res.json();
+            } catch {
+                json = {};
+            }
+
+            if (!res.ok)
+                throw new Error(
+                    json.error || json.message || `HTTP ${res.status}`
+                );
+
+            const t = json.T_DATA1;
+            rowsAll = Array.isArray(t) ? t : t ? [t] : [];
+        } else if (AUFNRS.length > 0) {
+            // ===== LOGIKA LAMA: PRO mode =====
             const results = await Promise.allSettled(
                 AUFNRS.map(async (aufnr) => {
                     let url = `/api/yppi019/material?aufnr=${encodeURIComponent(
@@ -466,6 +526,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     : failures.push(r.reason?.message || "unknown")
             );
         } else {
+            // ===== LOGIKA LAMA: WC mode =====
             const url = `/api/yppi019/material?arbpl=${encodeURIComponent(
                 IV_ARBPL
             )}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(
@@ -488,10 +549,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             rowsAll = Array.isArray(t) ? t : t ? [t] : [];
         }
     } catch (e) {
-        errorMessage.textContent =
+        const msg =
             e?.name === "AbortError"
                 ? "Waktu tunggu klien habis. Silakan coba lagi."
                 : e?.message || "Gagal mengambil data";
+
+        errorMessage.textContent = msg;
+        prepareWiCopy(msg); // <--- TAMBAH INI
         errorModal.classList.remove("hidden");
     } finally {
         loading.classList.add("hidden");
@@ -547,8 +611,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             const ltxa1 = String(
                 r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
             ).trim();
-            const wcRaw = r.ARBPL0 || r.ARBPL || IV_ARBPL || "-";
-            const wcWithDesc = ltxa1 ? `${wcRaw} / ${ltxa1}` : wcRaw;
+            const wcInduk = r.ARBPL0 || r.ARBPL || IV_ARBPL || "-";
+            const wcAnakRaw = String(
+                r.WC_CHILD || r.child_workcenter || ""
+            ).trim();
+            const wcAnakView = wcAnakRaw || "No WC group";
+            const wcWithDesc = ltxa1 ? `${wcInduk} / ${ltxa1}` : wcInduk;
 
             // ========= PREFILL MAX (FIX: cek plant dari data baris) =========
             const dispo = String(r.DISPO || "").toUpperCase();
@@ -631,7 +699,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             )}" data-gltrp="${toYYYYMMDD(r.GLTRP)}"
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
         data-ltimex="${ltimexStr}"
-        data-arbpl0="${r.ARBPL0 || r.ARBPL || IV_ARBPL || "-"}"
+        data-arbpl0="${wcInduk}"
+        data-wc-induk="${wcInduk}"
+        data-wc-anak="${wcAnakView.replace(/"/g, "&quot;")}"
         data-ltxa1="${(r.LTXA1 || "-").replace(/"/g, "&quot;")}"
         data-charg="${r.CHARG || ""}"
         data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
@@ -690,12 +760,44 @@ document.addEventListener("DOMContentLoaded", async () => {
         }</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">${wcWithDesc}</td>
+
+        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">
+        ${isWiMode ? wcInduk : wcWithDesc}
+        </td>
+
+        <td class="px-3 py-3 text-sm text-slate-700 col-wc-anak">
+        ${isWiMode ? wcAnakView : ""}  <!-- non-WI kosong saja -->
+        </td>
+
         <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
         <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
+
       </tr>`;
         })
         .join("");
+
+    // === Atur header Work Center / WC Induk + WC Anak berdasarkan mode ===
+    const thWc = document.querySelector("th.col-workcenter");
+    const thWcAnak = document.querySelector("th.col-wc-anak");
+
+    if (isWiMode) {
+        // MODE WI → pakai WC Induk + WC Anak
+        if (thWc) thWc.textContent = "WC Induk";
+        if (thWcAnak) thWcAnak.classList.remove("hidden");
+
+        document
+            .querySelectorAll("td.col-wc-anak")
+            .forEach((el) => (el.style.display = ""));
+    } else {
+        // MODE PRO / WC → cuma Work Center (seperti awal)
+        if (thWc) thWc.textContent = "Work Center";
+        if (thWcAnak) thWcAnak.classList.add("hidden");
+
+        // sembunyikan kolom WC Anak di semua baris
+        document
+            .querySelectorAll("td.col-wc-anak")
+            .forEach((el) => (el.style.display = "none"));
+    }
 
     // === WC mode: tampilkan " / LTXA1" di header (sebelah WC) ===
     if (isWCMode && headAUFNR) {
@@ -726,9 +828,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     /* === WC MODE: sembunyikan kolom Work Center (header + semua sel) === */
     if (isWCMode) {
         document
-            .querySelectorAll(".col-workcenter, .col-workcenter-desc")
+            .querySelectorAll(
+                ".col-workcenter, .col-workcenter-desc, .col-wc-anak"
+            )
             .forEach((el) => {
-                // gunakan style agar tidak bergantung ke Tailwind di runtime
                 el.style.display = "none";
             });
     }
@@ -820,6 +923,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             aufnr: tr.dataset.aufnr || "-",
             vornr: tr.dataset.vornr || "-",
             wc: tr.dataset.arbpl0 || "-",
+            wcInduk: tr.dataset.wcInduk || tr.dataset.arbpl0 || "-",
+            wcAnak: tr.dataset.wcAnak || "",
             ltxa1: tr.dataset.ltxa1 || "",
             maktx: tr.dataset.maktx || "-",
             maktx0: tr.dataset.maktx0 || "-",
@@ -840,72 +945,91 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         const unitNamePopup = getUnitName(data.meinh);
-        // isi konten modal
-        rowDetailBody.innerHTML = `
-    <div class="grid grid-cols-2 gap-3">
+        const wcBlock = isWiMode
+            ? `
       <div>
-        <div class="text-[11px] text-slate-500">PRO</div>
-        <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
+        <div class="text-[11px] text-slate-500">WC Induk</div>
+        <div class="font-semibold">${esc(data.wcInduk)}</div>
       </div>
       <div>
-        <div class="text-[11px] text-slate-500">Material</div>
-        <div class="font-semibold">${esc(data.matnrx)}</div>
+        <div class="text-[11px] text-slate-500">WC Anak</div>
+        <div class="font-semibold">${esc(data.wcAnak || "No WC group")}</div>
       </div>
+    `
+            : `
       <div>
-        <div class="text-[11px] text-slate-500">Description</div>
-        <div class="font-semibold">${esc(data.maktx)}</div>
-      </div>
-
-      <div>
-        <div class="text-[11px] text-slate-500">Deskripsi FG</div>
-        <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
-      </div>
-      <div>
-        <div class="text-[11px] text-slate-500">Sales Order / Item</div>
-        <div class="font-semibold font-mono">${esc(data.soitem)}</div>
-      </div>
-
-      <div>
-        <div class="text-[11px] text-slate-500">Start Date</div>
-        <div class="font-semibold">${esc(data.ssavd)}</div>
-      </div>
-      <div>
-        <div class="text-[11px] text-slate-500">Finish Date</div>
-        <div class="font-semibold">${esc(data.sssld)}</div>
-      </div>
-
-      <div>
-        <div class="text-[11px] text-slate-500">Qty PRO</div>
-        <div class="font-semibold">${esc(data.qtyspk)}</div>
-      </div>
-      <div>
-        <div class="text-[11px] text-slate-500">Menit</div>
-        <div class="font-semibold">${esc(data.ltimex)}</div>
-      </div>
-
-      <div>
-        <div class="text-[11px] text-slate-500">MRP</div>
-        <div class="font-semibold">${esc(data.dispo)}</div>
-      </div><div>
         <div class="text-[11px] text-slate-500">Work Center</div>
         <div class="font-semibold">
-    ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
-  </div>
+          ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
+        </div>
       </div>
-      <div>
-        <div class="text-[11px] text-slate-500">Control Key</div>
-        <div class="font-semibold">${esc(data.steus)}</div>
-      </div>
-
-      <div>
-        <div class="text-[11px] text-slate-500">NIK Operator</div>
-        <div class="font-semibold">${esc(data.pernr)}</div>
-      </div>
-      <div>
-        <div class="text-[11px] text-slate-500">Nama Operator</div>
-        <div class="font-semibold">${esc(data.sname)}</div>
-      </div>
+    `;
+        // isi konten modal
+        rowDetailBody.innerHTML = `
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <div class="text-[11px] text-slate-500">PRO</div>
+      <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
     </div>
+    <div>
+      <div class="text-[11px] text-slate-500">Material</div>
+      <div class="font-semibold">${esc(data.matnrx)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">Description</div>
+      <div class="font-semibold">${esc(data.maktx)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">Deskripsi FG</div>
+      <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">Sales Order / Item</div>
+      <div class="font-semibold font-mono">${esc(data.soitem)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">Start Date</div>
+      <div class="font-semibold">${esc(data.ssavd)}</div>
+    </div>
+    <div>
+      <div class="text-[11px] text-slate-500">Finish Date</div>
+      <div class="font-semibold">${esc(data.sssld)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">Qty PRO</div>
+      <div class="font-semibold">${esc(data.qtyspk)}</div>
+    </div>
+    <div>
+      <div class="text-[11px] text-slate-500">Menit</div>
+      <div class="font-semibold">${esc(data.ltimex)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">MRP</div>
+      <div class="font-semibold">${esc(data.dispo)}</div>
+    </div>
+
+    ${wcBlock}
+
+    <div>
+      <div class="text-[11px] text-slate-500">Control Key</div>
+      <div class="font-semibold">${esc(data.steus)}</div>
+    </div>
+
+    <div>
+      <div class="text-[11px] text-slate-500">NIK Operator</div>
+      <div class="font-semibold">${esc(data.pernr)}</div>
+    </div>
+    <div>
+      <div class="text-[11px] text-slate-500">Nama Operator</div>
+      <div class="font-semibold">${esc(data.sname)}</div>
+    </div>
+  </div>
 
     <div class="mt-3">
   <label class="text-[11px] text-slate-500 block mb-1">
@@ -1385,6 +1509,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const invalidMax = items.find((x) => x.qty > x.max);
         if (invalidMax) {
             errorMessage.textContent = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
+            errorMessage.textContent = msg;
+            prepareWiCopy(msg);
             errorModal.classList.remove("hidden");
             return;
         }
@@ -1493,7 +1619,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("confirm-modal").classList.add("hidden");
 
         // Kirim ke queue (biarkan berjalan di background) — gunakan keepalive agar tidak batal saat redirect
-        const payload = { budat: pickedBudat, items };
+        const payload = {
+            budat: pickedBudat, // masih dikirim, tapi di WI mode nanti di-backend akan dioverride ke hari ini
+            wi_code: WI_CODE || null, // <-- TAMBAHAN, supaya backend tahu ini WI mode
+            items,
+        };
         fetch("/api/yppi019/confirm-async", {
             method: "POST",
             keepalive: true,
@@ -1536,6 +1666,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
         errorModal.classList.add("hidden");
+    });
+
+    errorCopyWiButton?.addEventListener("click", async () => {
+        const wiCode = errorCopyWiButton.dataset.wiCode || "";
+        if (!wiCode) return;
+
+        try {
+            await navigator.clipboard.writeText(wiCode);
+            const oldText = errorCopyWiButton.textContent;
+            errorCopyWiButton.textContent = "Tersalin";
+            setTimeout(() => {
+                errorCopyWiButton.textContent = oldText;
+            }, 1500);
+        } catch (e) {
+            // fallback simpel kalau clipboard gagal
+            alert("Gagal menyalin kode WI. Silakan salin manual.");
+        }
     });
 
     successOkButton.addEventListener("click", () => {

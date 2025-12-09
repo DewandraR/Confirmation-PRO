@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const pernrInput = document.getElementById("IV_PERNR");
     const arbplInput = document.getElementById("IV_ARBPL");
     const werksInput = document.getElementById("IV_WERKS");
+    const wiCodeInput = document.getElementById("wi_code");
 
     // === Prefill dari querystring (NIK Operator)
     const qs = new URLSearchParams(location.search);
@@ -273,40 +274,50 @@ document.addEventListener("DOMContentLoaded", () => {
             const aufnrArray = Array.from(aufnrList);
             const arbpl = arbplInput?.value.trim() || "";
             const werks = werksInput?.value.trim() || "";
-
-            if (!pernr) {
-                showError("Input Belum Lengkap", "NIK Operator wajib diisi.");
-                return pernrInput?.focus();
-            }
+            const wiCode = wiCodeInput?.value.trim() || ""; // <-- BARU
 
             const hasAufnr = aufnrArray.length > 0;
             const hasWc = arbpl !== "";
             const hasPlant = werks !== "";
+            const hasWi = wiCode !== ""; // <-- BARU
 
-            if (!hasAufnr && !hasWc) {
+            // NIK WAJIB hanya kalau TIDAK pakai WI
+            if (!pernr && !hasWi) {
                 showError(
-                    "Input Tidak Lengkap",
-                    'Anda harus mengisi "Work Center" atau "PRO".'
+                    "Input Belum Lengkap",
+                    "NIK Operator wajib diisi jika tidak menggunakan Kode Dokumen WI."
                 );
-                return arbplInput?.focus();
+                return pernrInput?.focus();
             }
 
-            // ⛔️ Aturan baru: kalau Plant dipilih, WC wajib
-            if (hasPlant && !hasWc) {
-                showError(
-                    "Input Tidak Valid",
-                    'Jika memilih "Plant", isi juga "Work Center" atau kosongkan Plant.'
-                );
-                return arbplInput?.focus();
-            }
-
-            // Jika WC diisi, Plant wajib (aturan lama, tetap)
-            if (hasWc && !hasPlant) {
+            // Minimal salah satu: PRO / WC / WI
+            if (!hasAufnr && !hasWc && !hasWi) {
                 showError(
                     "Input Tidak Lengkap",
-                    'Jika "Work Center" diisi, maka "Plant" wajib dipilih.'
+                    'Anda harus mengisi "Work Center", "PRO", atau "Kode Dokumen WI".'
                 );
-                return werksInput?.focus();
+                return wiCodeInput?.focus() || arbplInput?.focus();
+            }
+
+            // Validasi Plant–WC hanya untuk mode SAP (bukan WI)
+            if (!hasWi) {
+                // ⛔️ Aturan: kalau Plant dipilih, WC wajib
+                if (hasPlant && !hasWc) {
+                    showError(
+                        "Input Tidak Valid",
+                        'Jika memilih "Plant", isi juga "Work Center" atau kosongkan Plant.'
+                    );
+                    return arbplInput?.focus();
+                }
+
+                // Jika WC diisi, Plant wajib
+                if (hasWc && !hasPlant) {
+                    showError(
+                        "Input Tidak Lengkap",
+                        'Jika "Work Center" diisi, maka "Plant" wajib dipilih.'
+                    );
+                    return werksInput?.focus();
+                }
             }
 
             // ⬇️ Pastikan setBusy menemukan tombol baru (id="submitBtn")
@@ -325,6 +336,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     submitBtn.disabled = false;
                 }
             };
+            // =======================
+            // MODE WI (tanpa sync SAP)
+            // =======================
+            if (hasWi) {
+                const to = new URL(form.action, location.origin);
+                to.searchParams.set("pernr", pernr);
+                to.searchParams.set("wi_code", wiCode);
+                // PRO/WC diabaikan di mode ini; semua dari WI API
+                location.href = to.toString();
+                return; // ⬅️ jangan lanjut ke ajaxSync
+            }
 
             setBusy(true);
             try {
@@ -1025,9 +1047,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return li;
         };
 
-        const nativeOptions = Array.from(
-            select.querySelectorAll("option")
-        );
+        const nativeOptions = Array.from(select.querySelectorAll("option"));
         nativeOptions.forEach((o) =>
             ul.appendChild(makeItem(o.textContent.trim(), o.value))
         );
@@ -1383,23 +1403,27 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             monitorBody.innerHTML = data
-    .map((x, i) => {
-        const uom = mapUom(x.meinh ?? "");
-        const pro = x.aufnr || "-";
-        const qtyPro = fmtQtyByUom(x.qty_pro, uom);
-        const qtyConfirm = `${fmtQtyByUom(x.qty_confirm, uom)} ${uom}`;
-        const material = x.material ?? "-";
-        const fgDesc = x.fg_desc ?? "-";
-        const operatorCombined =
-            (x.operator_nik ?? "-") +
-            (x.operator_name ? " / " + x.operator_name : "");
-        const status = (String(x.status || "").toUpperCase() || "PENDING");
-        const message = x.status_message ?? "-";
-        const processed = fmtDT(x.processed_at);
+                .map((x, i) => {
+                    const uom = mapUom(x.meinh ?? "");
+                    const pro = x.aufnr || "-";
+                    const qtyPro = fmtQtyByUom(x.qty_pro, uom);
+                    const qtyConfirm = `${fmtQtyByUom(
+                        x.qty_confirm,
+                        uom
+                    )} ${uom}`;
+                    const material = x.material ?? "-";
+                    const fgDesc = x.fg_desc ?? "-";
+                    const operatorCombined =
+                        (x.operator_nik ?? "-") +
+                        (x.operator_name ? " / " + x.operator_name : "");
+                    const status =
+                        String(x.status || "").toUpperCase() || "PENDING";
+                    const message = x.status_message ?? "-";
+                    const processed = fmtDT(x.processed_at);
 
-        const esc = (v) => String(v ?? "").replace(/"/g, "&quot;");
+                    const esc = (v) => String(v ?? "").replace(/"/g, "&quot;");
 
-        return `
+                    return `
   <tr class="monitor-row cursor-pointer odd:bg-white even:bg-slate-50 hover:bg-green-50/60 transition-colors"
       data-pro="${esc(pro)}"
       data-pro-qty="${esc(qtyPro)}"
@@ -1445,8 +1469,8 @@ document.addEventListener("DOMContentLoaded", () => {
     <td class="px-3 py-2 whitespace-nowrap">${processed}</td>
   </tr>
 `;
-    })
-    .join("");
+                })
+                .join("");
         } catch (e) {
             monitorBody.innerHTML = `<tr><td colspan="8" class="px-4 py-6 text-center text-red-600">
       Gagal memuat monitor: ${e?.message || e}
@@ -1468,7 +1492,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-        // ===== DETAIL MONITOR (untuk tampilan mobile) =====
+    // ===== DETAIL MONITOR (untuk tampilan mobile) =====
     const monitorDetailModal = document.getElementById("monitorDetailModal");
     const monitorDetailClose = document.getElementById("monitorDetailClose");
     const mdMeta = document.getElementById("monitorDetailMeta");
@@ -1495,7 +1519,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mdMaterial) mdMaterial.textContent = g("material");
         if (mdFgDesc) mdFgDesc.textContent = g("fgDesc");
         if (mdOperator) mdOperator.textContent = g("operator");
-        if (mdMessage) mdMessage.textContent = g("message");
+
+        // Ambil pesan error
+        const rawMessage = g("message");
+        if (mdMessage) mdMessage.textContent = rawMessage;
 
         const status = g("status");
         const processed = g("processed");
@@ -1508,6 +1535,68 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `${processed} • ${status}`
                 : status;
         }
+
+        // ============================================================
+        // LOGIKA BARU: Deteksi Error WI dan Tampilkan Tombol Copy
+        // ============================================================
+        const wiContainer = document.getElementById("wiCopyContainer");
+        const wiInput = document.getElementById("wiCodeTarget");
+        const wiBtn = document.getElementById("btnCopyWi");
+
+        // Regex untuk mencari kode WI di antara tanda kutip
+        // Contoh pesan: ...mohon konfirmasi dengan kode WI "WIH0000002"
+        const wiRegex = /kode WI\s+"([^"]+)"/i;
+        const match = rawMessage.match(wiRegex);
+
+        // Hanya tampil jika Status FAILED DAN Regex cocok
+        if (status === "FAILED" && match && match[1]) {
+            const codeToCopy = match[1];
+
+            // Isi input dan tampilkan container
+            if (wiInput) wiInput.value = codeToCopy;
+            if (wiContainer) wiContainer.classList.remove("hidden");
+
+            // Setup Event Klik Tombol Copy
+            if (wiBtn) {
+                // Hapus event listener lama (agar tidak double) dengan mengganti node
+                const newBtn = wiBtn.cloneNode(true);
+                wiBtn.parentNode.replaceChild(newBtn, wiBtn);
+
+                newBtn.addEventListener("click", () => {
+                    // Copy ke clipboard
+                    navigator.clipboard.writeText(codeToCopy).then(() => {
+                        // Ubah teks tombol sementara
+                        const originalText = newBtn.innerHTML;
+                        newBtn.innerText = "Disalin!";
+                        newBtn.classList.replace("bg-blue-600", "bg-green-600");
+
+                        // Kembalikan tombol setelah 1.5 detik
+                        setTimeout(() => {
+                            newBtn.innerHTML = originalText;
+                            newBtn.classList.replace(
+                                "bg-green-600",
+                                "bg-blue-600"
+                            );
+
+                            // Opsional: Tutup modal agar user bisa langsung paste
+                            // closeMonitorDetail();
+
+                            // Opsional: Fokus ke input WI Code di form utama (jika ada)
+                            const mainWiInput =
+                                document.getElementById("wi_code");
+                            if (mainWiInput) {
+                                mainWiInput.value = codeToCopy;
+                                mainWiInput.focus();
+                            }
+                        }, 1500);
+                    });
+                });
+            }
+        } else {
+            // Jika error lain, sembunyikan container copy
+            if (wiContainer) wiContainer.classList.add("hidden");
+        }
+        // ============================================================
 
         monitorDetailModal.classList.remove("hidden");
     }
@@ -1527,7 +1616,6 @@ document.addEventListener("DOMContentLoaded", () => {
     monitorDetailModal?.addEventListener("click", (e) => {
         if (e.target === monitorDetailModal) closeMonitorDetail();
     });
-
 
     monitorRefreshBtn?.addEventListener("click", () => loadMonitor());
     document.addEventListener("visibilitychange", () => {

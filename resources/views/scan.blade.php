@@ -305,8 +305,6 @@
                                     </svg>
                                 </div>
                                 <label class="text-xs font-medium text-slate-700">NIK Operator</label>
-                                <span
-                                    class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
                             </div>
                             <div class="relative group">
                                 <div
@@ -325,6 +323,33 @@
                                         placeholder="Masukkan NIK Operator" />
                                 </div>
                             </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <div class="w-5 h-5 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
+                                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <label class="text-xs font-medium text-slate-700">Kode Dokumen WI</label>
+                                </div>
+                                <div class="relative group">
+                                    <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-blue-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
+                                        <div class="flex-shrink-0">
+                                            <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                                                <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <input id="wi_code" name="wi_code"
+                                            class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                                            placeholder="Masukkan Code WI Document" />
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
                         <div class="pt-3">
@@ -653,7 +678,24 @@
                 <div class="pt-2 mt-1 border-t border-slate-200">
                     <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">Message</div>
                     <div id="monitorDetailMessage"
-                        class="text-xs leading-snug whitespace-pre-wrap break-words text-slate-800"></div>
+                        class="text-xs leading-snug whitespace-pre-wrap break-words text-slate-800">
+                    </div>
+                    <div id="wiCopyContainer" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div class="flex flex-col gap-2">
+                            <p class="text-[11px] text-amber-800">
+                                PRO ini butuh <b>Kode WI</b>. Salin kode di bawah ini lalu tempel ke kolom "Kode Dokumen WI" di form input.
+                            </p>
+                            <div class="flex gap-2">
+                                <input type="text" id="wiCodeTarget" readonly
+                                    class="flex-1 text-xs font-mono font-bold text-slate-700 bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none">
+                                <button type="button" id="btnCopyWi"
+                                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow transition-colors flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

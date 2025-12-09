@@ -972,6 +972,8 @@ def api_confirm():
     pernr  = (str(b.get("pernr") or "").strip())
     budat  = (str(b.get("budat") or "").strip())
     qty_in = parse_num(b.get("psmng"))
+    wi_mode = bool(b.get("wi_mode"))
+    wi_code = (str(b.get("wi_code") or "").strip() or None)
 
     if not (aufnr and vornr and pernr and budat and qty_in is not None and qty_in > 0):
         return jsonify({"ok": False, "error": "Parameter tidak valid atau psmng <= 0"}), 400
@@ -1028,29 +1030,44 @@ def api_confirm():
             """, tuple(args))
             rows = cur.fetchall()  # habiskan result set
 
-            if not rows:
-                db.rollback()
-                return jsonify({"ok": False, "error": "Data operation tidak ditemukan"}), 404
-            if len(rows) > 1 and not (charg or arbpl0):
-                db.rollback()
-                return jsonify({"ok": False, "error": "Data tidak unik (>1 baris). Sertakan CHARG/ARBPL0."}), 409
+            row_db = None
 
-            row_db  = rows[0]
-            qty_spk = float(row_db.get("QTY_SPK") or 0.0)
-            wemng   = float(row_db.get("WEMNG")   or 0.0)
-            qty_spx = float(row_db.get("QTY_SPX") or 0.0)
+            if rows:
+                # mode biasa / atau WI tapi kebetulan ada snapshot
+                if len(rows) > 1 and not (charg or arbpl0):
+                    db.rollback()
+                    return jsonify({"ok": False, "error": "Data tidak unik (>1 baris). Sertakan CHARG/ARBPL0."}), 409
 
-            sisa_spk = max(qty_spk - wemng, 0.0)
-            sisa_spx = max(qty_spx, 0.0)
+                row_db  = rows[0]
+                qty_spk = float(row_db.get("QTY_SPK") or 0.0)
+                wemng   = float(row_db.get("WEMNG")   or 0.0)
+                qty_spx = float(row_db.get("QTY_SPX") or 0.0)
 
-            if qty_in > sisa_spk:
-                db.rollback()
-                return jsonify({"ok": False, "error": f"Input melebihi QTY_SPK sisa ({sisa_spk})."}), 400
-            if qty_in > sisa_spx:
-                db.rollback()
-                return jsonify({"ok": False, "error": f"Input melebihi QTY_SPX sisa ({sisa_spx})."}), 400
+                sisa_spk = max(qty_spk - wemng, 0.0)
+                sisa_spx = max(qty_spx, 0.0)
 
-            meinh_req = normalize_uom(b.get("meinh") or row_db.get("MEINH"))
+                # Validasi stok HANYA jika ada snapshot
+                if qty_in > sisa_spk:
+                    db.rollback()
+                    return jsonify({"ok": False, "error": f"Input melebihi QTY_SPK sisa ({sisa_spk})."}), 400
+                if qty_in > sisa_spx:
+                    db.rollback()
+                    return jsonify({"ok": False, "error": f"Input melebihi QTY_SPX sisa ({sisa_spx})."}), 400
+
+            else:
+                # rows kosong
+                if not wi_mode:
+                    # mode biasa → tetap error 404
+                    db.rollback()
+                    return jsonify({"ok": False, "error": "Data operation tidak ditemukan"}), 404
+                # kalau WI mode: boleh lanjut tanpa snapshot lokal
+
+            # MEINH: kalau ada snapshot pakai fallback ke sana, kalau tidak ya dari request saja
+            if row_db is not None:
+                meinh_req = normalize_uom(b.get("meinh") or row_db.get("MEINH"))
+            else:
+                meinh_req = normalize_uom(b.get("meinh"))
+
             if meinh_req in {"PC", "EA", "PCS", "UNIT"}:
                 psmng_str = str(int(round(qty_in)))
             else:
@@ -1136,28 +1153,37 @@ def api_confirm():
                 ),
             )
 
-            cur.execute(
-                """
-                UPDATE yppi019_data
-                SET WEMNG = IFNULL(WEMNG,0) + %s,
-                    QTY_SPX = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
-                    fetched_at = NOW()
-                WHERE id=%s
-                  AND (IFNULL(QTY_SPK,0) - IFNULL(WEMNG,0)) >= %s
-                  AND IFNULL(QTY_SPX,0) >= %s
-                """,
-                (qty_in, qty_in, row_db["id"], qty_in, qty_in),
-            )
+            latest_row = None
 
-            if cur.rowcount != 1:
-                db.rollback()
-                return jsonify({"ok": False, "error": "Gagal update; sisa sudah berubah, silakan refresh"}), 409
+            if row_db is not None:
+                # Mode biasa: update snapshot lokal
+                cur.execute(
+                    """
+                    UPDATE yppi019_data
+                    SET WEMNG = IFNULL(WEMNG,0) + %s,
+                        QTY_SPX = GREATEST(IFNULL(QTY_SPX,0) - %s, 0),
+                        fetched_at = NOW()
+                    WHERE id=%s
+                    AND (IFNULL(QTY_SPK,0) - IFNULL(WEMNG,0)) >= %s
+                    AND IFNULL(QTY_SPX,0) >= %s
+                    """,
+                    (qty_in, qty_in, row_db["id"], qty_in, qty_in),
+                )
 
-            cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
-            db.commit()
+                if cur.rowcount != 1:
+                    db.rollback()
+                    return jsonify({"ok": False, "error": "Gagal update; sisa sudah berubah, silakan refresh"}), 409
 
-            cur.execute("SELECT * FROM yppi019_data WHERE id=%s", (row_db["id"],))
-            latest_row = cur.fetchone()
+                cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
+                db.commit()
+
+                cur.execute("SELECT * FROM yppi019_data WHERE id=%s", (row_db["id"],))
+                latest_row = cur.fetchone()
+            else:
+                # WI mode tanpa snapshot: hanya log confirm_log & cleanup
+                cur.execute("DELETE FROM yppi019_confirm_log WHERE DATE(created_at) < CURDATE()")
+                db.commit()
+                latest_row = None
 
         finally:
             # lepas fine lock dulu, lalu coarse lock
@@ -1170,7 +1196,10 @@ def api_confirm():
             {
                 "ok": True,
                 "sap_return": to_jsonable(sap_ret),
-                "refreshed": {"ok": True, "mode": "local_update"},
+                "refreshed": {
+                    "ok": True,
+                    "mode": "local_update" if row_db is not None else "wi_no_local",
+                },
                 "row": to_jsonable(latest_row),
             }
         ), 200

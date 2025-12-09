@@ -418,7 +418,8 @@ class Yppi019DbApiController extends Controller
     {
         // 1) Validasi payload dasar
         $data = $req->validate([
-            'budat'             => ['required', 'regex:/^\d{8}$/'], // yyyymmdd
+            'wi_code'           => ['nullable', 'string', 'max:50'], // <-- NEW (top-level, opsional)
+            'budat'             => ['required', 'regex:/^\d{8}$/'],  // yyyymmdd
             'items'             => ['required', 'array', 'min:1'],
 
             'items.*.aufnr'        => ['required', 'string', 'size:12'],
@@ -441,7 +442,7 @@ class Yppi019DbApiController extends Controller
             'items.*.steus'        => ['nullable', 'string', 'max:10'],
             'items.*.soitem'        => ['nullable', 'string', 'max:30'], // contoh: "4500.../10"
             'items.*.kaufn'        => ['nullable', 'string', 'max:20'], // Sales Order (jika FE kirim terpisah)
-            'items.*.kdpos'        => ['nullable', 'string', 'max:6'],     // Item 6 digit (jika FE kirim terpisah)
+            'items.*.kdpos'        => ['nullable', 'string', 'max:6'],  // Item 6 digit (jika FE kirim terpisah)
             'items.*.ssavd'        => ['nullable', 'string', 'max:10'], // yyyymmdd atau variasi
             'items.*.sssld'        => ['nullable', 'string', 'max:10'],
             'items.*.ltimex'        => ['nullable', 'numeric'],
@@ -450,20 +451,26 @@ class Yppi019DbApiController extends Controller
         ]);
 
         // 2) Pastikan SAP session tersedia
-        // PERBAIKAN: Ambil dari request attributes, bukan langsung dari session()
         $sapUser = (string) $req->attributes->get('sap_username');
         $sapPass = (string) $req->attributes->get('sap_password');
 
-        // Guard manual untuk kasus ini
         if ($sapUser === '' || $sapPass === '') {
             return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
         }
 
-        // 2b) Kunci Posting Date untuk SAP user tertentu (tidak boleh backdate)
+        // --- WI mode? (jika wi_code ada) ---
+        $wiCode = $data['wi_code'] ?? null;
+        $wiMode = !empty($wiCode);
+
+        // 2b) Kunci Posting Date:
+        // - kalau WI mode → SELALU pakai hari ini
+        // - kalau tidak WI, tapi user termasuk LOCK_BUDAT_USERS → juga pakai hari ini
         $lockedBudatUsers = [/*'KMI-U138', 'KMI-U124'*/];
 
-        if (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
-            // paksa selalu hari ini (format: YYYYMMDD, sesuai validasi regex di atas)
+        if ($wiMode) {
+            // WI mode: posting date paksa hari ini
+            $data['budat'] = now()->format('Ymd');
+        } elseif (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
             $data['budat'] = now()->format('Ymd');
         }
 
@@ -478,8 +485,8 @@ class Yppi019DbApiController extends Controller
 
         foreach ($data['items'] as $it) {
             // ---- Derive Sales Order / Item 6 digit ----
-            $salesOrder = $it['kaufn'] ?? null;     // kalau FE sudah kirim terpisah
-            $soItem     = $it['kdpos'] ?? null;     // kalau FE sudah kirim terpisah
+            $salesOrder = $it['kaufn'] ?? null; // kalau FE sudah kirim terpisah
+            $soItem     = $it['kdpos'] ?? null; // kalau FE sudah kirim terpisah
 
             if ($soItem !== null && $soItem !== '') {
                 $soItem = str_pad((string) $soItem, 6, '0', STR_PAD_LEFT);
@@ -497,62 +504,67 @@ class Yppi019DbApiController extends Controller
                 'aufnr'               => (string) $it['aufnr'],
                 'vornr'               => $this->padVornr($it['vornr'] ?? null),
                 'meinh'               => $this->mapUnitForSap($it['meinh'] ?? 'ST'), // ST -> PC
-                'qty_pro'               => \Illuminate\Support\Arr::get($it, 'qty_pro'),
-                'qty_confirm'          => $it['qty_confirm'],
-                'confirmation_date' => now()->toDateString(),
-                'posting_date'          => $this->ymdToDate($budatYMD),
+                'qty_pro'             => \Illuminate\Support\Arr::get($it, 'qty_pro'),
+                'qty_confirm'         => $it['qty_confirm'],
+                'confirmation_date'   => now()->toDateString(),
+                'posting_date'        => $this->ymdToDate($budatYMD),
 
-                'operator_nik'          => $it['pernr'],
-                'operator_name'     => $it['operator_name'] ?? null,
-                'sap_user'               => $sapUser,
-                'status'               => 'PENDING',
+                'operator_nik'        => $it['pernr'],
+                'operator_name'       => $it['operator_name'] ?? null,
+                'sap_user'            => $sapUser,
+                'status'              => 'PENDING',
 
                 // metadata bisnis
                 'plant'               => \Illuminate\Support\Arr::get($it, 'werks'),
-                'work_center'          => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                'op_desc'               => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+                'work_center'         => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                'op_desc'             => \Illuminate\Support\Arr::get($it, 'ltxa1'),
 
-                'material'               => \Illuminate\Support\Arr::get($it, 'matnrx'),
-                'material_desc'     => \Illuminate\Support\Arr::get($it, 'maktx'),
-                'fg_desc'               => \Illuminate\Support\Arr::get($it, 'maktx0'),
+                'material'            => \Illuminate\Support\Arr::get($it, 'matnrx'),
+                'material_desc'       => \Illuminate\Support\Arr::get($it, 'maktx'),
+                'fg_desc'             => \Illuminate\Support\Arr::get($it, 'maktx0'),
 
-                'mrp_controller'     => \Illuminate\Support\Arr::get($it, 'dispo'),
-                'control_key'          => \Illuminate\Support\Arr::get($it, 'steus'),
+                'mrp_controller'      => \Illuminate\Support\Arr::get($it, 'dispo'),
+                'control_key'         => \Illuminate\Support\Arr::get($it, 'steus'),
 
-                'sales_order'          => $salesOrder,
-                'so_item'               => $soItem,
-                'batch_no'               => \Illuminate\Support\Arr::get($it, 'charg'),
+                'sales_order'         => $salesOrder,
+                'so_item'             => $soItem,
+                'batch_no'            => \Illuminate\Support\Arr::get($it, 'charg'),
 
                 'start_date_plan'     => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'ssavd')),
-                'finish_date_plan'     => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'sssld')),
-                'minutes_plan'          => \Illuminate\Support\Arr::get($it, 'ltimex'),
+                'finish_date_plan'    => $this->ymdToDate(\Illuminate\Support\Arr::get($it, 'sssld')),
+                'minutes_plan'        => \Illuminate\Support\Arr::get($it, 'ltimex'),
 
                 // payload yang diperlukan Job (termasuk sap_auth terenkripsi)
                 'request_payload'     => [
-                    'budat'     => $budatYMD,
-                    'arbpl0'     => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                    'charg'     => \Illuminate\Support\Arr::get($it, 'charg'),
-                    'sap_auth' => $sapAuthBlob,
+                    'budat'        => $budatYMD,
+                    'arbpl0'       => \Illuminate\Support\Arr::get($it, 'arbpl0'),
+                    'charg'        => \Illuminate\Support\Arr::get($it, 'charg'),
+                    'sap_auth'     => $sapAuthBlob,
+
+                    // flag WI mode
+                    'wi_mode'      => $wiMode,
+                    'wi_code'      => $wiCode,
+                    'confirm_qty'  => $it['qty_confirm'],
                 ],
 
                 // snapshot tampilan popup (audit trail)
-                'row_meta'               => [
+                'row_meta'            => [
                     'wc'      => \Illuminate\Support\Arr::get($it, 'arbpl0'),
-                    'ltxa1'     => \Illuminate\Support\Arr::get($it, 'ltxa1'),
-                    'matnrx' => \Illuminate\Support\Arr::get($it, 'matnrx'),
-                    'maktx'     => \Illuminate\Support\Arr::get($it, 'maktx'),
-                    'maktx0' => \Illuminate\Support\Arr::get($it, 'maktx0'),
-                    'soitem' => \Illuminate\Support\Arr::get($it, 'soitem'),
-                    'kaufn'     => $salesOrder,
-                    'kdpos'     => $soItem,
-                    'ssavd'     => \Illuminate\Support\Arr::get($it, 'ssavd'),
-                    'sssld'     => \Illuminate\Support\Arr::get($it, 'sssld'),
-                    'ltimex' => \Illuminate\Support\Arr::get($it, 'ltimex'),
-                    'dispo'     => \Illuminate\Support\Arr::get($it, 'dispo'),
-                    'steus'     => \Illuminate\Support\Arr::get($it, 'steus'),
-                    'werks'     => \Illuminate\Support\Arr::get($it, 'werks'),
-                    'gstrp'     => \Illuminate\Support\Arr::get($it, 'gstrp'),
-                    'gltrp'     => \Illuminate\Support\Arr::get($it, 'gltrp'),
+                    'ltxa1'   => \Illuminate\Support\Arr::get($it, 'ltxa1'),
+                    'matnrx'  => \Illuminate\Support\Arr::get($it, 'matnrx'),
+                    'maktx'   => \Illuminate\Support\Arr::get($it, 'maktx'),
+                    'maktx0'  => \Illuminate\Support\Arr::get($it, 'maktx0'),
+                    'soitem'  => \Illuminate\Support\Arr::get($it, 'soitem'),
+                    'kaufn'   => $salesOrder,
+                    'kdpos'   => $soItem,
+                    'ssavd'   => \Illuminate\Support\Arr::get($it, 'ssavd'),
+                    'sssld'   => \Illuminate\Support\Arr::get($it, 'sssld'),
+                    'ltimex'  => \Illuminate\Support\Arr::get($it, 'ltimex'),
+                    'dispo'   => \Illuminate\Support\Arr::get($it, 'dispo'),
+                    'steus'   => \Illuminate\Support\Arr::get($it, 'steus'),
+                    'werks'   => \Illuminate\Support\Arr::get($it, 'werks'),
+                    'gstrp'   => \Illuminate\Support\Arr::get($it, 'gstrp'),
+                    'gltrp'   => \Illuminate\Support\Arr::get($it, 'gltrp'),
                 ],
             ]);
 
@@ -565,6 +577,7 @@ class Yppi019DbApiController extends Controller
         // 6) Response: daftar id yang di-antri-kan
         return response()->json(['queued' => $ids], 202);
     }
+
 
     // GET /api/yppi019/confirm-monitor
     public function confirmMonitor(Request $req)

@@ -50,35 +50,149 @@ class ConfirmProJob implements ShouldQueue
         return $m === 'ST' ? 'PC' : ($m ?: 'PC');
     }
 
+    private function findWiCodeForOperation(string $aufnr, string $vornr): ?string
+    {
+        $base  = rtrim(config('services.wi_api.base_url'), '/');
+        $token = config('services.wi_api.token');
+
+        if (!$base || !$token) {
+            // Kalau config belum di-set, jangan blokir konfirmasi
+            return null;
+        }
+
+        try {
+            $res = Http::withToken($token)
+                ->acceptJson()
+                ->get($base . '/wi/aufnr/unexpired');
+
+            if (!$res->ok()) {
+                Log::warning('WI unexpired API not OK', [
+                    'aufnr'  => $aufnr,
+                    'vornr'  => $vornr,
+                    'status' => $res->status(),
+                    'body'   => $res->body(),
+                ]);
+                return null; // jangan blokir konfirmasi kalau API error
+            }
+
+            $json = $res->json() ?? [];
+            if (($json['status'] ?? null) !== 'success') {
+                Log::warning('WI unexpired API status != success', [
+                    'aufnr'   => $aufnr,
+                    'vornr'   => $vornr,
+                    'payload' => $json,
+                ]);
+                return null;
+            }
+
+            $data = $json['data'] ?? [];
+            if (!is_array($data)) {
+                return null;
+            }
+
+            // $data bentuknya: { "WIH0000001": [ {aufnr, vornr}, ... ], "WIH0000002": [...] }
+            foreach ($data as $wiCode => $items) {
+                if (!is_array($items)) {
+                    continue;
+                }
+                foreach ($items as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+
+                    $auf = (string) ($row['aufnr'] ?? '');
+                    $vor = $this->padVornr($row['vornr'] ?? null);
+
+                    if ($auf === $aufnr && $vor === $vornr) {
+                        // ketemu WI yg nyangkut ke PRO+VORNR ini
+                        return (string) $wiCode;
+                    }
+                }
+            }
+
+        } catch (Throwable $e) {
+            Log::warning('WI unexpired API check failed', [
+                'aufnr' => $aufnr,
+                'vornr' => $vornr,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
     /** Ambil seluruh entri pesan dari struktur sap_return (RETURN/ET_RETURN/…) */
     private function collectReturnEntries($ret): array
     {
         $out = [];
         if (!is_array($ret)) return $out;
+
         $cands = ['RETURN', 'ET_RETURN', 'T_RETURN', 'E_RETURN', 'ES_RETURN', 'EV_RETURN'];
         foreach ($cands as $k) {
             $v = $ret[$k] ?? null;
             if (is_array($v)) {
-                foreach ($v as $row) if (is_array($row)) $out[] = $row;
+                foreach ($v as $row) {
+                    if (is_array($row)) $out[] = $row;
+                }
             }
         }
+
         // sap_return kadang nested bebas → sikat semua array of object
         foreach ($ret as $v) {
             if (is_array($v)) {
-                foreach ($v as $row) if (is_array($row)) $out[] = $row;
+                foreach ($v as $row) {
+                    if (is_array($row)) $out[] = $row;
+                }
             }
         }
+
         return $out;
     }
 
     public function handle(): void
     {
         $rec = Yppi019ConfirmMonitor::find($this->monitorId);
-        if (!$rec) return;
+        if (!$rec) {
+            return;
+        }
 
-        $rec->update(['status' => 'PROCESSING', 'status_message' => null]);
+        // tandai sedang diproses
+        $rec->update([
+            'status'         => 'PROCESSING',
+            'status_message' => null,
+        ]);
 
         $payload = $rec->request_payload ?? [];
+
+        // === DETEKSI WI MODE ===
+        $wiMode     = !empty($payload['wi_mode']) && !empty($payload['wi_code']);
+        $wiCode     = $payload['wi_code'] ?? null;
+        $confirmQty = $payload['confirm_qty'] ?? $rec->qty_confirm; // fallback ke kolom monitor
+
+         // === NON-WI MODE: cek dulu apakah PRO/VORNR ini punya WI unexpired ===
+        if (!$wiMode) {
+            $currentAufnr = (string) $rec->aufnr;
+            $currentVornr = $this->padVornr($rec->vornr);
+
+            $wiForOp = $this->findWiCodeForOperation($currentAufnr, $currentVornr);
+
+            if ($wiForOp) {
+                // PRO+VORNR ini wajib dikonfirmasi lewat WI, jadi stop di sini
+                $msg = 'PRO tersebut telah memiliki kode WI mohon konfirmasi dengan kode WI "' . $wiForOp . '"';
+
+                $rec->update([
+                    'status'         => 'FAILED',
+                    'status_message' => $msg,
+                    'processed_at'   => now(),
+                ]);
+
+                return; // JANGAN lanjut ke SAP / Flask
+            }
+        }
+
+        // tanggal hari ini & budat dari payload (sudah dipaksa hari ini di controller untuk WI)
+        $todayYmd  = now()->format('Ymd');
+        $budatYmd  = preg_replace('/\D/', '', (string)($payload['budat'] ?? $todayYmd));
 
         // 1) Validasi keberadaan kredensial terenkripsi
         if (empty($payload['sap_auth'])) {
@@ -130,21 +244,30 @@ class ConfirmProJob implements ShouldQueue
             'Content-Type'   => 'application/json',
         ];
 
-        $todayYmd = now()->format('Ymd');
-        $budat    = preg_replace('/\D/', '', (string)($payload['budat'] ?? $todayYmd));
-
+        // === BODY UNTUK FLASK /api/yppi019/confirm ===
         $body = [
             'aufnr'  => $rec->aufnr,
             'vornr'  => $this->padVornr($rec->vornr),
             'pernr'  => $rec->operator_nik,
-            'psmng'  => (float)$rec->qty_confirm,
+            'psmng'  => (float) $confirmQty,              // qty input user
             'meinh'  => $this->mapUnitForSap($rec->meinh),
-            'gstrp'  => $todayYmd,
-            'gltrp'  => $todayYmd,
-            'budat'  => $budat,
+            'budat'  => $budatYmd,                        // posting date
             'arbpl0' => $payload['arbpl0'] ?? null,
             'charg'  => $payload['charg']  ?? null,
         ];
+
+        // === Bedakan WI mode vs non-WI ===
+        if ($wiMode) {
+            // WI: jangan kirim GSTRP/GLTRP, tapi kirim flag WI
+            $body['wi_mode'] = true;
+            if (!empty($wiCode)) {
+                $body['wi_code'] = $wiCode;
+            }
+        } else {
+            // Non-WI: kirim GSTRP/GLTRP (start/finish = hari ini)
+            $body['gstrp'] = $todayYmd;
+            $body['gltrp'] = $todayYmd;
+        }
 
         try {
             // 3) Panggil Flask confirm
@@ -184,7 +307,7 @@ class ConfirmProJob implements ShouldQueue
                 return;
             }
 
-            // 5) Sukses
+            // 5) Sukses konfirmasi SAP
             $rec->update([
                 'status'         => 'SUCCESS',
                 'status_message' => 'Confirmed',
@@ -192,17 +315,45 @@ class ConfirmProJob implements ShouldQueue
                 'processed_at'   => now(),
             ]);
 
+            // === 5b) Jika WI mode → hit API WI /api/wi/pro/complete ===
+            if ($wiMode && $wiCode) {
+                try {
+                    Http::withToken(env('WI_API_TOKEN'))
+                        ->acceptJson()
+                        ->post('https://cohv.kmifilebox.com/api/wi/pro/complete', [
+                            'wi_code'       => $wiCode,
+                            'aufnr'         => $rec->aufnr,
+                            'confirmed_qty' => $confirmQty,
+                        ]);
+                } catch (Throwable $e) {
+                    // Jangan menggagalkan konfirmasi SAP kalau WI API gagal
+                    Log::warning('WI pro/complete gagal', [
+                        'monitor_id' => $rec->id,
+                        'wi_code'    => $wiCode,
+                        'aufnr'      => $rec->aufnr,
+                        'qty'        => $confirmQty,
+                        'error'      => $e->getMessage(),
+                    ]);
+
+                    // opsional: tandai di status_message
+                    $rec->status_message = trim(
+                        ($rec->status_message ?? '') . ' | WI update gagal: ' . $e->getMessage()
+                    );
+                    $rec->save();
+                }
+            }
+
             // 6) (Opsional) catat backdate jika budat berbeda dari hari ini
-            if ($budat !== $todayYmd) {
+            if ($budatYmd !== $todayYmd) {
                 try {
                     Http::withHeaders($headers)->acceptJson()->timeout(30)
                         ->post($this->flaskBase() . '/api/yppi019/backdate-log', [
                             'aufnr'        => $rec->aufnr,
                             'vornr'        => $this->padVornr($rec->vornr),
                             'pernr'        => $rec->operator_nik,
-                            'qty'          => (float)$rec->qty_confirm,
+                            'qty'          => (float) $confirmQty,
                             'meinh'        => $this->mapUnitForSap($rec->meinh),
-                            'budat'        => $budat,
+                            'budat'        => $budatYmd,
                             'today'        => $todayYmd,
                             'arbpl0'       => $payload['arbpl0'] ?? null,
                             'maktx'        => $payload['maktx'] ?? null,
@@ -210,13 +361,13 @@ class ConfirmProJob implements ShouldQueue
                             'confirmed_at' => now()->toIso8601String(),
                         ]);
                 } catch (Throwable $e) {
-                    // jangan gagalkan job saat logging backdate
                     Log::warning('ConfirmProJob backdate-log failed', [
                         'monitor_id' => $rec->id,
                         'error'      => $e->getMessage(),
                     ]);
                 }
             }
+
         } catch (ConnectionException $e) {
             Log::error('ConfirmProJob HTTP connection error', [
                 'monitor_id' => $rec->id,
@@ -227,6 +378,7 @@ class ConfirmProJob implements ShouldQueue
                 'status_message' => 'Flask tidak dapat dihubungi: ' . $e->getMessage(),
                 'processed_at'   => now(),
             ]);
+
         } catch (Throwable $e) {
             Log::error('ConfirmProJob unexpected error', [
                 'monitor_id' => $rec->id,

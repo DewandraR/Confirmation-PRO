@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
-
+use App\Http\Controllers\WiDocumentController;
 /*
 |--------------------------------------------------------------------------
 | API Routes (stateless, TANPA session)
@@ -18,3 +18,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Health check sederhana (opsional)
 Route::get('/ping', fn () => ['ok' => true, 'ts' => now()->toISOString()]);
+Route::get('/wi/material', [WiDocumentController::class, 'materialFromWi']);
