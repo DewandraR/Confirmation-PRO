@@ -332,8 +332,12 @@
                                         </svg>
                                     </div>
                                     <label class="text-xs font-medium text-slate-700">Kode Dokumen WI</label>
+                                    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">
+                                        Bisa lebih dari satu
+                                    </span>
                                 </div>
-                                <div class="relative group">
+
+                                <div class="relative group space-y-1">
                                     <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-blue-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
                                         <div class="flex-shrink-0">
                                             <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
@@ -345,11 +349,13 @@
                                         </div>
                                         <input id="wi_code" name="wi_code"
                                             class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                                            placeholder="Masukkan Code WI Document" />
+                                            placeholder="Ketik WI lalu Enter (bisa banyak, pisah spasi/koma)" />
                                     </div>
+
+                                    {{-- daftar kode WI yang sudah ditambah (chip) --}}
+                                    <div id="wi-list-container" class="flex flex-wrap gap-1"></div>
                                 </div>
                             </div>
-
                         </div>
 
                         <div class="pt-3">

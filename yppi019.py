@@ -31,7 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-HTTP_HOST = os.getenv("HTTP_HOST", "0.0.0.0")
+HTTP_HOST = os.getenv("HTTP_HOST", "127.0.0.1")
 HTTP_PORT = int(os.getenv("HTTP_PORT", "5005"))
 RFC_Y = "Z_FM_YPPI019"      # READ
 RFC_C = "Z_RFC_CONFIRMASI"  # CONFIRM

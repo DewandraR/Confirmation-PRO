@@ -256,7 +256,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     const p = new URLSearchParams(location.search);
     const rawList = p.get("aufnrs") || "";
     const single = p.get("aufnr") || "";
-    const WI_CODE = p.get("wi_code") || ""; // <--- TAMBAHAN
+
+    // ==== MULTI WI SUPPORT ====
+    // Prioritaskan wi_codes (format baru: "WIH0000002,WIH0000001")
+    // Kalau tidak ada, baru cek kemungkinan ?wi_code=... berulang
+    const wiRaw =
+        p.get("wi_codes") || // format baru: wi_codes=code1,code2
+        (p.getAll("wi_code") || []).join(" ") || // format lama: ?wi_code=a&wi_code=b
+        p.get("wi_code") || // format lama: satu wi_code
+        "";
+
+    const WI_CODES = wiRaw
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    // untuk kompatibel dengan kode lama yang pakai WI_CODE tunggal
+    const WI_CODE = WI_CODES[0] || "";
+    // ==========================
+
     const IV_PERNR = p.get("pernr") || "";
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
@@ -336,8 +354,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     const successList = document.getElementById("success-list");
     const successOkButton = document.getElementById("success-ok-button");
     // Mode halaman: WC (pakai arbpl+werks+nik) vs PRO (pakai aufnr+nik)
-    const isWiMode = !!WI_CODE;
+    const isWiMode = WI_CODES.length > 0;
     const isWCMode = AUFNRS.length === 0 && !!IV_ARBPL && !isWiMode;
+
+    // WI mode sekarang wajib punya NIK (IV_PERNR dari query string)
+    if (isWiMode && !IV_PERNR) {
+        const msg = "NIK wajib diisi untuk dokumen WI.";
+
+        if (errorMessage) errorMessage.textContent = msg;
+
+        // pastikan tombol copy WI disembunyikan
+        prepareWiCopy("");
+        if (errorCopyWiButton) {
+            errorCopyWiButton.dataset.wiCode = "";
+            errorCopyWiButton.classList.add("hidden");
+        }
+
+        if (loading) loading.classList.add("hidden");
+        if (content) content.classList.remove("hidden");
+        if (errorModal) errorModal.classList.remove("hidden");
+
+        // stop script, jangan lanjut fetch data
+        return;
+    }
 
     // BUDAT controls
     const budatInput = document.getElementById("budat-input"); // hidden yyyy-mm-dd
@@ -400,15 +439,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         let headText = "-";
 
         if (isWiMode) {
-            headText = WI_CODE; // bisa diganti `WI: ${WI_CODE}` kalau mau
+            headText = WI_CODES.join(", "); // "WIH0000001, WIH0000002, ..."
         } else if (AUFNRS.length > 0) {
             headText = AUFNRS.join(", ");
         } else if (IV_ARBPL) {
             headText = `WC: ${IV_ARBPL}`;
         }
 
-        // Kalau mau NIK tetap muncul di WI, hapus pengecekan !isWiMode
-        if (IV_PERNR && !isWiMode) {
+        if (IV_PERNR) {
             headText = `${IV_PERNR} / ${headText}`;
         }
 
@@ -470,28 +508,48 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         if (isWiMode) {
-            // ===== MODE WI: panggil endpoint Laravel yang mapping WI API =====
-            const url = `/api/wi/material?wi_code=${encodeURIComponent(
-                WI_CODE
-            )}`;
-            const res = await fetchWithTimeout(url, {
-                headers: { Accept: "application/json" },
+            // ===== MODE WI: support BANYAK kode WI =====
+            const wiResults = await Promise.allSettled(
+                WI_CODES.map(async (code) => {
+                    const url = `/api/wi/material?wi_code=${encodeURIComponent(
+                        code
+                    )}&pernr=${encodeURIComponent(IV_PERNR)}`;
+
+                    const res = await fetchWithTimeout(url, {
+                        headers: { Accept: "application/json" },
+                    });
+
+                    let json;
+                    try {
+                        json = await res.json();
+                    } catch {
+                        json = {};
+                    }
+
+                    if (!res.ok) {
+                        throw new Error(
+                            (json && (json.error || json.message)) ||
+                                `WI ${code}: HTTP ${res.status}`
+                        );
+                    }
+
+                    const t = json.T_DATA1;
+                    return Array.isArray(t) ? t : t ? [t] : [];
+                })
+            );
+
+            wiResults.forEach((r, idx) => {
+                if (r.status === "fulfilled") {
+                    rowsAll = rowsAll.concat(r.value);
+                } else {
+                    // simpan info WI mana yang gagal (kalau mau ditampilkan nanti)
+                    failures.push(
+                        `WI ${WI_CODES[idx]}: ${
+                            r.reason?.message || "gagal diambil"
+                        }`
+                    );
+                }
             });
-
-            let json;
-            try {
-                json = await res.json();
-            } catch {
-                json = {};
-            }
-
-            if (!res.ok)
-                throw new Error(
-                    json.error || json.message || `HTTP ${res.status}`
-                );
-
-            const t = json.T_DATA1;
-            rowsAll = Array.isArray(t) ? t : t ? [t] : [];
         } else if (AUFNRS.length > 0) {
             // ===== LOGIKA LAMA: PRO mode =====
             const results = await Promise.allSettled(
@@ -1620,8 +1678,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Kirim ke queue (biarkan berjalan di background) — gunakan keepalive agar tidak batal saat redirect
         const payload = {
-            budat: pickedBudat, // masih dikirim, tapi di WI mode nanti di-backend akan dioverride ke hari ini
-            wi_code: WI_CODE || null, // <-- TAMBAHAN, supaya backend tahu ini WI mode
+            budat: pickedBudat,
+            wi_code: WI_CODE || null, // tetap kirim 1 (backward compatible)
+            wi_codes: WI_CODES, // kirim semua WI dalam array
             items,
         };
         fetch("/api/yppi019/confirm-async", {

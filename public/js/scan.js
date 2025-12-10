@@ -8,8 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const CSRF =
         document.querySelector('meta[name="csrf-token"]')?.content || "";
     const aufnrList = new Set();
+    const wiCodeList = new Set();
 
     const aufnrListContainer = document.getElementById("aufnr-list-container");
+    const wiListContainer = document.getElementById("wi-list-container");
     const aufnrInput = document.getElementById("IV_AUFNR");
     const pernrInput = document.getElementById("IV_PERNR");
     const arbplInput = document.getElementById("IV_ARBPL");
@@ -92,6 +94,34 @@ document.addEventListener("DOMContentLoaded", () => {
         };
         div.appendChild(del);
         aufnrListContainer?.appendChild(div);
+    }
+
+    function addWiToList(code) {
+        const wi = String(code || "")
+            .trim()
+            .toUpperCase();
+        if (!wi || wiCodeList.has(wi)) return;
+
+        wiCodeList.add(wi);
+
+        const div = document.createElement("div");
+        div.className =
+            "px-3 py-1.5 bg-blue-50 rounded-xl flex items-center justify-between text-xs font-medium text-blue-700 transition-all duration-200 hover:bg-blue-100";
+        div.textContent = wi;
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className =
+            "w-5 h-5 ml-2 bg-red-100 rounded-full flex items-center justify-center text-red-600 hover:bg-red-200";
+        del.innerHTML =
+            '<svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        del.onclick = () => {
+            wiCodeList.delete(wi);
+            div.remove();
+        };
+
+        div.appendChild(del);
+        wiListContainer?.appendChild(div);
     }
 
     // =================================================================
@@ -247,10 +277,23 @@ document.addEventListener("DOMContentLoaded", () => {
         form.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 e.preventDefault();
+
+                // PRO
                 if (e.target && e.target.id === "IV_AUFNR") {
                     const val = String(e.target.value || "").trim();
                     if (val.length > 0) {
                         addAufnrToList(val);
+                        e.target.value = "";
+                    }
+                }
+
+                // WI: boleh banyak, dipisah spasi / koma / titik koma
+                if (e.target && e.target.id === "wi_code") {
+                    const raw = String(e.target.value || "").trim();
+                    if (raw.length > 0) {
+                        raw.split(/[,\s;]+/).forEach((code) => {
+                            if (code) addWiToList(code);
+                        });
                         e.target.value = "";
                     }
                 }
@@ -266,6 +309,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (wiCodeInput) {
+        wiCodeInput.addEventListener("change", (e) => {
+            const raw = String(e.target.value || "").trim();
+            if (!raw) return;
+            raw.split(/[,\s;]+/).forEach((code) => {
+                if (code) addWiToList(code);
+            });
+            e.target.value = "";
+        });
+    }
+
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -274,19 +328,31 @@ document.addEventListener("DOMContentLoaded", () => {
             const aufnrArray = Array.from(aufnrList);
             const arbpl = arbplInput?.value.trim() || "";
             const werks = werksInput?.value.trim() || "";
-            const wiCode = wiCodeInput?.value.trim() || ""; // <-- BARU
+
+            // kalau user masih meninggalkan teks di input wi_code, masukkan dulu ke list
+            if (wiCodeInput) {
+                const raw = wiCodeInput.value.trim();
+                if (raw) {
+                    raw.split(/[,\s;]+/).forEach((code) => {
+                        if (code) addWiToList(code);
+                    });
+                    wiCodeInput.value = "";
+                }
+            }
+
+            const wiArray = Array.from(wiCodeList);
 
             const hasAufnr = aufnrArray.length > 0;
             const hasWc = arbpl !== "";
             const hasPlant = werks !== "";
-            const hasWi = wiCode !== ""; // <-- BARU
+            const hasWi = wiArray.length > 0; // <-- sekarang cek dari list, bukan 1 input
 
-            // NIK WAJIB hanya kalau TIDAK pakai WI
-            if (!pernr && !hasWi) {
-                showError(
-                    "Input Belum Lengkap",
-                    "NIK Operator wajib diisi jika tidak menggunakan Kode Dokumen WI."
-                );
+            // NIK WAJIB di semua mode (PRO / WC / WI)
+            if (!pernr) {
+                const msg = hasWi
+                    ? "NIK Operator wajib diisi untuk menggunakan Kode Dokumen WI."
+                    : "NIK Operator wajib diisi.";
+                showError("Input Belum Lengkap", msg);
                 return pernrInput?.focus();
             }
 
@@ -342,7 +408,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hasWi) {
                 const to = new URL(form.action, location.origin);
                 to.searchParams.set("pernr", pernr);
-                to.searchParams.set("wi_code", wiCode);
+
+                // kirim semua kode WI dalam 1 param, dipisah koma
+                to.searchParams.set("wi_codes", wiArray.join(","));
+
+                // opsional: tetap kirim 1st WI untuk backward-compatible (kalau detail.js lama masih pakai wi_code)
+                if (wiArray.length > 0) {
+                    to.searchParams.set("wi_code", wiArray[0]);
+                }
+
                 // PRO/WC diabaikan di mode ini; semua dari WI API
                 location.href = to.toString();
                 return; // ⬅️ jangan lanjut ke ajaxSync
