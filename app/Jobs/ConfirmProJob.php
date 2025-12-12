@@ -317,32 +317,40 @@ class ConfirmProJob implements ShouldQueue
 
             // === 5b) Jika WI mode → hit API WI /api/wi/pro/complete ===
             if ($wiMode && $wiCode) {
+
                 try {
+                    // NIK yang melakukan konfirmasi:
+                    // di monitor sudah disimpan sebagai operator_nik
+                    $nik   = $rec->operator_nik ?: ($payload['pernr'] ?? null);
+                    $vornr = $this->padVornr($rec->vornr); // pastikan 4 digit, mis. "20" -> "0020"
+
                     Http::withToken(env('WI_API_TOKEN'))
                         ->acceptJson()
                         ->post('https://cohv.kmifilebox.com/api/wi/pro/complete', [
                             'wi_code'       => $wiCode,
                             'aufnr'         => $rec->aufnr,
-                            'confirmed_qty' => $confirmQty,
+                            'confirmed_qty' => $confirmQty, // kalau mau paksa string: (string) $confirmQty
+                            'nik'           => $nik,
+                            'vornr'         => $vornr,
                         ]);
+
                 } catch (Throwable $e) {
-                    // Jangan menggagalkan konfirmasi SAP kalau WI API gagal
                     Log::warning('WI pro/complete gagal', [
                         'monitor_id' => $rec->id,
                         'wi_code'    => $wiCode,
                         'aufnr'      => $rec->aufnr,
+                        'vornr'      => $vornr ?? null,
                         'qty'        => $confirmQty,
+                        'nik'        => $nik ?? null,
                         'error'      => $e->getMessage(),
                     ]);
 
-                    // opsional: tandai di status_message
                     $rec->status_message = trim(
                         ($rec->status_message ?? '') . ' | WI update gagal: ' . $e->getMessage()
                     );
                     $rec->save();
                 }
             }
-
             // 6) (Opsional) catat backdate jika budat berbeda dari hari ini
             if ($budatYmd !== $todayYmd) {
                 try {

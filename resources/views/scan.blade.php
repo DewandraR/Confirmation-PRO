@@ -305,6 +305,8 @@
                                     </svg>
                                 </div>
                                 <label class="text-xs font-medium text-slate-700">NIK Operator</label>
+                                <span
+                                    class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
                             </div>
                             <div class="relative group">
                                 <div
