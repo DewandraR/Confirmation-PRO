@@ -150,9 +150,6 @@
                 </span>
                 <div class="min-w-0">
                     <div class="text-sm font-semibold text-slate-800 leading-tight">Data Produksi</div>
-                    <div class="text-[11px] text-slate-500 leading-tight">
-                        Isi salah satu: <b>Work Center & Plant</b> atau <b>PRO</b>
-                    </div>
                 </div>
             </div>
         </div>
@@ -349,7 +346,7 @@
 
                     <input id="wi_code" name="wi_code"
                         class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                        placeholder="Ketik WI lalu Enter (contoh: WI12345, WI67890)" />
+                        placeholder="Masukkan Kode WI" />
                 </div>
 
                 {{-- daftar chip WI --}}
