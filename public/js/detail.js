@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const WI_CODE = WI_CODES[0] || "";
     // ==========================
 
-    const IV_PERNR = p.get("pernr") || "";
+    const IV_PERNR = (p.get("pernr") || "").trim();
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
 
@@ -619,6 +619,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         loading.classList.add("hidden");
         content.classList.remove("hidden");
     }
+    // ===== FRONT-END FILTER: tampilkan hanya NIK yang diinput (khusus WI mode) =====
+    if (isWiMode) {
+        const normPernr = (x) =>
+            String(x || "")
+                .trim()
+                .replace(/^0+/, ""); // buang leading zero
+        const want = normPernr(IV_PERNR);
+
+        // kalau NIK kosong, jangan tampilkan apa pun (jaga-jaga)
+        if (!want) {
+            rowsAll = [];
+        } else {
+            rowsAll = rowsAll.filter((r) => {
+                const rowPernr = normPernr(r.PERNR);
+                return rowPernr && rowPernr === want; // hanya yang match, kosong dibuang
+            });
+        }
+    }
 
     if (!rowsAll.length) {
         tableBody.innerHTML =
@@ -749,12 +767,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .join(" ");
 
             return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
-        data-aufnr="${r.AUFNR || ""}" data-vornr="${vornr}" data-pernr="${
-                r.PERNR || IV_PERNR || ""
-            }"
-        data-meinh="${r.MEINH || "ST"}" data-gstrp="${toYYYYMMDD(
-                r.GSTRP
-            )}" data-gltrp="${toYYYYMMDD(r.GLTRP)}"
+        data-aufnr="${r.AUFNR || ""}" 
+        data-vornr="${vornr}" 
+        data-pernr="${r.PERNR || IV_PERNR || ""}"
+        data-wi-code="${esc(r.WI_CODE || "")}"
+        data-meinh="${r.MEINH || "ST"}" 
+        data-gstrp="${toYYYYMMDD(r.GSTRP)}" data-gltrp="${toYYYYMMDD(r.GLTRP)}"
         data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
         data-ltimex="${ltimexStr}"
         data-arbpl0="${wcInduk}"
@@ -1566,7 +1584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         const invalidMax = items.find((x) => x.qty > x.max);
         if (invalidMax) {
-            errorMessage.textContent = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
+            const msg = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
             errorMessage.textContent = msg;
             prepareWiCopy(msg);
             errorModal.classList.remove("hidden");
@@ -1638,6 +1656,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // --- yang lama ---
                 aufnr: row.dataset.aufnr || "",
                 vornr: row.dataset.vornr || "",
+                wi_code: nz(row.dataset.wiCode) || null,
                 pernr: row.dataset.pernr || "",
                 operator_name: row.dataset.sname || null,
                 qty_confirm: qty,
@@ -1679,8 +1698,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Kirim ke queue (biarkan berjalan di background) — gunakan keepalive agar tidak batal saat redirect
         const payload = {
             budat: pickedBudat,
-            wi_code: WI_CODE || null, // tetap kirim 1 (backward compatible)
-            wi_codes: WI_CODES, // kirim semua WI dalam array
+            wi_code: WI_CODES.length === 1 ? WI_CODE : null, // ✅ hanya isi jika single WI
             items,
         };
         fetch("/api/yppi019/confirm-async", {

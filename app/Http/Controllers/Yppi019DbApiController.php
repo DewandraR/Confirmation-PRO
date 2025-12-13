@@ -431,6 +431,7 @@ class Yppi019DbApiController extends Controller
             'items.*.meinh'        => ['nullable', 'string', 'max:8'],
             'items.*.arbpl0'        => ['nullable', 'string', 'max:40'],
             'items.*.charg'        => ['nullable', 'string', 'max:40'],
+            'items.*.wi_code' => ['nullable', 'string', 'max:50'],
 
             // metadata opsional yang akan ikut disimpan
             'items.*.werks'        => ['nullable', 'string', 'max:8'],
@@ -459,17 +460,19 @@ class Yppi019DbApiController extends Controller
         }
 
         // --- WI mode? (jika wi_code ada) ---
-        $wiCode = $data['wi_code'] ?? null;
-        $wiMode = !empty($wiCode);
+        $topWiCode = $data['wi_code'] ?? null;
 
-        // 2b) Kunci Posting Date:
-        // - kalau WI mode → SELALU pakai hari ini
-        // - kalau tidak WI, tapi user termasuk LOCK_BUDAT_USERS → juga pakai hari ini
-        $lockedBudatUsers = [/*'KMI-U138', 'KMI-U124'*/];
+        $hasAnyWi = !empty($topWiCode);
+        if (!$hasAnyWi) {
+            foreach (($data['items'] ?? []) as $it) {
+                if (!empty($it['wi_code'] ?? null)) { $hasAnyWi = true; break; }
+            }
+        }
 
-        if ($wiMode) {
-            // WI mode: posting date paksa hari ini
-            $data['budat'] = now()->format('Ymd');
+        $lockedBudatUsers = [];
+
+        if ($hasAnyWi) {
+            $data['budat'] = now()->format('Ymd'); // paksa hari ini jika ada WI
         } elseif (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
             $data['budat'] = now()->format('Ymd');
         }
@@ -484,6 +487,9 @@ class Yppi019DbApiController extends Controller
         $budatYMD = preg_replace('/\D/', '', $data['budat']); // jaga-jaga
 
         foreach ($data['items'] as $it) {
+            $topWiCode   = $data['wi_code'] ?? null;           // fallback (kalau FE lama)
+            $itemWiCode  = $it['wi_code'] ?? $topWiCode;       // <-- KUNCI
+            $itemWiMode  = !empty($itemWiCode);
             // ---- Derive Sales Order / Item 6 digit ----
             $salesOrder = $it['kaufn'] ?? null; // kalau FE sudah kirim terpisah
             $soItem     = $it['kdpos'] ?? null; // kalau FE sudah kirim terpisah
@@ -542,8 +548,8 @@ class Yppi019DbApiController extends Controller
                     'sap_auth'     => $sapAuthBlob,
 
                     // flag WI mode
-                    'wi_mode'      => $wiMode,
-                    'wi_code'      => $wiCode,
+                    'wi_mode'     => $itemWiMode,
+                    'wi_code'     => $itemWiCode,
                     'confirm_qty'  => $it['qty_confirm'],
                 ],
 

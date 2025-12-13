@@ -19,3 +19,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Health check sederhana (opsional)
 Route::get('/ping', fn () => ['ok' => true, 'ts' => now()->toISOString()]);
 Route::get('/wi/material', [WiDocumentController::class, 'materialFromWi']);
+Route::post('wi/document/get', [WiDocumentController::class, 'getByNik']);

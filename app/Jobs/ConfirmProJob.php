@@ -165,8 +165,8 @@ class ConfirmProJob implements ShouldQueue
         $payload = $rec->request_payload ?? [];
 
         // === DETEKSI WI MODE ===
-        $wiMode     = !empty($payload['wi_mode']) && !empty($payload['wi_code']);
-        $wiCode     = $payload['wi_code'] ?? null;
+        $wiCode = $payload['wi_code'] ?? null;
+        $wiMode = !empty($wiCode); // WI mode kalau ada wi_code
         $confirmQty = $payload['confirm_qty'] ?? $rec->qty_confirm; // fallback ke kolom monitor
 
          // === NON-WI MODE: cek dulu apakah PRO/VORNR ini punya WI unexpired ===
@@ -324,14 +324,17 @@ class ConfirmProJob implements ShouldQueue
                     $nik   = $rec->operator_nik ?: ($payload['pernr'] ?? null);
                     $vornr = $this->padVornr($rec->vornr); // pastikan 4 digit, mis. "20" -> "0020"
 
-                    Http::withToken(env('WI_API_TOKEN'))
+                    $base  = rtrim(config('services.wi_api.base_url'), '/');
+                    $token = config('services.wi_api.token');
+
+                    Http::withToken($token)
                         ->acceptJson()
-                        ->post('https://cohv.kmifilebox.com/api/wi/pro/complete', [
+                        ->post($base . '/wi/pro/complete', [
                             'wi_code'       => $wiCode,
                             'aufnr'         => $rec->aufnr,
-                            'confirmed_qty' => $confirmQty, // kalau mau paksa string: (string) $confirmQty
-                            'nik'           => $nik,
-                            'vornr'         => $vornr,
+                            'confirmed_qty' => $confirmQty,
+                            'nik'           => $rec->operator_nik,
+                            'vornr'         => $this->padVornr($rec->vornr),
                         ]);
 
                 } catch (Throwable $e) {

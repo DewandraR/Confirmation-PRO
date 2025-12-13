@@ -267,6 +267,92 @@ document.addEventListener("DOMContentLoaded", () => {
         );
     }
 
+    async function fetchWiDocs(payload) {
+        const headers = {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRF-TOKEN": CSRF,
+        };
+        if (window.SAP_AUTH) headers["Authorization"] = window.SAP_AUTH;
+
+        const controller = new AbortController();
+        const to = setTimeout(() => controller.abort(), getClientTimeoutMs());
+
+        showOverlay("Mengambil daftar WI… (harap tunggu)");
+        try {
+            const res = await fetch("/api/wi/document/get", {
+                method: "POST",
+                headers,
+                credentials: "same-origin",
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            });
+
+            const rawText = await res.text().catch(() => "");
+            let json = {};
+            try {
+                json = rawText ? JSON.parse(rawText) : {};
+            } catch {
+                json = { _raw: rawText };
+            }
+
+            if (!res.ok) {
+                const msg =
+                    json?.error ||
+                    json?.message ||
+                    `HTTP ${res.status} ${res.statusText}`;
+                throw new Error(msg);
+            }
+
+            return json;
+        } catch (e) {
+            if (e.name === "AbortError")
+                throw new Error("Waktu tunggu klien habis / dibatalkan.");
+            throw e;
+        } finally {
+            clearTimeout(to);
+            hideOverlay();
+        }
+    }
+
+    function extractWiCodesFromDocGet(json) {
+        if (!json) return [];
+
+        // kalau backend langsung kasih array
+        if (Array.isArray(json.wi_codes)) {
+            return [
+                ...new Set(
+                    json.wi_codes
+                        .map((x) => String(x).trim().toUpperCase())
+                        .filter(Boolean)
+                ),
+            ];
+        }
+
+        // coba beberapa kemungkinan struktur
+        const arr =
+            json.data ||
+            json.documents ||
+            json.T_DATA ||
+            json.T_DATA1 ||
+            json.items ||
+            [];
+
+        const list = Array.isArray(arr) ? arr : [arr];
+
+        const codes = list
+            .map((x) =>
+                String(
+                    x?.wi_code ?? x?.WI_CODE ?? x?.WICODE ?? x?.wiCode ?? ""
+                ).trim()
+            )
+            .filter(Boolean)
+            .map((s) => s.toUpperCase());
+
+        return [...new Set(codes)];
+    }
+
     // =================================================================
     // ===== FORM HANDLER (preflight → /api/yppi019/sync)
     // =================================================================
@@ -356,13 +442,60 @@ document.addEventListener("DOMContentLoaded", () => {
                 return pernrInput?.focus();
             }
 
+            // ⬇️ Pastikan setBusy menemukan tombol baru (id="submitBtn")
+            const submitBtn =
+                document.getElementById("submitBtn") ||
+                form.querySelector('button[type="submit"], button:not([type])');
+            const setBusy = (b) => {
+                if (!submitBtn) return;
+                if (b) {
+                    submitBtn.dataset._txt = submitBtn.innerHTML;
+                    submitBtn.innerHTML = "Memeriksa data...";
+                    submitBtn.disabled = true;
+                } else {
+                    submitBtn.innerHTML =
+                        submitBtn.dataset._txt || "Kirim Data";
+                    submitBtn.disabled = false;
+                }
+            };
+
             // Minimal salah satu: PRO / WC / WI
+            // Minimal salah satu: PRO / WC / WI
+            // ✅ NEW: kalau hanya NIK saja → cari WI by NIK dan masuk WI mode
             if (!hasAufnr && !hasWc && !hasWi) {
-                showError(
-                    "Input Tidak Lengkap",
-                    'Anda harus mengisi "Work Center", "PRO", atau "Kode Dokumen WI".'
-                );
-                return wiCodeInput?.focus() || arbplInput?.focus();
+                // tombol busy helper (pakai punyamu, pastikan setBusy sudah didefinisikan sebelum ini)
+                setBusy(true);
+
+                try {
+                    // panggil API WI dengan input nik
+                    const js = await fetchWiDocs({ nik: pernr });
+
+                    const wiCodes = extractWiCodesFromDocGet(js);
+
+                    if (!wiCodes.length) {
+                        showError(
+                            "Tidak ada WI",
+                            `Tidak ditemukan WI untuk NIK ${pernr}.`
+                        );
+                        return;
+                    }
+
+                    // redirect ke halaman detail (WI mode multi)
+                    const to = new URL(form.action, location.origin);
+                    to.searchParams.set("pernr", pernr);
+                    to.searchParams.set("wi_codes", wiCodes.join(","));
+                    to.searchParams.set("wi_code", wiCodes[0]); // optional backward compat
+                    location.href = to.toString();
+                    return;
+                } catch (err) {
+                    showError(
+                        "Gagal mengambil WI dari NIK",
+                        err?.message || "Terjadi kesalahan saat mengambil WI."
+                    );
+                    return;
+                } finally {
+                    setBusy(false);
+                }
             }
 
             // Validasi Plant–WC hanya untuk mode SAP (bukan WI)
@@ -386,22 +519,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // ⬇️ Pastikan setBusy menemukan tombol baru (id="submitBtn")
-            const submitBtn =
-                document.getElementById("submitBtn") ||
-                form.querySelector('button[type="submit"], button:not([type])');
-            const setBusy = (b) => {
-                if (!submitBtn) return;
-                if (b) {
-                    submitBtn.dataset._txt = submitBtn.innerHTML;
-                    submitBtn.innerHTML = "Memeriksa data...";
-                    submitBtn.disabled = true;
-                } else {
-                    submitBtn.innerHTML =
-                        submitBtn.dataset._txt || "Kirim Data";
-                    submitBtn.disabled = false;
-                }
-            };
             // =======================
             // MODE WI (tanpa sync SAP)
             // =======================

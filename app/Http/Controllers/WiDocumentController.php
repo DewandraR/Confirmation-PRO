@@ -10,169 +10,262 @@ class WiDocumentController extends Controller
 {
     public function materialFromWi(Request $request)
     {
-        // NIK sekarang wajib
-        $pernr = trim((string) $request->query('pernr', ''));
-        if ($pernr === '') {
-            return response()->json(['error' => 'pernr (NIK) wajib diisi'], 422);
-        }
+        // ✅ Ambil NIK dari body JSON ATAU query (biar kompatibel GET/POST)
+        $nik = trim((string)($request->input('nik') ?? $request->query('nik', '')));
 
-        // Bisa dapat:
-        // - wi_code=WIH0000001
-        // - wi_codes=WIH0000001,WIH0000002
-        // - wi_code[]=WIH0000001&wi_code[]=WIH0000002
-        $rawSingle = $request->query('wi_code');
-        $rawMany   = $request->query('wi_codes');
+        // Ambil WI dari body JSON / query:
+        $rawSingleIn = $request->input('wi_code', null);
+        $rawManyIn   = $request->input('wi_codes', null);
+
+        $rawSingleQ  = $request->query('wi_code', null);
+        $rawManyQ    = $request->query('wi_codes', null);
+
+        $rawSingle = $rawSingleIn ?? $rawSingleQ;
+        $rawMany   = $rawManyIn   ?? $rawManyQ;
 
         $codes = [];
 
         if (is_array($rawSingle)) {
-            // kasus wi_code[]=...
             $codes = $rawSingle;
         } elseif (is_string($rawMany) && $rawMany !== '') {
-            // wi_codes=WIH0000001,WIH0000002 atau dipisah spasi
             $codes = preg_split('/[,\s;]+/', $rawMany, -1, PREG_SPLIT_NO_EMPTY);
         } elseif (is_string($rawSingle) && $rawSingle !== '') {
-            // fallback: single wi_code=...
             $codes = [$rawSingle];
         }
 
-        // bersihkan
         $codes = array_values(array_unique(array_filter(array_map('trim', $codes))));
-        if (empty($codes)) {
-            return response()->json(['error' => 'wi_code atau wi_codes wajib diisi'], 422);
+
+        // ✅ Validasi: minimal salah satu ada (nik atau wi_code(s))
+        if ($nik === '' && empty($codes)) {
+            return response()->json(['error' => 'nik atau wi_code/wi_codes wajib diisi'], 422);
         }
 
-        $baseUrl = config('services.wi_api.base_url');
+        $baseUrl = config('services.wi_api.base_url'); // https://cohv.kmifilebox.com/api
         $token   = config('services.wi_api.token');
 
         $rows   = [];
         $errors = [];
 
-        foreach ($codes as $code) {
+        // helper untuk normalisasi & push rows (dengan filter nik defensif)
+        $pushRows = function(array $docs) use (&$rows, $nik) {
+            foreach ($docs as $doc) {
+                $plantCode = $doc['plant_code'] ?? null;
+
+                $docDate = isset($doc['document_date'])
+                    ? Carbon::parse($doc['document_date'])->format('Y-m-d')
+                    : null;
+
+                $expDate = isset($doc['expired_at'])
+                    ? Carbon::parse($doc['expired_at'])->format('Y-m-d')
+                    : null;
+
+                foreach ($doc['pro_items'] ?? [] as $item) {
+
+                    // ✅ kalau nik dikirim, tampilkan item yg nik-nya sama saja
+                    if ($nik !== '') {
+                        $itemNik = (string)($item['nik'] ?? '');
+                        if ($itemNik !== $nik) continue;
+                    }
+
+                    $qtyOrder  = (float)($item['assigned_qty']  ?? 0);
+                    $confirmed = (float)($item['confirmed_qty'] ?? 0);
+
+                    $matNumber = $item['material_number'] ?? null;
+                    if (is_string($matNumber) && ctype_digit($matNumber)) {
+                        $matNumber = ltrim($matNumber, '0');
+                    }
+
+                    $rows[] = [
+                        'AUFNR'   => $item['aufnr'] ?? null,
+                        'VORNR'   => $item['vornr'] ?? null,
+                        'PERNR'   => $item['nik']   ?? null,
+                        'SNAME'   => $item['name']  ?? null,
+                        'MEINH'   => $item['uom']   ?? 'ST',
+
+                        'QTY_SPK' => $qtyOrder,
+                        'QTY_SPX' => $qtyOrder,
+                        'WEMNG'   => $confirmed,
+
+                        'MAKTX0'  => $item['material_desc'] ?? null,
+                        'MAKTX'   => $item['material_desc'] ?? null,
+                        'MATNRX'  => $matNumber,
+
+                        'DISPO'   => $item['dispo'] ?? null,
+                        'STEUS'   => $item['steus'] ?? null,
+
+                        'KDAUF'   => $item['kdauf'] ?? null,
+                        'KDPOS'   => $item['kdpos'] ?? null,
+
+                        'ARBPL0'  => $item['workcenter_induk'] ?? null,
+                        'WERKS'   => $plantCode,
+
+                        'SSAVD'   => $docDate,
+                        'SSSLD'   => $expDate,
+                        'GSTRP'   => $docDate,
+                        'GLTRP'   => $expDate,
+
+                        'LTIMEX'  => $item['calculated_tak_time'] ?? null,
+                        'WI_CODE' => $doc['wi_code'] ?? null,
+                    ];
+                }
+            }
+        };
+
+        // ============================
+        // ✅ MODE BARU: nik-only
+        // ============================
+        if ($nik !== '' && empty($codes)) {
             $response = Http::withHeaders([
                 'Accept'        => 'application/json',
                 'Authorization' => 'Bearer ' . $token,
             ])->post($baseUrl . '/wi/document/get', [
-                'wi_code' => $code,
+                'nik' => $nik,
             ]);
 
             if (!$response->ok()) {
-                $errors[] = [
-                    'wi_code'     => $code,
-                    'http_status' => $response->status(),
-                    'body'        => $response->json(),
-                ];
-                continue;
+                return response()->json([
+                    'error' => 'Gagal mengambil WI by NIK',
+                    'details' => [
+                        'http_status' => $response->status(),
+                        'body' => $response->json(),
+                    ]
+                ], 502);
             }
 
             $data = $response->json();
 
             if (($data['status'] ?? null) !== 'success') {
-                $errors[] = [
-                    'wi_code'     => $code,
-                    'http_status' => $response->status(),
-                    'body'        => $data,
-                ];
-                continue;
+                return response()->json([
+                    'error' => 'Response WI API tidak success',
+                    'details' => $data
+                ], 502);
             }
 
-            $doc = $data['wi_document'] ?? null;
-            if (!$doc) {
-                $errors[] = [
-                    'wi_code'     => $code,
-                    'http_status' => $response->status(),
-                    'body'        => $data,
-                ];
-                continue;
+            $docs = $data['wi_documents'] ?? (isset($data['wi_document']) ? [$data['wi_document']] : []);
+            if (empty($docs)) {
+                return response()->json([
+                    'error' => "Tidak ada WI untuk NIK $nik",
+                ], 404);
             }
 
-            $plantCode = $doc['plant_code'] ?? null;
+            // ambil daftar kode WI dari docs
+            $codes = array_values(array_unique(array_filter(array_map(fn($d) => trim((string)($d['wi_code'] ?? '')), $docs))));
 
-            $docDate = isset($doc['document_date'])
-                ? Carbon::parse($doc['document_date'])->format('Y-m-d')
-                : null;
+            // push rows (akan tetap terfilter nik karena filter di $pushRows)
+            $pushRows($docs);
+        }
 
-            $expDate = isset($doc['expired_at'])
-                ? Carbon::parse($doc['expired_at'])->format('Y-m-d')
-                : null;
+        // ============================
+        // MODE LAMA: wi_code(s)
+        // ============================
+        if (!empty($codes)) {
+            foreach ($codes as $code) {
+                $body = ['wi_code' => $code];
+                if ($nik !== '') $body['nik'] = $nik; // ✅ opsional: supaya backend ikut filter
 
-            foreach ($doc['pro_items'] ?? [] as $item) {
-                // FILTER: hanya data untuk NIK yang login
-                if (($item['nik'] ?? null) !== $pernr) {
+                $response = Http::withHeaders([
+                    'Accept'        => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])->post($baseUrl . '/wi/document/get', $body);
+
+                if (!$response->ok()) {
+                    $errors[] = [
+                        'wi_code'     => $code,
+                        'http_status' => $response->status(),
+                        'body'        => $response->json(),
+                    ];
                     continue;
                 }
 
-                $qtyOrder  = (float)($item['assigned_qty']  ?? 0);
-                $confirmed = (float)($item['confirmed_qty'] ?? 0);
+                $data = $response->json();
 
-                // material_number tanpa leading zero
-                $matNumber = $item['material_number'] ?? null;
-                if ($matNumber !== null) {
-                    $matNumber = ltrim($matNumber, '0');
+                if (($data['status'] ?? null) !== 'success') {
+                    $errors[] = [
+                        'wi_code'     => $code,
+                        'http_status' => $response->status(),
+                        'body'        => $data,
+                    ];
+                    continue;
                 }
 
-                $rows[] = [
-                    // === field yang dipakai untuk konfirmasi ===
-                    'AUFNR'  => $item['aufnr'] ?? null,   // IV_AUFNR
-                    'VORNR'  => $item['vornr'] ?? null,   // IV_VORNR
-                    'PERNR'  => $item['nik']   ?? null,   // IV_PERNR (NIK)
-                    'SNAME'  => $item['name']  ?? null,   // Nama Operator
-                    'MEINH'  => $item['uom']   ?? 'ST',   // IV_MEINH
+                $docs = $data['wi_documents'] ?? (isset($data['wi_document']) ? [$data['wi_document']] : []);
+                if (empty($docs)) {
+                    $errors[] = [
+                        'wi_code'     => $code,
+                        'http_status' => $response->status(),
+                        'body'        => $data,
+                    ];
+                    continue;
+                }
 
-                    // Qty PRO & stok
-                    'QTY_SPK' => $qtyOrder,              // Qty PRO (untuk batas)
-                    'QTY_SPX' => $qtyOrder,
-                    'WEMNG'   => $confirmed,
-
-                    // Deskripsi material
-                    'MAKTX0' => $item['material_desc'] ?? null,
-                    'MAKTX'  => $item['material_desc'] ?? null,
-                    'MATNRX' => $matNumber,
-
-                    // MRP & Control Key
-                    'DISPO'  => $item['dispo'] ?? null,
-                    'STEUS'  => $item['steus'] ?? null,
-
-                    // Sales Order / Item
-                    'KDAUF'  => $item['kdauf'] ?? null,
-                    'KDPOS'  => $item['kdpos'] ?? null,
-
-                    // Work Center & Plant
-                    'ARBPL0' => $item['workcenter_induk'] ?? null,
-                    'WERKS'  => $plantCode,
-
-                    // Start / Finish (plan) → boleh dipakai sebagai referensi,
-                    // tapi untuk konfirmasi kita tetap pakai BUDAT = hari ini
-                    'SSAVD'  => $docDate,
-                    'SSSLD'  => $expDate,
-                    'GSTRP'  => $docDate,
-                    'GLTRP'  => $expDate,
-
-                    // Tak time (menit)
-                    'LTIMEX' => $item['calculated_tak_time'] ?? null,
-
-                    // optional: simpan kode WI sumber (buat info di FE kalau mau)
-                    'WI_CODE' => $doc['wi_code'] ?? $code,
-                ];
+                $pushRows($docs);
             }
         }
 
         if (empty($rows)) {
-            // tidak ada baris untuk NIK ini dari semua WI
             return response()->json([
-                'error'   => 'Tidak ada data PRO untuk NIK ini dari kode WI yang diberikan.',
+                'error'   => 'Tidak ada data PRO/WI untuk input yang diberikan.',
                 'details' => $errors,
             ], 404);
         }
 
+        // ✅ Tambahkan wi_codes supaya FE gampang bikin header "MULTI WI (...)"
         return response()->json([
-            'T_DATA1'  => $rows,
-            // opsional, kalau mau di-debug di FE
-            'WI_META' => [
+            'T_DATA1'   => $rows,
+            'wi_codes'  => $codes,           // <--- ini yang paling enak buat FE
+            'WI_META'   => [
+                'nik'    => $nik,
                 'codes'  => $codes,
                 'errors' => $errors,
             ],
         ]);
     }
+    public function getByNik(Request $request)
+    {
+        $nik = trim((string)($request->input('nik') ?? $request->query('nik', '')));
+        if ($nik === '') {
+            return response()->json(['status' => 'error', 'message' => 'nik wajib diisi'], 422);
+        }
 
+        $baseUrl = config('services.wi_api.base_url'); // contoh: https://cohv.kmifilebox.com/api
+        $token   = config('services.wi_api.token');
+
+        $response = Http::withHeaders([
+            'Accept'        => 'application/json',
+            'Authorization' => 'Bearer ' . $token,
+        ])->timeout(30)->post($baseUrl . '/wi/document/get', [
+            'nik' => $nik,
+        ]);
+
+        if (!$response->ok()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'WI API error',
+                'details' => $response->json(),
+            ], $response->status());
+        }
+
+        $data = $response->json();
+
+        if (($data['status'] ?? null) !== 'success') {
+            return response()->json([
+                'status' => 'error',
+                'message' => $data['message'] ?? 'WI API tidak sukses',
+                'details' => $data,
+            ], 422);
+        }
+
+        $docs = $data['wi_documents'] ?? [];
+        $codes = array_values(array_unique(array_filter(array_map(
+            fn($d) => $d['wi_code'] ?? null,
+            $docs
+        ))));
+
+        return response()->json([
+            'status' => 'success',
+            'nik' => $nik,
+            'wi_codes' => $codes,
+            'wi_documents' => $docs, // optional kalau FE butuh meta
+        ]);
+    }
 }
