@@ -135,244 +135,302 @@
 
                 {{-- Isi form input data --}}
                 <div class="p-5">
-                    <form id="main-form" class="space-y-4" action="{{ route('detail') }}" method="get"
-                        data-timeout-ms="2400000">
+                    <form id="main-form" class="space-y-5" action="{{ route('detail') }}" method="get" data-timeout-ms="2400000">
 
-                        <!-- Work Center & Plant (match PRO style) -->
-                        <div class="space-y-2">
-                            <div class="flex items-center gap-2 ios-nowrap-row">
-                                <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                                    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
+    {{-- ===================== --}}
+    {{-- SECTION 1: DATA PRODUKSI --}}
+    {{-- ===================== --}}
+    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex w-9 h-9 items-center justify-center rounded-2xl bg-emerald-600/10 text-emerald-700">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 3h6v2H9V3Zm10 5H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z"/>
+                    </svg>
+                </span>
+                <div class="min-w-0">
+                    <div class="text-sm font-semibold text-slate-800 leading-tight">Data Produksi</div>
+                    <div class="text-[11px] text-slate-500 leading-tight">
+                        Isi salah satu: <b>Work Center & Plant</b> atau <b>PRO</b>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                                <!-- wadah teks boleh mengecil -->
-                                <div class="min-w-0 flex items-center gap-2">
-                                    <label class="text-xs font-medium text-slate-700 truncate">Work Center &amp;
-                                        Plant</label>
-                                    <span
-                                        class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0 whitespace-nowrap">Optional</span>
-                                </div>
+        {{-- Work Center & Plant --}}
+        <div class="space-y-2">
+            <div class="flex items-center gap-2 ios-nowrap-row">
+                <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
+                    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
 
-                                <!-- tombol kanan dibatasi di layar kecil -->
-                                <button type="button" id="openBackdateHistory"
-                                    class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
-                 bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
-                 hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition
-                 max-w-[50%] sm:max-w-none overflow-hidden text-ellipsis whitespace-nowrap justify-center"
-                                    title="Lihat histori backdate">
-                                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                        fill="currentColor">
-                                        <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z" />
-                                    </svg>
-                                    Histori Backdate
-                                </button>
-                            </div>
+                <div class="min-w-0 flex items-center gap-2">
+                    <label class="text-xs font-medium text-slate-700 truncate">Work Center &amp; Plant</label>
+                    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0 whitespace-nowrap">
+                        Optional
+                    </span>
+                </div>
 
+                <button type="button" id="openBackdateHistory"
+                    class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                    bg-gradient-to-r from-green-600 to-blue-900 text-white shadow
+                    hover:from-green-700 hover:to-blue-900 active:scale-[0.98] transition
+                    max-w-[50%] sm:max-w-none overflow-hidden text-ellipsis whitespace-nowrap justify-center"
+                    title="Lihat histori backdate">
+                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    Histori Backdate
+                </button>
+            </div>
 
-                            <div class="relative group">
-                                <!-- Shell: border abu-abu solid saat tidak fokus -->
-                                <div
-                                    class="w-full rounded-xl shadow-sm border-2 border-gray-300
-                group-focus-within:border-emerald-500
-                group-hover:border-gray-400 transition-colors duration-200
-                px-3 py-1.5 flex items-center gap-2 flex-wrap">
-
-                                    <!-- ikon kiri -->
-                                    <div class="flex-shrink-0">
-                                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-                                            </svg>
-                                        </div>
-                                    </div>
-
-                                    <!-- input WC -->
-                                    <input id="IV_ARBPL" name="arbpl"
-                                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                                        placeholder="Masukkan atau pindai QR Work Center" />
-
-                                    <!-- select Plant: transparan agar menyatu di shell -->
-                                    <div class="relative flex items-center shrink-0">
-                                        <select id="IV_WERKS" name="werks"
-                                            class="bg-transparent outline-none text-xs font-medium text-slate-700
-                       appearance-none pr-6 text-right">
-                                            <option value="">Pilih Plant</option>
-                                            <option value="1000">1000</option>
-                                            <option value="1001">1001</option>
-                                            <option value="1200">1200</option>
-                                            <option value="2000">2000</option>
-                                            <option value="3000">3000</option>
-                                        </select>
-                                        <!-- caret custom -->
-                                        <svg class="w-4 h-4 text-emerald-600 pointer-events-none absolute right-0 top-1/2 -translate-y-1/2"
-                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M7 10l5 5 5-5H7z" />
-                                        </svg>
-                                    </div>
-                                    <!-- tombol kamera: sama gradient dengan PRO -->
-                                    <button type="button" id="openQrScanner"
-                                        class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
-                     hover:from-green-700 hover:to-blue-900 transition-all duration-200
-                     shadow-md hover:shadow-lg hover:scale-105"
-                                        title="Buka QR Scanner">
-                                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+            <div class="relative group">
+                <div class="w-full rounded-xl shadow-sm border-2 border-gray-300
+                    group-focus-within:border-emerald-500 group-hover:border-gray-400 transition-colors duration-200
+                    px-3 py-1.5 flex items-center gap-2 flex-wrap bg-white">
+                    <div class="flex-shrink-0">
+                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+                            </svg>
                         </div>
+                    </div>
 
-                        <div class="flex items-center text-center">
-                            <div class="flex-grow border-t border-slate-200"></div>
-                            <span class="flex-shrink mx-4 text-xs text-slate-400 font-medium">ATAU</span>
-                            <div class="flex-grow border-t border-slate-200"></div>
+                    <input id="IV_ARBPL" name="arbpl"
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        placeholder="Masukkan atau pindai QR Work Center" />
+
+                    <div class="relative flex items-center shrink-0">
+                        <select id="IV_WERKS" name="werks"
+                            class="bg-transparent outline-none text-xs font-medium text-slate-700 appearance-none pr-6 text-right">
+                            <option value="">Pilih Plant</option>
+                            <option value="1000">1000</option>
+                            <option value="1001">1001</option>
+                            <option value="1200">1200</option>
+                            <option value="2000">2000</option>
+                            <option value="3000">3000</option>
+                        </select>
+                        <svg class="w-4 h-4 text-emerald-600 pointer-events-none absolute right-0 top-1/2 -translate-y-1/2"
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 10l5 5 5-5H7z" />
+                        </svg>
+                    </div>
+
+                    <button type="button" id="openQrScanner"
+                        class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
+                        hover:from-green-700 hover:to-blue-900 transition-all duration-200
+                        shadow-md hover:shadow-lg hover:scale-105"
+                        title="Buka QR Scanner">
+                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Divider "ATAU" --}}
+        <div class="my-4 flex items-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="mx-4 text-[11px] text-slate-400 font-semibold tracking-wide">ATAU</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        {{-- PRO --}}
+        <div class="space-y-2">
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
+                    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
+                    </svg>
+                </div>
+
+                <label class="text-xs font-medium text-slate-700">PRO</label>
+                <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
+
+                <button type="button" id="openHasilKonfirmasi"
+                    class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                    bg-gradient-to-r from-emerald-600 to-blue-900 text-white shadow
+                    hover:from-emerald-700 hover:to-blue-900 active:scale-[0.98] transition min-w-[140px] justify-center"
+                    title="Lihat hasil konfirmasi">
+                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    Hasil Konfirmasi
+                </button>
+            </div>
+
+            <div class="relative group">
+                <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200
+                    group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors
+                    px-3 py-1.5 flex items-center gap-2 flex-wrap">
+                    <div class="flex-shrink-0">
+                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
                         </div>
+                    </div>
 
-                        <div class="space-y-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <div class="w-5 h-5 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
-                                    <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
-                                    </svg>
-                                </div>
-                                <label class="text-xs font-medium text-slate-700">PRO</label>
-                                <span
-                                    class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">Optional</span>
+                    <input id="IV_AUFNR" name="aufnr"
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        placeholder="Masukkan atau pindai barcode PRO" />
 
-                                {{-- ⬇️ Tombol Hasil Konfirmasi (baru) --}}
-                                <button type="button" id="openHasilKonfirmasi"
-                                    class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
-                             bg-gradient-to-r from-emerald-600 to-blue-900 text-white shadow
-                             hover:from-emerald-700 hover:to-blue-900 active:scale-[0.98] transition min-w-[140px] justify-center"
-                                    title="Lihat hasil konfirmasi">
-                                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                        fill="currentColor">
-                                        <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
-                                    </svg>
-                                    Hasil Konfirmasi
-                                </button>
-                            </div>
-                            <div class="relative group">
-                                <div
-                                    class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2 flex-wrap">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <input id="IV_AUFNR" name="aufnr"
-                                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                                        placeholder="Masukkan atau pindai barcode PRO" />
-                                    <button type="button" id="openScanner"
-                                        class="shrink-0 group p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900 hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
-                                        title="Buka kamera">
-                                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24" fill="currentColor">
-                                            <path
-                                                d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+                    <button type="button" id="openScanner"
+                        class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
+                        hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md
+                        hover:shadow-lg hover:scale-105"
+                        title="Buka kamera">
+                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M9 2a1 1 0 0 0-.894.553L7.382 4H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-2.382l-.724-1.447A1 1 0 0 0 14 2H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- list PRO multiple (tetap) --}}
+            <div id="aufnr-list-container" class="space-y-1"></div>
+        </div>
+    </div>
+
+
+    {{-- ===================== --}}
+    {{-- SECTION 2: DOKUMEN WI --}}
+    {{-- ===================== --}}
+    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50/80 to-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex w-9 h-9 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-700">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V8h4.5L14 3.5Z"/>
+                    </svg>
+                </span>
+                <div class="min-w-0">
+                    <div class="text-sm font-semibold text-slate-800 leading-tight">Kode Dokumen WI</div>
+                    <div class="text-[11px] text-slate-500 leading-tight">
+                        Bisa lebih dari satu (pisah spasi/koma). Tekan <b>Enter</b> untuk menambah chip.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <div class="relative group space-y-1">
+                <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200
+                    group-focus-within:border-blue-500 group-hover:border-slate-300 transition-colors
+                    px-3 py-1.5 flex items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                         </div>
+                    </div>
 
-                        <div id="aufnr-list-container" class="space-y-1"></div>
+                    <input id="wi_code" name="wi_code"
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        placeholder="Ketik WI lalu Enter (contoh: WI12345, WI67890)" />
+                </div>
 
-                        <div class="space-y-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <div class="w-5 h-5 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
-                                    <svg class="w-3 h-3 text-yellow-800" xmlns="http://www.w3.org/2000/svg"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-                                <label class="text-xs font-medium text-slate-700">NIK Operator</label>
-                                <span
-                                    class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
-                            </div>
-                            <div class="relative group">
-                                <div
-                                    class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-green-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <input id="IV_PERNR" name="pernr"
-                                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                                        placeholder="Masukkan NIK Operator" />
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <div class="w-5 h-5 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                                        <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                    </div>
-                                    <label class="text-xs font-medium text-slate-700">Kode Dokumen WI</label>
-                                    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full shrink-0">
-                                        Bisa lebih dari satu
-                                    </span>
-                                </div>
+                {{-- daftar chip WI --}}
+                <div id="wi-list-container" class="flex flex-wrap gap-1 pt-1"></div>
 
-                                <div class="relative group space-y-1">
-                                    <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200 group-focus-within:border-blue-500 group-hover:border-slate-300 transition-colors px-3 py-1.5 flex items-center gap-2">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-                                                <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <input id="wi_code" name="wi_code"
-                                            class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                                            placeholder="Ketik WI lalu Enter (bisa banyak, pisah spasi/koma)" />
-                                    </div>
+                <div class="text-[11px] text-slate-500">
+                    <span class="font-semibold text-blue-700">Hint:</span>
+                    Kalau ada PRO yang butuh WI, kamu bisa copy dari detail monitor dan tempel di sini.
+                </div>
+            </div>
+        </div>
+    </div>
 
-                                    {{-- daftar kode WI yang sudah ditambah (chip) --}}
-                                    <div id="wi-list-container" class="flex flex-wrap gap-1"></div>
-                                </div>
-                            </div>
+
+    {{-- ===================== --}}
+    {{-- SECTION 3: IDENTITAS OPERATOR --}}
+    {{-- ===================== --}}
+    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-amber-50/80 to-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex w-9 h-9 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4.5A1.5 1.5 0 0 0 6.5 20h11A1.5 1.5 0 0 0 19 18.5C19 16 16 14 12 14Z"/>
+                    </svg>
+                </span>
+                <div class="min-w-0">
+                    <div class="text-sm font-semibold text-slate-800 leading-tight">Identitas Operator</div>
+                    <div class="text-[11px] text-slate-500 leading-tight">Wajib diisi sebelum kirim data.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <div class="flex items-center gap-2 flex-wrap">
+                <label class="text-xs font-medium text-slate-700">NIK Operator</label>
+                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full shrink-0">Required</span>
+            </div>
+
+            <div class="relative group">
+                <div class="w-full bg-white rounded-xl shadow-sm border-2 border-slate-200
+                    group-focus-within:border-amber-500 group-hover:border-slate-300 transition-colors
+                    px-3 py-1.5 flex items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-3 h-3 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" />
+                            </svg>
                         </div>
+                    </div>
 
-                        <div class="pt-3">
-                            {{-- ⬇️ Ubah: type="button" + id="submitBtn" agar tidak auto-submit saat Enter --}}
-                            <button type="button" id="submitBtn"
-                                class="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-green-700 to-blue-900 hover:from-green-800 hover:to-blue-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                                <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                                Kirim Data
-                            </button>
-                        </div>
-                    </form>
+                    <input id="IV_PERNR" name="pernr"
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        placeholder="Masukkan NIK Operator" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {{-- SUBMIT --}}
+    <div class="pt-1">
+        <button type="button" id="submitBtn"
+            class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-green-700 to-blue-900
+            hover:from-green-800 hover:to-blue-900 text-white font-semibold text-sm
+            shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.98]
+            flex items-center justify-center gap-2">
+            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            Kirim Data
+        </button>
+
+        <div class="mt-2 text-[11px] text-slate-500 text-center">
+            Pastikan <b>NIK Operator</b> terisi. (Work Center/Plant atau PRO boleh salah satu)
+        </div>
+    </div>
+</form>
                 </div>
             </div>
 
