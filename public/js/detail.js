@@ -1,7 +1,10 @@
 /* public/js/detail.js */
 "use strict";
 
-// --- CSRF dari <meta>, tanpa fallback Blade ---
+/* =========================
+   GLOBALS / META
+   ========================= */
+
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
 function getCurrentSapUser() {
@@ -17,26 +20,29 @@ const LOCK_BUDAT_USERS = [
     /*"KMI-U138", "KMI-U124"*/
 ];
 
+// elemen global (dipakai helper di luar DOMContentLoaded)
+let errorCopyWiButtonEl = null;
+
 /* =======================
-   TIMEOUT HELPERS (NEW)
+   TIMEOUT HELPERS
    ======================= */
 function getClientTimeoutMs() {
     const m = document.querySelector('meta[name="client-timeout-ms"]');
     return m && /^\d+$/.test(m.content) ? parseInt(m.content, 10) : 240000; // default 240s
 }
+
 async function fetchWithTimeout(url, init = {}) {
     const ctl = new AbortController();
     const ms = getClientTimeoutMs();
     const t = setTimeout(() => ctl.abort(), ms);
     try {
-        const res = await fetch(url, { ...init, signal: ctl.signal });
-        return res;
+        return await fetch(url, { ...init, signal: ctl.signal });
     } finally {
         clearTimeout(t);
     }
 }
 
-// --- Helper request POST JSON (UPDATED: with timeout) ---
+// Helper request POST JSON (with timeout)
 function apiPost(url, payload) {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), getClientTimeoutMs());
@@ -54,21 +60,39 @@ function apiPost(url, payload) {
     }).finally(() => clearTimeout(t));
 }
 
-// ===== Helpers umum =====
+async function safeJson(res) {
+    try {
+        return await res.json();
+    } catch {
+        return {};
+    }
+}
+
+/* =========================
+   HELPERS UMUM
+   ========================= */
+
 const nz = (v) => {
     const s = (v ?? "").toString().trim();
     return s === "" || s === "-" ? null : s;
 };
 
+const normNik = (v) =>
+    String(v || "")
+        .trim()
+        .replace(/^0+/, "");
+
 const padVornr = (v) => String(parseInt(v || "0", 10)).padStart(4, "0");
-// NEW: pad item SO ke 6 digit
+
+// pad item SO ke 6 digit
 const padKdpos = (v) => {
     const n = String(v ?? "").trim();
     if (!n) return "";
     const x = parseInt(n, 10);
     return Number.isFinite(x) ? String(x).padStart(6, "0") : n.padStart(6, "0");
 };
-// NEW: tampilkan tanpa leading zero (front-end only)
+
+// tampilkan tanpa leading zero (front-end only)
 function stripLeadingZeros(val) {
     const s = String(val ?? "").trim();
     const t = s.replace(/^0+/, "");
@@ -110,7 +134,7 @@ const fmtDateTime = (iso) => {
     }
 };
 
-// NEW: format menit (angka) → up to 3 desimal, hilangkan nol di akhir
+// format menit (angka) → up to 3 desimal, hilangkan nol di akhir
 function fmtMinutes(v) {
     if (v === null || v === undefined || v === "") return "-";
     const n = parseFloat(String(v).replace(",", "."));
@@ -122,10 +146,12 @@ const ymdToDmy = (ymd) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || "").trim());
     return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
 };
+
 const dmyToYmd = (dmy) => {
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dmy || "").trim());
     return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 };
+
 const isFutureYmd = (ymd) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ""));
     if (!m) return false;
@@ -155,6 +181,10 @@ function getUnitName(unit) {
     }
 }
 
+/* =========================
+   SAP RETURN NORMALIZER
+   ========================= */
+
 function collectSapReturnEntries(ret) {
     const entries = [];
     if (!ret || typeof ret !== "object") return entries;
@@ -183,12 +213,13 @@ function collectSapReturnEntries(ret) {
     }
     return entries;
 }
+
 const hasSapError = (ret) =>
     collectSapReturnEntries(ret).some((e) =>
         ["E", "A"].includes(String(e?.TYPE || "").toUpperCase())
     );
 
-// === NEW: normalisasi pesan error server (hindari "0") + handle 423 ===
+// normalisasi pesan error server (hindari "0") + handle 423
 function mapServerErrorMessage(result) {
     const status = result?.status || 0;
     const j = result?.json || {};
@@ -205,40 +236,38 @@ function mapServerErrorMessage(result) {
         "";
 
     if (status === 423) {
-        // backend per-AUFNR lock
         msg = j.error || "Sedang diproses oleh user lain. Coba lagi sebentar.";
     }
     if (!msg || /^\s*0\s*$/.test(String(msg))) {
         msg =
-            status >= 500
-                ? "Kesalahan server. Coba lagi."
-                : "Gagal dikonfirmasi.";
+            status >= 500 ? "Kesalahan server. Coba lagi." : "Gagal diproses.";
     }
     return msg;
 }
 
-// === Helper: deteksi kode WI dari pesan error & setup tombol copy ===
+// deteksi kode WI dari pesan error & setup tombol copy
 function extractWiCodeFromMessage(msg) {
     if (!msg) return null;
-    // cari pola: kode WI "WIH0000002"
     const m = msg.match(/kode WI\s*"([^"]+)"/i);
     return m ? m[1] : null;
 }
 
 function prepareWiCopy(msg) {
-    if (!errorCopyWiButton) return;
+    if (!errorCopyWiButtonEl) return;
 
     const wiCode = extractWiCodeFromMessage(msg);
     if (wiCode) {
-        errorCopyWiButton.dataset.wiCode = wiCode;
-        errorCopyWiButton.classList.remove("hidden");
+        errorCopyWiButtonEl.dataset.wiCode = wiCode;
+        errorCopyWiButtonEl.classList.remove("hidden");
     } else {
-        errorCopyWiButton.dataset.wiCode = "";
-        errorCopyWiButton.classList.add("hidden");
+        errorCopyWiButtonEl.dataset.wiCode = "";
+        errorCopyWiButtonEl.classList.add("hidden");
     }
 }
 
-// Tangkap error global
+/* =========================
+   GLOBAL ERROR TRAP
+   ========================= */
 window.onerror = function (msg, src, line, col) {
     const em = document.getElementById("error-message");
     const mm = document.getElementById("error-modal");
@@ -249,17 +278,18 @@ window.onerror = function (msg, src, line, col) {
     console.error(msg, src, line, col);
 };
 
+/* =========================
+   MAIN
+   ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
     const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
 
-    // --- URL params ---
+    /* ---------- URL Params ---------- */
     const p = new URLSearchParams(location.search);
     const rawList = p.get("aufnrs") || "";
     const single = p.get("aufnr") || "";
 
-    // ==== MULTI WI SUPPORT ====
-    // Prioritaskan wi_codes (format baru: "WIH0000002,WIH0000001")
-    // Kalau tidak ada, baru cek kemungkinan ?wi_code=... berulang
+    // MULTI WI SUPPORT
     const wiRaw =
         p.get("wi_codes") || // format baru: wi_codes=code1,code2
         (p.getAll("wi_code") || []).join(" ") || // format lama: ?wi_code=a&wi_code=b
@@ -271,15 +301,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
-    // untuk kompatibel dengan kode lama yang pakai WI_CODE tunggal
-    const WI_CODE = WI_CODES[0] || "";
-    // ==========================
+    const WI_CODE = WI_CODES[0] || ""; // kompatibel lama
 
     const IV_PERNR = (p.get("pernr") || "").trim();
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
 
-    // ===== Helper URL /scan (tidak pakai Blade di file publik) =====
+    // MODE flags (PENTING: dideklarasikan sebelum dipakai)
+    const isWiMode = WI_CODES.length > 0;
+
+    const isWCMode =
+        rawList.trim() === "" &&
+        single.trim() === "" &&
+        !!IV_ARBPL &&
+        !isWiMode;
+
+    /* ---------- Helper URL /scan ---------- */
     function buildScanUrl() {
         const baseScan =
             document.querySelector('meta[name="scan-url"]')?.content ||
@@ -300,6 +337,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (backLink) backLink.href = buildScanUrl();
     if (scanAgainLink) scanAgainLink.href = buildScanUrl();
 
+    /* ---------- Normalize AUFNR list ---------- */
     function ean13CheckDigit(d12) {
         let s = 0,
             t = 0;
@@ -327,7 +365,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ),
     ];
 
-    // --- Elemen UI ---
+    /* ---------- Elemen UI ---------- */
     const headAUFNR = document.getElementById("headAUFNR");
     const content = document.getElementById("content");
     const loading = document.getElementById("loading");
@@ -335,50 +373,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     const totalItems = document.getElementById("totalItems");
     const selectAll = document.getElementById("selectAll");
     const confirmButton = document.getElementById("confirm-button");
+    const remarkButton = document.getElementById("remark-button");
     const selectedCountSpan = document.getElementById("selected-count");
+
     const confirmModal = document.getElementById("confirm-modal");
-    const confirmationList = document.getElementById("confirmation-list");
+    const confirmationListEl = document.getElementById("confirmation-list");
     const yesButton = document.getElementById("yes-button");
     const cancelButton = document.getElementById("cancel-button");
+
     const errorModal = document.getElementById("error-modal");
     const errorMessage = document.getElementById("error-message");
     const errorOkButton = document.getElementById("error-ok-button");
-    const errorCopyWiButton = document.getElementById("error-copy-wi-button");
+    errorCopyWiButtonEl = document.getElementById("error-copy-wi-button");
+
     const warningModal = document.getElementById("warning-modal");
     const warningMessage = document.getElementById("warning-message");
     const warningList = document.getElementById("warning-list");
     const warningTitle = document.getElementById("warning-title");
     const warningHeader = document.getElementById("warning-header");
     const warningOkButton = document.getElementById("warning-ok-button");
+
     const successModal = document.getElementById("success-modal");
     const successList = document.getElementById("success-list");
     const successOkButton = document.getElementById("success-ok-button");
-    // Mode halaman: WC (pakai arbpl+werks+nik) vs PRO (pakai aufnr+nik)
-    const isWiMode = WI_CODES.length > 0;
-    const isWCMode = AUFNRS.length === 0 && !!IV_ARBPL && !isWiMode;
 
-    // WI mode sekarang wajib punya NIK (IV_PERNR dari query string)
+    // Tombol remark hanya WI mode
+    if (remarkButton) remarkButton.classList.toggle("hidden", !isWiMode);
+
+    /* ---------- WI mode: wajib NIK ---------- */
     if (isWiMode && !IV_PERNR) {
         const msg = "NIK wajib diisi untuk dokumen WI.";
-
         if (errorMessage) errorMessage.textContent = msg;
-
-        // pastikan tombol copy WI disembunyikan
         prepareWiCopy("");
-        if (errorCopyWiButton) {
-            errorCopyWiButton.dataset.wiCode = "";
-            errorCopyWiButton.classList.add("hidden");
-        }
 
         if (loading) loading.classList.add("hidden");
         if (content) content.classList.remove("hidden");
         if (errorModal) errorModal.classList.remove("hidden");
-
-        // stop script, jangan lanjut fetch data
         return;
     }
 
-    // BUDAT controls
+    /* ---------- BUDAT controls ---------- */
     const budatInput = document.getElementById("budat-input"); // hidden yyyy-mm-dd
     const budatInputText = document.getElementById("budat-input-text"); // visible dd/mm/yyyy
     const budatOpen = document.getElementById("budat-open");
@@ -390,30 +424,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, "0");
         const dd = String(today.getDate()).padStart(2, "0");
-        const ymd = `${yyyy}-${mm}-${dd}`; // yyyy-mm-dd
+        const ymd = `${yyyy}-${mm}-${dd}`;
 
-        // paksa hidden input ke hari ini & tidak bisa diubah
         if (budatInput) {
             budatInput.value = ymd;
             budatInput.setAttribute("max", ymd);
             budatInput.disabled = true;
         }
-
-        // paksa tampilan text ke hari ini & readonly
         if (budatInputText) {
-            budatInputText.value = `${dd}/${mm}/${yyyy}`; // dd/mm/yyyy
+            budatInputText.value = `${dd}/${mm}/${yyyy}`;
             budatInputText.readOnly = true;
             budatInputText.classList.add("bg-slate-100", "cursor-not-allowed");
         }
-
-        // matikan tombol picker kalender
         if (budatOpen) {
             budatOpen.disabled = true;
             budatOpen.classList.add("opacity-60", "cursor-not-allowed");
         }
     }
 
-    // Search controls
+    /* ---------- Search / Filter controls ---------- */
     const searchInput = document.getElementById("searchInput");
     const clearSearch = document.getElementById("clearSearch");
     const shownCountEl = document.getElementById("shownCount");
@@ -422,7 +451,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fltToday = document.getElementById("fltToday");
     const fltOutgoing = document.getElementById("fltOutgoing");
     const fltPeriod = document.getElementById("fltPeriod");
-    const fltAllDate = document.getElementById("fltAllDate"); // <-- NEW
+    const fltAllDate = document.getElementById("fltAllDate");
     const periodPicker = document.getElementById("periodPicker");
     const periodFrom = document.getElementById("periodFrom");
     const periodTo = document.getElementById("periodTo");
@@ -434,47 +463,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     fltPeriod?.classList.add("hidden");
     periodPicker?.classList.add("hidden");
 
-    // Header: PERNR/AUFNR/WC/WI
+    /* ---------- Header: PERNR/AUFNR/WC/WI ---------- */
     if (headAUFNR) {
         let headText = "-";
+        if (isWiMode) headText = WI_CODES.join(", ");
+        else if (AUFNRS.length > 0) headText = AUFNRS.join(", ");
+        else if (IV_ARBPL) headText = `WC: ${IV_ARBPL}`;
 
-        if (isWiMode) {
-            headText = WI_CODES.join(", "); // "WIH0000001, WIH0000002, ..."
-        } else if (AUFNRS.length > 0) {
-            headText = AUFNRS.join(", ");
-        } else if (IV_ARBPL) {
-            headText = `WC: ${IV_ARBPL}`;
-        }
-
-        if (IV_PERNR) {
-            headText = `${IV_PERNR} / ${headText}`;
-        }
-
+        if (IV_PERNR) headText = `${IV_PERNR} / ${headText}`;
         headAUFNR.textContent = headText.replace(/ \/ -$/, "");
     }
 
-    // === Flags untuk kontrol redirect setelah hasil konfirmasi ===
-    let pendingResetInput = null,
-        isWarningOpen = false;
-    let isResultWarning = false; // warning dari hasil konfirmasi (campuran)
-    let isResultError = false; // error dari hasil konfirmasi (semua gagal)
+    /* ---------- Flags ---------- */
+    let pendingResetInput = null;
+    let isWarningOpen = false;
+    let isResultWarning = false;
+    let isResultError = false;
 
-    // Sinkronisasi BUDAT text ↔ hidden
+    // untuk sukses modal: remark = stay, confirm = scan
+    let successAction = "scan"; // "scan" | "stay"
+
+    /* ---------- Warning helper ---------- */
     const warning = (msg) => {
-        // Warning validasi biasa (bukan hasil konfirmasi)
         isResultWarning = false;
-
-        warningTitle.textContent = "Peringatan";
-        warningHeader.className =
-            "bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200";
-        warningTitle.classList.remove("text-red-800");
-        warningTitle.classList.add("text-yellow-800");
-        warningMessage.innerHTML = msg;
-        warningMessage.classList.remove("hidden");
-        warningList.classList.add("hidden");
-        warningModal.classList.remove("hidden");
+        if (warningTitle) warningTitle.textContent = "Peringatan";
+        if (warningHeader) {
+            warningHeader.className =
+                "bg-gradient-to-r from-yellow-50 to-yellow-100 px-4 py-3 border-b border-yellow-200";
+        }
+        warningTitle?.classList.remove("text-red-800");
+        warningTitle?.classList.add("text-yellow-800");
+        if (warningMessage) {
+            warningMessage.innerHTML = msg;
+            warningMessage.classList.remove("hidden");
+        }
+        warningList?.classList.add("hidden");
+        warningModal?.classList.remove("hidden");
     };
+
     function syncTextToHidden() {
+        if (!budatInput || !budatInputText) return;
         const ymd = dmyToYmd(budatInputText.value);
         if (!ymd) {
             warning("Format tanggal harus dd/mm/yyyy.");
@@ -489,26 +517,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         budatInput.value = ymd;
     }
     function syncHiddenToText() {
+        if (!budatInput || !budatInputText) return;
         budatInputText.value = ymdToDmy(budatInput.value);
     }
-    budatInputText.addEventListener("blur", syncTextToHidden);
-    budatInputText.addEventListener("change", syncTextToHidden);
-    budatInput.addEventListener("change", syncHiddenToText);
+
+    budatInputText?.addEventListener("blur", syncTextToHidden);
+    budatInputText?.addEventListener("change", syncTextToHidden);
+    budatInput?.addEventListener("change", syncHiddenToText);
+
     budatOpen?.addEventListener("click", (e) => {
         e.preventDefault();
         try {
-            budatInput.showPicker && budatInput.showPicker();
+            budatInput?.showPicker && budatInput.showPicker();
         } catch {}
     });
+
     syncHiddenToText();
 
-    // --- Ambil data ---
-    let rowsAll = [],
-        failures = [];
+    /* =========================
+     FETCH DATA
+     ========================= */
+    let rowsAll = [];
+    let failures = [];
 
     try {
         if (isWiMode) {
-            // ===== MODE WI: support BANYAK kode WI =====
+            // MODE WI: support banyak kode WI
             const wiResults = await Promise.allSettled(
                 WI_CODES.map(async (code) => {
                     const url = `/api/wi/material?wi_code=${encodeURIComponent(
@@ -518,13 +552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const res = await fetchWithTimeout(url, {
                         headers: { Accept: "application/json" },
                     });
-
-                    let json;
-                    try {
-                        json = await res.json();
-                    } catch {
-                        json = {};
-                    }
+                    const json = await safeJson(res);
 
                     if (!res.ok) {
                         throw new Error(
@@ -534,24 +562,26 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }
 
                     const t = json.T_DATA1;
-                    return Array.isArray(t) ? t : t ? [t] : [];
+                    const arr = Array.isArray(t) ? t : t ? [t] : [];
+                    // pastikan WI_CODE ada per row
+                    return arr.map((o) => ({
+                        ...o,
+                        WI_CODE: o.WI_CODE || code,
+                    }));
                 })
             );
 
             wiResults.forEach((r, idx) => {
-                if (r.status === "fulfilled") {
-                    rowsAll = rowsAll.concat(r.value);
-                } else {
-                    // simpan info WI mana yang gagal (kalau mau ditampilkan nanti)
+                if (r.status === "fulfilled") rowsAll = rowsAll.concat(r.value);
+                else
                     failures.push(
                         `WI ${WI_CODES[idx]}: ${
                             r.reason?.message || "gagal diambil"
                         }`
                     );
-                }
             });
         } else if (AUFNRS.length > 0) {
-            // ===== LOGIKA LAMA: PRO mode =====
+            // PRO mode
             const results = await Promise.allSettled(
                 AUFNRS.map(async (aufnr) => {
                     let url = `/api/yppi019/material?aufnr=${encodeURIComponent(
@@ -561,48 +591,43 @@ document.addEventListener("DOMContentLoaded", async () => {
                         url += `&arbpl=${encodeURIComponent(IV_ARBPL)}`;
                     if (IV_WERKS)
                         url += `&werks=${encodeURIComponent(IV_WERKS)}`;
+
                     const res = await fetchWithTimeout(url, {
                         headers: { Accept: "application/json" },
                     });
-                    let json;
-                    try {
-                        json = await res.json();
-                    } catch {
-                        json = {};
-                    }
+                    const json = await safeJson(res);
                     if (!res.ok)
                         throw new Error(
                             json.error || json.message || `HTTP ${res.status}`
                         );
+
                     const t = json.T_DATA1;
                     return Array.isArray(t) ? t : t ? [t] : [];
                 })
             );
+
             results.forEach((r) =>
                 r.status === "fulfilled"
                     ? (rowsAll = rowsAll.concat(r.value))
                     : failures.push(r.reason?.message || "unknown")
             );
         } else {
-            // ===== LOGIKA LAMA: WC mode =====
+            // WC mode
             const url = `/api/yppi019/material?arbpl=${encodeURIComponent(
                 IV_ARBPL
             )}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(
                 IV_PERNR
             )}&auto_sync=0`;
+
             const res = await fetchWithTimeout(url, {
                 headers: { Accept: "application/json" },
             });
-            let json;
-            try {
-                json = await res.json();
-            } catch {
-                json = {};
-            }
+            const json = await safeJson(res);
             if (!res.ok)
                 throw new Error(
                     json.error || json.message || `HTTP ${res.status}`
                 );
+
             const t = json.T_DATA1;
             rowsAll = Array.isArray(t) ? t : t ? [t] : [];
         }
@@ -611,58 +636,54 @@ document.addEventListener("DOMContentLoaded", async () => {
             e?.name === "AbortError"
                 ? "Waktu tunggu klien habis. Silakan coba lagi."
                 : e?.message || "Gagal mengambil data";
-
-        errorMessage.textContent = msg;
-        prepareWiCopy(msg); // <--- TAMBAH INI
-        errorModal.classList.remove("hidden");
+        if (errorMessage) errorMessage.textContent = msg;
+        prepareWiCopy(msg);
+        errorModal?.classList.remove("hidden");
     } finally {
-        loading.classList.add("hidden");
-        content.classList.remove("hidden");
+        loading?.classList.add("hidden");
+        content?.classList.remove("hidden");
     }
-    // ===== FRONT-END FILTER: tampilkan hanya NIK yang diinput (khusus WI mode) =====
-    if (isWiMode) {
-        const normPernr = (x) =>
-            String(x || "")
-                .trim()
-                .replace(/^0+/, ""); // buang leading zero
-        const want = normPernr(IV_PERNR);
 
-        // kalau NIK kosong, jangan tampilkan apa pun (jaga-jaga)
-        if (!want) {
-            rowsAll = [];
-        } else {
+    // FRONT-END FILTER: tampilkan hanya NIK yang diinput (khusus WI mode)
+    if (isWiMode) {
+        const want = normNik(IV_PERNR);
+        if (!want) rowsAll = [];
+        else {
             rowsAll = rowsAll.filter((r) => {
-                const rowPernr = normPernr(r.PERNR);
-                return rowPernr && rowPernr === want; // hanya yang match, kosong dibuang
+                const rowPernr = normNik(r.PERNR);
+                return rowPernr && rowPernr === want;
             });
         }
     }
 
+    const COLSPAN = isWiMode ? 20 : 19;
+
     if (!rowsAll.length) {
-        tableBody.innerHTML =
-            '<tr><td colspan="19" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>';
-        totalItems.textContent = "0";
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="${COLSPAN}" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>`;
+        }
+        if (totalItems) totalItems.textContent = "0";
         if (shownCountEl) shownCountEl.textContent = "0";
         return;
     }
 
-    // --- urutkan & render ---
-    // Urut SSAVD ascending; SSAVD kosong ditaruh paling akhir.
-    // Tie-breaker: AUFNR, lalu VORNR numerik.
+    /* =========================
+     SORT & RENDER
+     ========================= */
+    // Urut SSAVD ascending; kosong paling akhir. Tie: AUFNR, lalu VORNR numerik.
     rowsAll.sort((a, b) => {
         const sa = a.SSAVD ? toYYYYMMDD(a.SSAVD) : "99999999";
         const sb = b.SSAVD ? toYYYYMMDD(b.SSAVD) : "99999999";
         if (sa !== sb) return sa.localeCompare(sb);
 
-        if ((a.AUFNR || "") !== (b.AUFNR || "")) {
+        if ((a.AUFNR || "") !== (b.AUFNR || ""))
             return (a.AUFNR || "").localeCompare(b.AUFNR || "");
-        }
         const va = parseInt(a.VORNRX || a.VORNR || "0", 10) || 0;
         const vb = parseInt(b.VORNRX || b.VORNR || "0", 10) || 0;
         return va - vb;
     });
 
-    totalItems.textContent = String(rowsAll.length);
+    if (totalItems) totalItems.textContent = String(rowsAll.length);
 
     const esc = (s) =>
         String(s ?? "")
@@ -672,18 +693,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
 
-    // helper normalisasi untuk data-search
     const toKey = (s) => String(s ?? "").toLowerCase();
 
     tableBody.innerHTML = rowsAll
         .map((r, i) => {
             const vornr = padVornr(r.VORNRX || r.VORNR || "0");
+
             const qtySPK = parseFloat(r.QTY_SPK ?? 0); // Qty_PRO
             const weMng = parseFloat(r.WEMNG ?? 0);
             const qtySPX = parseFloat(r.QTY_SPX ?? 0);
             const sisaSPK = Math.max(qtySPK - weMng, 0);
             const maxAllow = Math.max(0, Math.min(qtySPX, sisaSPK));
+
             const meinh = (r.MEINH || "ST").toUpperCase();
+
             const ltxa1 = String(
                 r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
             ).trim();
@@ -694,21 +717,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const wcAnakView = wcAnakRaw || "No WC group";
             const wcWithDesc = ltxa1 ? `${wcInduk} / ${ltxa1}` : wcInduk;
 
-            // ========= PREFILL MAX (FIX: cek plant dari data baris) =========
+            // plant
             const dispo = String(r.DISPO || "").toUpperCase();
-            // Ambil plant dari data baris; fallback ke URL jika ada.
-            // Beberapa backend menamai plant sebagai WERKS / PWERK / PLANT, jadi coba semuanya.
             const werksRow = String(
                 r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? ""
-            ).replace(/^0+/, ""); // hilangkan leading zero seperti "01000" -> "1000"
-
+            ).replace(/^0+/, "");
             const shouldPrefillMax =
                 ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
-
             const defaultQty = shouldPrefillMax ? maxAllow : 0;
-            // ================================================================
 
-            // === NEW: normalisasi SSAVD/SSSLD
+            // normalisasi SSAVD/SSSLD
             const ssavdYMD = toYYYYMMDD(r.SSAVD);
             const sssldYMD = toYYYYMMDD(r.SSSLD);
             const ssavdDMY =
@@ -726,13 +744,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                       )}/${sssldYMD.slice(0, 4)}`
                     : "";
 
-            // === NEW: LTIMEX (menit)
             const ltimexStr = fmtMinutes(r.LTIMEX);
 
-            // NEW: Item view tanpa leading zero + versi 6 digit
+            // SO/Item
             const kdpos6 = padKdpos(r.KDPOS);
             const kdposView = stripLeadingZeros(r.KDPOS);
-            // gabungan "Sales Order / Item" untuk tampilan & pencarian
             const soItem =
                 [r.KDAUF || "", kdposView || ""].filter(Boolean).join("/") ||
                 "-";
@@ -751,146 +767,171 @@ document.addEventListener("DOMContentLoaded", async () => {
                 r.SNAME || "",
                 ssavdDMY,
                 sssldDMY,
-                // tambahkan LTIME/LTIMEX ke pencarian
                 ltimexStr,
-                r.KDAUF, // cari berdasarkan SO
-                r.KDPOS, // raw KDPOS
-                kdpos6, // versi 6 digit
-                kdposView, // versi tanpa leading zero (tampilan)
-                qtySPK, // bisa cari Qty_PRO
-                soItem, // "1110001101/10"
+                r.KDAUF,
+                r.KDPOS,
+                kdpos6,
+                kdposView,
+                qtySPK,
+                soItem,
                 (r.KDAUF || "") + "/" + kdpos6,
-                (r.KDAUF || "") + kdpos6, // tanpa slash juga bisa
+                (r.KDAUF || "") + kdpos6,
                 wcWithDesc,
             ]
                 .map(toKey)
                 .join(" ");
 
+            const wiCodeRow = String(r.WI_CODE || "").trim(); // sudah di-inject saat fetch WI
+
             return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
-        data-aufnr="${r.AUFNR || ""}" 
-        data-vornr="${vornr}" 
-        data-pernr="${r.PERNR || IV_PERNR || ""}"
-        data-wi-code="${esc(r.WI_CODE || "")}"
-        data-meinh="${r.MEINH || "ST"}" 
-        data-gstrp="${toYYYYMMDD(r.GSTRP)}" data-gltrp="${toYYYYMMDD(r.GLTRP)}"
-        data-ssavd="${ssavdYMD}" data-sssld="${sssldYMD}"
-        data-ltimex="${ltimexStr}"
-        data-arbpl0="${wcInduk}"
-        data-wc-induk="${wcInduk}"
-        data-wc-anak="${wcAnakView.replace(/"/g, "&quot;")}"
-        data-ltxa1="${(r.LTXA1 || "-").replace(/"/g, "&quot;")}"
-        data-charg="${r.CHARG || ""}"
-        data-maktx="${(r.MAKTX || "-").replace(/"/g, "&quot;")}"
-        data-qtyspk="${qtySPK}"
-        data-sname="${(r.SNAME || "").replace(/"/g, "&quot;")}"
-        data-matnrx="${r.MATNRX || ""}"
-        data-maktx0="${(r.MAKTX0 || "").replace(/"/g, "&quot;")}"
-        data-dispo="${r.DISPO || ""}"
-        data-steus="${r.STEUS || ""}"
-        data-soitem="${soItem.replace(/"/g, "&quot;")}"
-        data-kdauf="${r.KDAUF || ""}"
-        data-kdpos="${r.KDPOS || ""}"
-        data-werks="${werksRow || ""}"
-        data-search="${searchStr}">
+        data-aufnr="${esc(r.AUFNR || "")}"
+        data-vornr="${esc(vornr)}"
+        data-pernr="${esc(r.PERNR || IV_PERNR || "")}"
+        data-wi-code="${esc(wiCodeRow)}"
+        data-meinh="${esc(r.MEINH || "ST")}"
+        data-gstrp="${esc(toYYYYMMDD(r.GSTRP))}"
+        data-gltrp="${esc(toYYYYMMDD(r.GLTRP))}"
+        data-ssavd="${esc(ssavdYMD)}"
+        data-sssld="${esc(sssldYMD)}"
+        data-ltimex="${esc(ltimexStr)}"
+        data-arbpl0="${esc(wcInduk)}"
+        data-wc-induk="${esc(wcInduk)}"
+        data-wc-anak="${esc(wcAnakView)}"
+        data-ltxa1="${esc(r.LTXA1 || "-")}"
+        data-charg="${esc(r.CHARG || "")}"
+        data-maktx="${esc(r.MAKTX || "-")}"
+        data-qtyspk="${esc(String(qtySPK))}"
+        data-sname="${esc(r.SNAME || "")}"
+        data-matnrx="${esc(r.MATNRX || "")}"
+        data-maktx0="${esc(r.MAKTX0 || "")}"
+        data-dispo="${esc(r.DISPO || "")}"
+        data-steus="${esc(r.STEUS || "")}"
+        data-soitem="${esc(soItem)}"
+        data-kdauf="${esc(r.KDAUF || "")}"
+        data-kdpos="${esc(r.KDPOS || "")}"
+        data-werks="${esc(werksRow || "")}"
+        data-search="${esc(searchStr)}">
+
         <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
           <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
         </td>
+
         <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
           <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${
               i + 1
           }</div>
         </td>
-        <td class="px-3 py-3 text-sm font-semibold text-slate-900">${
-            r.AUFNR || "-"
-        }</td>
 
-        <!-- NEW: Qty_PRO tampilan ring -->
+        <td class="px-3 py-3 text-sm font-semibold text-slate-900">${esc(
+            r.AUFNR || "-"
+        )}</td>
+
         <td class="align-middle">
           <div class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto">
-            ${Number.isFinite(qtySPK) ? qtySPK : "-"}
+            ${Number.isFinite(qtySPK) ? esc(String(qtySPK)) : "-"}
           </div>
         </td>
-        <!-- END NEW -->
 
         <td class="px-3 py-3 text-sm text-slate-700 text-center">
-          <input type="number" name="QTY_SPX" class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
-              value="${defaultQty}" placeholder="${defaultQty}" min="0" data-max="${maxAllow}" data-meinh="${meinh}"
-              step="${meinh === "M3" ? "0.001" : "1"}" inputmode="${
-                meinh === "M3" ? "decimal" : "numeric"
-            }"
-              title="Maks: ${maxAllow} (sisa SPK=${sisaSPK}, sisa SPX=${qtySPX})"/>
-          <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${maxAllow}</b> (${getUnitName(
-                meinh
-            )})</div>
+          <input type="number" name="QTY_SPX"
+            class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
+            value="${esc(String(defaultQty))}"
+            placeholder="${esc(String(defaultQty))}"
+            min="0"
+            data-max="${esc(String(maxAllow))}"
+            data-meinh="${esc(meinh)}"
+            step="${meinh === "M3" ? "0.001" : "1"}"
+            inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
+            title="Maks: ${esc(String(maxAllow))} (sisa SPK=${esc(
+                String(sisaSPK)
+            )}, sisa SPX=${esc(String(qtySPX))})" />
+          <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${esc(
+              String(maxAllow)
+          )}</b> (${esc(getUnitName(meinh))})</div>
         </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700">${ssavdDMY || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${sssldDMY || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX0 || "-"}</td>
-<td class="px-3 py-3 text-sm text-slate-700">${r.MATNRX || "-"}</td>
-<td class="px-3 py-3 text-sm text-slate-700">${r.MAKTX || "-"}</td>
+        ${
+            isWiMode
+                ? `<td class="px-3 py-3 text-sm text-slate-700 col-remark">
+                <input type="text"
+                  class="remark-input w-56 px-2 py-1 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
+                  placeholder="Isi remark..."
+                  maxlength="500">
+              </td>`
+                : ``
+        }
 
-        <td class="px-3 py-3 text-sm text-slate-700">${ltimexStr}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(
+            ssavdDMY || "-"
+        )}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(
+            sssldDMY || "-"
+        )}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(
+            r.MAKTX0 || "-"
+        )}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(
+            r.MATNRX || "-"
+        )}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX || "-")}</td>
+
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(ltimexStr)}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(
             r.PERNR || IV_PERNR || "-"
-        }</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.SNAME || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${r.DISPO || "-"}</td>
+        )}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.SNAME || "-")}</td>
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.DISPO || "-")}</td>
 
         <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">
-        ${isWiMode ? wcInduk : wcWithDesc}
+          ${isWiMode ? esc(wcInduk) : esc(wcWithDesc)}
         </td>
 
         <td class="px-3 py-3 text-sm text-slate-700 col-wc-anak">
-        ${isWiMode ? wcAnakView : ""}  <!-- non-WI kosong saja -->
+          ${isWiMode ? esc(wcAnakView) : ""}
         </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700">${r.STEUS || "-"}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${soItem}</td>
-
+        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
+        <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
+            soItem
+        )}</td>
       </tr>`;
         })
         .join("");
 
-    // === Atur header Work Center / WC Induk + WC Anak berdasarkan mode ===
+    // Header WC Induk/WC Anak
     const thWc = document.querySelector("th.col-workcenter");
     const thWcAnak = document.querySelector("th.col-wc-anak");
+    const thRemark = document.querySelector("th.col-remark");
 
     if (isWiMode) {
-        // MODE WI → pakai WC Induk + WC Anak
         if (thWc) thWc.textContent = "WC Induk";
         if (thWcAnak) thWcAnak.classList.remove("hidden");
-
         document
             .querySelectorAll("td.col-wc-anak")
             .forEach((el) => (el.style.display = ""));
+        // remark header
+        if (thRemark) thRemark.classList.remove("hidden");
     } else {
-        // MODE PRO / WC → cuma Work Center (seperti awal)
         if (thWc) thWc.textContent = "Work Center";
         if (thWcAnak) thWcAnak.classList.add("hidden");
-
-        // sembunyikan kolom WC Anak di semua baris
         document
             .querySelectorAll("td.col-wc-anak")
             .forEach((el) => (el.style.display = "none"));
+        // remark header
+        if (thRemark) thRemark.classList.add("hidden");
+        document
+            .querySelectorAll("td.col-remark")
+            .forEach((el) => (el.style.display = "none"));
     }
 
-    // === WC mode: tampilkan " / LTXA1" di header (sebelah WC) ===
+    // WC mode: tampilkan " / LTXA1" di header (sebelah WC)
     if (isWCMode && headAUFNR) {
-        // Ambil LTXA1 pertama yang tidak kosong (fallback untuk variasi nama field)
         const getOpDesc = (r) =>
             String(
-                r.LTXA1 ??
-                    r.ltxa1 ??
-                    r.OPDESC ?? // possible alias
-                    r.OPR_TXT ?? // possible alias
-                    r.LTXA1X ?? // possible alias
-                    ""
+                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
             ).trim();
-
         const uniqueDesc = [...new Set(rowsAll.map(getOpDesc).filter(Boolean))];
         if (uniqueDesc.length) {
-            // jika banyak deskripsi, tampilkan satu + penanda jumlah lainnya
             const first = uniqueDesc[0];
             const more =
                 uniqueDesc.length > 1
@@ -901,7 +942,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    /* === WC MODE: sembunyikan kolom Work Center (header + semua sel) === */
+    // WC mode: sembunyikan kolom Work Center
     if (isWCMode) {
         document
             .querySelectorAll(
@@ -911,16 +952,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 el.style.display = "none";
             });
     }
-    /* === END hide Work Center === */
 
-    // === SEARCH/FILTER berbasis data-search + quick date filters ===
+    /* =========================
+     SEARCH + DATE FILTER
+     ========================= */
     const normTxt = (s) => String(s || "").toLowerCase();
 
-    // Quick date filter state
     let dateFilterMode = "none"; // 'none' | 'today' | 'outgoing' | 'period'
-    let qCurrent = ""; // current search query (lowercased)
-    let pfYMD = ""; // period from yyyymmdd
-    let ptYMD = ""; // period to yyyymmdd
+    let qCurrent = "";
+    let pfYMD = "";
+    let ptYMD = "";
 
     function ymdToday() {
         const d = new Date();
@@ -939,21 +980,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (dateFilterMode === "today") {
             const t = ymdToday();
-            return ss === t; // SSAVD persis hari ini
+            return ss === t;
         }
 
         if (dateFilterMode === "outgoing") {
             const t = ymdToday();
             const s = ss || t;
             const e = ee || t;
-            return s <= t && t <= e; // di rentang
+            return s <= t && t <= e;
         }
 
         if (dateFilterMode === "period") {
-            if (!pfYMD || !ptYMD) return true; // belum pilih -> tampilkan semua
+            if (!pfYMD || !ptYMD) return true;
             const s = ss || "00000000";
             const e = ee || "99991231";
-            // tampilkan jika overlap antara [s,e] dan [pf,pt]
             return !(e < pfYMD || s > ptYMD);
         }
 
@@ -966,366 +1006,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             .map((tr) => tr.querySelector(".row-checkbox"))
             .filter(Boolean);
     }
+
     function updateConfirmButtonState() {
         const count = visibleRowCheckboxes().filter((cb) => cb.checked).length;
         selectedCountSpan.textContent = count;
+
         confirmButton.disabled = count === 0;
-    }
 
-    // ============ MOBILE ROW DETAIL POPUP ============
-    const rowDetailModal = document.getElementById("row-detail-modal");
-    const rowDetailBody = document.getElementById("row-detail-body");
-    const rowDetailClose = document.getElementById("row-detail-close");
-    const rowDetailCancel = document.getElementById("row-detail-cancel");
-    const rowDetailSave = document.getElementById("row-detail-save");
-    const rowDetailSelect = document.getElementById("row-detail-select");
-
-    let currentRow = null; // <tr> aktif saat modal
-
-    function ymdToDMY(ymd) {
-        return ymd && /^\d{8}$/.test(ymd)
-            ? `${ymd.slice(6, 8)}/${ymd.slice(4, 6)}/${ymd.slice(0, 4)}`
-            : "-";
-    }
-
-    // buka modal untuk 1 row
-    function openRowDetail(tr) {
-        currentRow = tr;
-
-        // ambil data dari dataset + elemen input qty
-        const qtyInput = tr.querySelector('input[name="QTY_SPX"]');
-        const cb = tr.querySelector(".row-checkbox");
-        const data = {
-            aufnr: tr.dataset.aufnr || "-",
-            vornr: tr.dataset.vornr || "-",
-            wc: tr.dataset.arbpl0 || "-",
-            wcInduk: tr.dataset.wcInduk || tr.dataset.arbpl0 || "-",
-            wcAnak: tr.dataset.wcAnak || "",
-            ltxa1: tr.dataset.ltxa1 || "",
-            maktx: tr.dataset.maktx || "-",
-            maktx0: tr.dataset.maktx0 || "-",
-            matnrx: tr.dataset.matnrx || "-",
-            soitem: tr.dataset.soitem || "-",
-            pernr: tr.dataset.pernr || "-",
-            sname: tr.dataset.sname || "-",
-            dispo: tr.dataset.dispo || "-",
-            steus: tr.dataset.steus || "-",
-            ltimex: tr.dataset.ltimex || "-",
-            ssavd: ymdToDMY((tr.dataset.ssavd || "").replace(/\D/g, "")),
-            sssld: ymdToDMY((tr.dataset.sssld || "").replace(/\D/g, "")),
-            qtyspk: tr.dataset.qtyspk || "0",
-            meinh: tr.dataset.meinh || "ST",
-            qtycur: qtyInput ? qtyInput.value || "0" : "0",
-            max: qtyInput ? qtyInput.dataset.max || "0" : "0",
-            checked: cb ? cb.checked : false,
-        };
-
-        const unitNamePopup = getUnitName(data.meinh);
-        const wcBlock = isWiMode
-            ? `
-      <div>
-        <div class="text-[11px] text-slate-500">WC Induk</div>
-        <div class="font-semibold">${esc(data.wcInduk)}</div>
-      </div>
-      <div>
-        <div class="text-[11px] text-slate-500">WC Anak</div>
-        <div class="font-semibold">${esc(data.wcAnak || "No WC group")}</div>
-      </div>
-    `
-            : `
-      <div>
-        <div class="text-[11px] text-slate-500">Work Center</div>
-        <div class="font-semibold">
-          ${esc(data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""))}
-        </div>
-      </div>
-    `;
-        // isi konten modal
-        rowDetailBody.innerHTML = `
-  <div class="grid grid-cols-2 gap-3">
-    <div>
-      <div class="text-[11px] text-slate-500">PRO</div>
-      <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
-    </div>
-    <div>
-      <div class="text-[11px] text-slate-500">Material</div>
-      <div class="font-semibold">${esc(data.matnrx)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">Description</div>
-      <div class="font-semibold">${esc(data.maktx)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">Deskripsi FG</div>
-      <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">Sales Order / Item</div>
-      <div class="font-semibold font-mono">${esc(data.soitem)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">Start Date</div>
-      <div class="font-semibold">${esc(data.ssavd)}</div>
-    </div>
-    <div>
-      <div class="text-[11px] text-slate-500">Finish Date</div>
-      <div class="font-semibold">${esc(data.sssld)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">Qty PRO</div>
-      <div class="font-semibold">${esc(data.qtyspk)}</div>
-    </div>
-    <div>
-      <div class="text-[11px] text-slate-500">Menit</div>
-      <div class="font-semibold">${esc(data.ltimex)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">MRP</div>
-      <div class="font-semibold">${esc(data.dispo)}</div>
-    </div>
-
-    ${wcBlock}
-
-    <div>
-      <div class="text-[11px] text-slate-500">Control Key</div>
-      <div class="font-semibold">${esc(data.steus)}</div>
-    </div>
-
-    <div>
-      <div class="text-[11px] text-slate-500">NIK Operator</div>
-      <div class="font-semibold">${esc(data.pernr)}</div>
-    </div>
-    <div>
-      <div class="text-[11px] text-slate-500">Nama Operator</div>
-      <div class="font-semibold">${esc(data.sname)}</div>
-    </div>
-  </div>
-
-    <div class="mt-3">
-  <label class="text-[11px] text-slate-500 block mb-1">
-    Qty Input (${esc(unitNamePopup)})
-  </label>
-  <input id="row-detail-qty" type="number"
-         inputmode="${
-             (data.meinh || "").toUpperCase() === "M3" ? "decimal" : "numeric"
-         }"
-         class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
-         step="${(data.meinh || "").toUpperCase() === "M3" ? "0.001" : "1"}"
-         min="0"
-         placeholder="${esc(data.max)}"
-         value="${esc(data.qtycur)}"
-         data-max="${esc(data.max)}"
-         data-meinh="${esc(data.meinh)}">
-  <div class="mt-1 text-[11px] text-slate-500">
-    Maks: <b>${esc(data.max)}</b> (${esc(unitNamePopup)})
-  </div>
-</div>
-  `;
-        const modalQty = document.getElementById("row-detail-qty");
-        const maxAllow = parseFloat(modalQty.dataset.max || "0") || 0;
-        const unit = String(modalQty.dataset.meinh || "ST").toUpperCase();
-
-        // auto-clear "0" saat fokus
-        modalQty.addEventListener("focus", function () {
-            if (this.value === "0") this.value = "";
-        });
-
-        // validasi realtime: jangan lebih dari max
-        modalQty.addEventListener("input", function () {
-            const v = parseFloat(String(this.value).replace(",", "."));
-            if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
-                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                pendingResetInput = this; // biar tombol OK bisa reset/fokus balik
-                isWarningOpen = true;
-                // pastikan modal warning muncul di atas (lihat CSS z-index di bawah)
-                warningModal.classList.remove("hidden");
-                this.blur(); // tutup keypad agar pengguna melihat peringatan
-            }
-        });
-
-        // normalisasi saat blur (ikut aturan sama spt tabel)
-        modalQty.addEventListener("blur", function () {
-            if (this.value.trim() === "") this.value = "0";
-            let v = parseFloat(String(this.value).replace(",", "."));
-            if (isNaN(v) || v < 0) v = 0;
-            if (
-                unit === "ST" ||
-                unit === "PC" ||
-                unit === "PCS" ||
-                unit === "EA"
-            ) {
-                v = Math.floor(v);
-            } else if (unit === "M3") {
-                v = Math.round(v * 1000) / 1000;
-            }
-            // biarkan v apa adanya di sini; kalau >max user akan melihat warning saat klik Simpan
-            this.value = String(v);
-        });
-
-        const inputModal = rowDetailBody.querySelector("#row-detail-qty");
-
-        // 1) Auto-clear "0" saat fokus (biar user tidak perlu hapus manual)
-        inputModal.addEventListener("focus", function () {
-            if (this.value === "0") this.value = "";
-            // Select seluruh isi kalau bukan "0"
-            this.select && this.value && this.select();
-        });
-
-        // 2) Validasi real-time: peringatkan jika > Maks
-        inputModal.addEventListener("input", function () {
-            if (this.value === "" || this.value === "-" || this.value === ".")
-                return;
-
-            const v = parseFloat(String(this.value).replace(",", "."));
-            const maxAllow = parseFloat(this.dataset.max || "0");
-
-            if (!Number.isNaN(v) && v > maxAllow && !isWarningOpen) {
-                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                pendingResetInput = this; // supaya saat OK kita reset
-                isWarningOpen = true;
-                warningModal.classList.remove("hidden");
-                this.blur();
-            }
-        });
-
-        // 3) Normalisasi saat blur (bulatkan & clamp, serta larang negatif)
-        inputModal.addEventListener("blur", function () {
-            if (this.value.trim() === "") this.value = "0";
-
-            let v = parseFloat(this.value.replace(",", ".") || "0");
-            if (Number.isNaN(v)) v = 0;
-
-            const maxAllow = parseFloat(this.dataset.max || "0");
-            if (v > maxAllow || v < 0) {
-                if (!isWarningOpen) {
-                    warningMessage.textContent =
-                        v > maxAllow
-                            ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
-                            : "Nilai tidak boleh negatif.";
-                    pendingResetInput = this;
-                    isWarningOpen = true;
-                    warningModal.classList.remove("hidden");
-                }
-                return;
-            }
-
-            const u = (this.dataset.meinh || "ST").toUpperCase();
-            if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
-            else if (u === "M3") v = Math.round(v * 1000) / 1000;
-
-            this.value = String(v);
-        });
-
-        // 4) Enter = klik "Simpan" (biar cepat)
-        inputModal.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                rowDetailSave?.click();
-            }
-        });
-
-        // label tombol pilih
-        rowDetailSelect.textContent = data.checked
-            ? "Batalkan Pilih"
-            : "Pilih Item Ini";
-
-        // tampilkan modal
-        rowDetailModal.classList.remove("hidden");
-    }
-
-    // close helper
-    function closeRowDetail() {
-        rowDetailModal.classList.add("hidden");
-        currentRow = null;
-    }
-
-    // klik pada row (khusus mobile & bukan klik ke elemen interaktif)
-    tableBody.addEventListener("click", (e) => {
-        if (!isMobile()) return;
-
-        const tag = e.target.tagName.toLowerCase();
-        const isInteractive =
-            ["input", "button", "label", "svg", "path"].includes(tag) ||
-            e.target.closest("button");
-        if (isInteractive) return;
-
-        const tr = e.target.closest("tr");
-        if (!tr) return;
-
-        openRowDetail(tr);
-    });
-
-    // tombol tutup
-    [rowDetailClose, rowDetailCancel].forEach((btn) =>
-        btn?.addEventListener("click", closeRowDetail)
-    );
-
-    // tombol pilih/batal pilih
-    rowDetailSelect.addEventListener("click", () => {
-        if (!currentRow) return;
-        const cb = currentRow.querySelector(".row-checkbox");
-        if (!cb) return;
-        cb.checked = !cb.checked;
-
-        // sinkronkan state Select All & tombol konfirmasi
-        const vis = visibleRowCheckboxes();
-        const visChecked = vis.filter((x) => x.checked).length;
-        selectAll.checked = vis.length > 0 && visChecked === vis.length;
-        selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
-        updateConfirmButtonState();
-
-        rowDetailSelect.textContent = cb.checked
-            ? "Batalkan Pilih"
-            : "Pilih Item Ini";
-    });
-
-    // tombol simpan (Qty Input)
-    rowDetailSave.addEventListener("click", () => {
-        if (!currentRow) return;
-        const inputModal = document.getElementById("row-detail-qty");
-        const rowInput = currentRow.querySelector('input[name="QTY_SPX"]');
-        if (!rowInput || !inputModal) return;
-
-        let v = parseFloat(String(inputModal.value).replace(",", "."));
-        if (isNaN(v)) v = 0;
-
-        const maxAllow =
-            parseFloat(inputModal.dataset.max || rowInput.dataset.max || "0") ||
-            0;
-        const u = String(
-            inputModal.dataset.meinh || rowInput.dataset.meinh || "ST"
-        ).toUpperCase();
-
-        if (u === "ST" || u === "PC" || u === "PCS" || u === "EA")
-            v = Math.floor(v);
-        else if (u === "M3") v = Math.round(v * 1000) / 1000;
-
-        if (v <= 0) {
-            warningMessage.textContent = "Kuantitas harus lebih dari 0.";
-            isWarningOpen = true;
-            pendingResetInput = inputModal;
-            warningModal.classList.remove("hidden");
-            return;
+        if (remarkButton) {
+            remarkButton.disabled = count === 0;
+            // kalau non-WI mode, tetap hidden
+            remarkButton.classList.toggle("hidden", !isWiMode);
         }
-
-        if (v > maxAllow) {
-            warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-            isWarningOpen = true;
-            pendingResetInput = inputModal;
-            warningModal.classList.remove("hidden");
-            return;
-        }
-
-        // valid → salin ke input baris & tutup popup
-        rowInput.value = String(v);
-        closeRowDetail();
-    });
+    }
 
     function applyFilters() {
         let shown = 0;
@@ -1339,24 +1032,28 @@ document.addEventListener("DOMContentLoaded", async () => {
             tr.style.display = hit ? "" : "none";
             if (hit) shown++;
         });
-        shownCountEl.textContent = shown;
+        if (shownCountEl) shownCountEl.textContent = shown;
+
         const vis = visibleRowCheckboxes();
         const visChecked = vis.filter((cb) => cb.checked).length;
-        selectAll.checked = vis.length > 0 && visChecked === vis.length;
-        selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        if (selectAll) {
+            selectAll.checked = vis.length > 0 && visChecked === vis.length;
+            selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        }
         updateConfirmButtonState();
     }
 
-    // search input
     function filterRows(q) {
         qCurrent = normTxt(q).trim();
         applyFilters();
     }
+
+    // search input
     filterRows("");
     searchInput?.addEventListener("input", () => {
         const q = searchInput.value;
         filterRows(q);
-        clearSearch.classList.toggle("hidden", q.length === 0);
+        clearSearch?.classList.toggle("hidden", q.length === 0);
     });
     clearSearch?.addEventListener("click", () => {
         searchInput.value = "";
@@ -1365,21 +1062,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         searchInput.focus();
     });
 
-    // --- Default: mode-based quick filter
+    // Default quick filter
     if (isWCMode) {
-        // WC mode => Outgoing otomatis
         dateFilterMode = "outgoing";
         setActive(fltOutgoing);
         periodPicker?.classList.add("hidden");
     } else {
-        // PRO mode => All date (seperti sebelumnya)
         dateFilterMode = "none";
         setActive(fltAllDate);
         periodPicker?.classList.add("hidden");
     }
-    applyFilters(); // hitung ulang tampilan & counter
+    applyFilters();
 
-    // ===== Quick Date Filter handlers =====
     function setActive(btn) {
         [fltToday, fltOutgoing, fltPeriod, fltAllDate].forEach((b) => {
             if (!b) return;
@@ -1400,16 +1094,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    fltToday?.addEventListener("click", () => {
-        dateFilterMode = "today";
-        setActive(fltToday);
+    fltOutgoing?.addEventListener("click", () => {
+        dateFilterMode = "outgoing";
+        setActive(fltOutgoing);
         periodPicker?.classList.add("hidden");
         applyFilters();
     });
 
-    fltOutgoing?.addEventListener("click", () => {
-        dateFilterMode = "outgoing";
-        setActive(fltOutgoing);
+    fltAllDate?.addEventListener("click", () => {
+        dateFilterMode = "none";
+        pfYMD = "";
+        ptYMD = "";
+        setActive(fltAllDate);
         periodPicker?.classList.add("hidden");
         applyFilters();
     });
@@ -1427,84 +1123,89 @@ document.addEventListener("DOMContentLoaded", async () => {
         applyFilters();
     });
 
-    // === NEW: All date (tampilkan semua) ===
-    fltAllDate?.addEventListener("click", () => {
-        dateFilterMode = "none";
-        pfYMD = "";
-        ptYMD = "";
-        setActive(fltAllDate);
-        periodPicker?.classList.add("hidden");
-        applyFilters();
-    });
-
     clearFilterBtn?.addEventListener("click", () => {
         dateFilterMode = "none";
         pfYMD = "";
         ptYMD = "";
-        setActive(fltAllDate || null); // kalau tombol ada, jadikan aktif; kalau tidak, kosongkan
+        setActive(fltAllDate || null);
         periodPicker?.classList.add("hidden");
         applyFilters();
     });
 
-    // === Checkbox & tombol konfirmasi ===
-    selectAll.addEventListener("change", () => {
+    /* =========================
+     CHECKBOX HANDLING
+     ========================= */
+    selectAll?.addEventListener("change", () => {
         const vis = visibleRowCheckboxes();
         vis.forEach((cb) => (cb.checked = selectAll.checked));
         updateConfirmButtonState();
     });
+
     document.addEventListener("change", (e) => {
         if (!e.target.classList.contains("row-checkbox")) return;
         const vis = visibleRowCheckboxes();
         const visChecked = vis.filter((cb) => cb.checked).length;
-        selectAll.checked = vis.length > 0 && visChecked === vis.length;
-        selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        if (selectAll) {
+            selectAll.checked = vis.length > 0 && visChecked === vis.length;
+            selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        }
         updateConfirmButtonState();
     });
+
     updateConfirmButtonState();
 
-    // === Validasi input QTY_SPX ===
+    /* =========================
+     VALIDASI QTY INPUT
+     ========================= */
     document.querySelectorAll('input[name="QTY_SPX"]').forEach((input) => {
         input.addEventListener("focus", function () {
             if (this.value === "0") this.value = "";
         });
+
         input.addEventListener("input", function () {
             if (this.value === "" || this.value === "-" || this.value === ".")
                 return;
             const v = parseFloat(String(this.value).replace(",", "."));
             const maxAllow = parseFloat(this.dataset.max || "0");
             if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
-                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+                if (warningMessage)
+                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
                 pendingResetInput = this;
                 isWarningOpen = true;
-                warningModal.classList.remove("hidden");
+                warningModal?.classList.remove("hidden");
                 this.blur();
             }
         });
+
         input.addEventListener("blur", function () {
             if (this.value.trim() === "") this.value = "0";
             let v = parseFloat(this.value.replace(",", ".") || "0");
             if (isNaN(v)) v = 0;
+
             const maxAllow = parseFloat(this.dataset.max || "0");
             if (v > maxAllow || v < 0) {
                 if (!isWarningOpen) {
-                    warningMessage.textContent =
-                        v > maxAllow
-                            ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
-                            : "Nilai tidak boleh negatif.";
+                    if (warningMessage)
+                        warningMessage.textContent =
+                            v > maxAllow
+                                ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
+                                : "Nilai tidak boleh negatif.";
                     pendingResetInput = this;
                     isWarningOpen = true;
-                    warningModal.classList.remove("hidden");
+                    warningModal?.classList.remove("hidden");
                 }
                 return;
             }
+
             const u = (this.dataset.meinh || "ST").toUpperCase();
-            if (u === "ST" || u === "PC" || u === "PCS" || u === "EA")
-                v = Math.floor(v);
+            if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
             else if (u === "M3") v = Math.round(v * 1000) / 1000;
+
             this.value = String(v);
         });
     });
-    warningOkButton.addEventListener("click", () => {
+
+    warningOkButton?.addEventListener("click", () => {
         if (isResultWarning) {
             goScanWithPernr();
             return;
@@ -1512,25 +1213,475 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (pendingResetInput) {
             pendingResetInput.value = "0";
             pendingResetInput.focus();
-            if (pendingResetInput.select) pendingResetInput.select();
+            pendingResetInput.select && pendingResetInput.select();
             pendingResetInput = null;
         }
         isWarningOpen = false;
-        warningModal.classList.add("hidden");
+        warningModal?.classList.add("hidden");
     });
 
-    // === Validasi & Kirim konfirmasi ===
-    confirmButton.addEventListener("click", () => {
+    /* =========================
+     REMARK FLOW (WI MODE ONLY)
+     ========================= */
+    let remarkBusy = false;
+
+    remarkButton?.addEventListener("click", async () => {
+        if (!isWiMode || remarkBusy) return;
+
+        const selected = Array.from(
+            document.querySelectorAll(".row-checkbox:checked")
+        );
+        if (!selected.length) return;
+
+        // validasi wajib remark + qty > 0
+        const items = [];
+        const bad = [];
+
+        selected.forEach((cb) => {
+            const row = cb.closest("tr");
+            if (!row) return;
+
+            const qtyInput = row.querySelector('input[name="QTY_SPX"]');
+            const remarkInput = row.querySelector(".remark-input");
+
+            const remarkQty = parseFloat(qtyInput?.value || "0");
+            const remark = (remarkInput?.value || "").trim();
+
+            if (!remark || !(remarkQty > 0)) bad.push(row.dataset.aufnr || "-");
+
+            items.push({
+                wi_code: row.dataset.wiCode || "",
+                aufnr: row.dataset.aufnr || "",
+                vornr: row.dataset.vornr || "",
+                nik: normNik(row.dataset.pernr || ""),
+
+                operator_name: (row.dataset.sname || "").trim() || null,
+                qty_pro: parseFloat(row.dataset.qtyspk || "0"),
+                meinh: row.dataset.meinh || "ST",
+                remark,
+                remark_qty: remarkQty,
+
+                // tambahan biar DB nggak kosong
+                werks: row.dataset.werks || null,
+                arbpl0: row.dataset.arbpl0 || null,
+                matnrx: row.dataset.matnrx || null,
+                maktx: row.dataset.maktx || null,
+                maktx0: row.dataset.maktx0 || null,
+                dispo: row.dataset.dispo || null,
+                steus: row.dataset.steus || null,
+                soitem: row.dataset.soitem || null,
+                charg: row.dataset.charg || null,
+                ssavd: row.dataset.ssavd || null,
+                sssld: row.dataset.sssld || null,
+                ltimex: row.dataset.ltimex || null,
+            });
+        });
+
+        if (bad.length) {
+            if (warningMessage)
+                warningMessage.textContent =
+                    "Remark wajib diisi dan Qty Input harus > 0 untuk semua item yang dipilih.";
+            warningModal?.classList.remove("hidden");
+            return;
+        }
+
+        // Kirim ke API baru (tetap di halaman detail)
+        remarkBusy = true;
+        remarkButton.disabled = true;
+        remarkButton.classList.add("opacity-60", "cursor-not-allowed");
+
+        try {
+            const res = await apiPost("/api/yppi019/remark-async", { items });
+            const json = await safeJson(res);
+
+            if (res.status === 202 && Array.isArray(json.queued)) {
+                successAction = "stay";
+                if (successList) {
+                    successList.innerHTML = `
+                <li class="text-sm text-slate-700">
+                    Remark masuk antrian: <b>${json.queued.length}</b> item.
+                </li>`;
+                }
+                successModal?.classList.remove("hidden");
+
+                // uncheck + clear remark
+                selected.forEach((cb) => {
+                    cb.checked = false;
+                    const row = cb.closest("tr");
+                    const ri = row?.querySelector(".remark-input");
+                    if (ri) ri.value = "";
+                });
+                updateConfirmButtonState();
+
+                return; // ✅ penting: stop di sini
+            }
+
+            // kalau bukan 202, anggap gagal
+            const msg =
+                json?.message ||
+                json?.error ||
+                (res.status === 422
+                    ? "Validasi gagal (cek field wajib)."
+                    : "") ||
+                `Gagal mengirim remark. (HTTP ${res.status})`;
+
+            if (errorMessage) errorMessage.textContent = msg;
+            prepareWiCopy(msg);
+            errorModal?.classList.remove("hidden");
+            return;
+        } catch (e) {
+            const msg =
+                e?.name === "AbortError"
+                    ? "Waktu tunggu habis. Coba lagi."
+                    : e?.message || "Gagal mengirim remark.";
+            if (errorMessage) errorMessage.textContent = msg;
+            prepareWiCopy(msg);
+            errorModal?.classList.remove("hidden");
+        } finally {
+            remarkBusy = false;
+            remarkButton.disabled = false;
+            remarkButton.classList.remove("opacity-60", "cursor-not-allowed");
+        }
+    });
+
+    /* =========================
+     MOBILE ROW DETAIL POPUP
+     ========================= */
+    const rowDetailModal = document.getElementById("row-detail-modal");
+    const rowDetailBody = document.getElementById("row-detail-body");
+    const rowDetailClose = document.getElementById("row-detail-close");
+    const rowDetailCancel = document.getElementById("row-detail-cancel");
+    const rowDetailSave = document.getElementById("row-detail-save");
+    const rowDetailSelect = document.getElementById("row-detail-select");
+
+    let currentRow = null;
+
+    function ymd8ToDMY(ymd8) {
+        return ymd8 && /^\d{8}$/.test(ymd8)
+            ? `${ymd8.slice(6, 8)}/${ymd8.slice(4, 6)}/${ymd8.slice(0, 4)}`
+            : "-";
+    }
+
+    function openRowDetail(tr) {
+        currentRow = tr;
+
+        const qtyInput = tr.querySelector('input[name="QTY_SPX"]');
+        const cb = tr.querySelector(".row-checkbox");
+        const rowRemarkVal = (
+            tr.querySelector(".remark-input")?.value || ""
+        ).trim();
+
+        const data = {
+            aufnr: tr.dataset.aufnr || "-",
+            vornr: tr.dataset.vornr || "-",
+            wc: tr.dataset.arbpl0 || "-",
+            wcInduk: tr.dataset.wcInduk || tr.dataset.arbpl0 || "-",
+            wcAnak: tr.dataset.wcAnak || "",
+            ltxa1: tr.dataset.ltxa1 || "",
+            maktx: tr.dataset.maktx || "-",
+            maktx0: tr.dataset.maktx0 || "-",
+            matnrx: tr.dataset.matnrx || "-",
+            soitem: tr.dataset.soitem || "-",
+            pernr: tr.dataset.pernr || "-",
+            sname: tr.dataset.sname || "-",
+            dispo: tr.dataset.dispo || "-",
+            steus: tr.dataset.steus || "-",
+            ltimex: tr.dataset.ltimex || "-",
+            ssavd: ymd8ToDMY((tr.dataset.ssavd || "").replace(/\D/g, "")),
+            sssld: ymd8ToDMY((tr.dataset.sssld || "").replace(/\D/g, "")),
+            qtyspk: tr.dataset.qtyspk || "0",
+            meinh: tr.dataset.meinh || "ST",
+            qtycur: qtyInput ? qtyInput.value || "0" : "0",
+            max: qtyInput ? qtyInput.dataset.max || "0" : "0",
+            checked: cb ? cb.checked : false,
+            remark: rowRemarkVal,
+        };
+
+        const unitNamePopup = getUnitName(data.meinh);
+
+        const wcBlock = isWiMode
+            ? `
+        <div>
+          <div class="text-[11px] text-slate-500">WC Induk</div>
+          <div class="font-semibold">${esc(data.wcInduk)}</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500">WC Anak</div>
+          <div class="font-semibold">${esc(data.wcAnak || "No WC group")}</div>
+        </div>
+      `
+            : `
+        <div>
+          <div class="text-[11px] text-slate-500">Work Center</div>
+          <div class="font-semibold">${esc(
+              data.wc + (data.ltxa1 ? " / " + data.ltxa1 : "")
+          )}</div>
+        </div>
+      `;
+
+        rowDetailBody.innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-[11px] text-slate-500">PRO</div>
+          <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500">Material</div>
+          <div class="font-semibold">${esc(data.matnrx)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">Description</div>
+          <div class="font-semibold">${esc(data.maktx)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">Deskripsi FG</div>
+          <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">Sales Order / Item</div>
+          <div class="font-semibold font-mono">${esc(data.soitem)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">Start Date</div>
+          <div class="font-semibold">${esc(data.ssavd)}</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500">Finish Date</div>
+          <div class="font-semibold">${esc(data.sssld)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">Qty PRO</div>
+          <div class="font-semibold">${esc(data.qtyspk)}</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500">Menit</div>
+          <div class="font-semibold">${esc(data.ltimex)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">MRP</div>
+          <div class="font-semibold">${esc(data.dispo)}</div>
+        </div>
+
+        ${wcBlock}
+
+        <div>
+          <div class="text-[11px] text-slate-500">Control Key</div>
+          <div class="font-semibold">${esc(data.steus)}</div>
+        </div>
+
+        <div>
+          <div class="text-[11px] text-slate-500">NIK Operator</div>
+          <div class="font-semibold">${esc(data.pernr)}</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500">Nama Operator</div>
+          <div class="font-semibold">${esc(data.sname)}</div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="text-[11px] text-slate-500 block mb-1">Qty Input (${esc(
+            unitNamePopup
+        )})</label>
+        <input id="row-detail-qty" type="number"
+          inputmode="${
+              (data.meinh || "").toUpperCase() === "M3" ? "decimal" : "numeric"
+          }"
+          class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
+          step="${(data.meinh || "").toUpperCase() === "M3" ? "0.001" : "1"}"
+          min="0"
+          placeholder="${esc(data.max)}"
+          value="${esc(data.qtycur)}"
+          data-max="${esc(data.max)}"
+          data-meinh="${esc(data.meinh)}">
+        <div class="mt-1 text-[11px] text-slate-500">Maks: <b>${esc(
+            data.max
+        )}</b> (${esc(unitNamePopup)})</div>
+      </div>
+
+      ${
+          isWiMode
+              ? `
+        <div class="mt-3">
+          <label class="text-[11px] text-slate-500 block mb-1">Remark</label>
+          <input id="row-detail-remark" type="text"
+            class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
+            placeholder="Isi remark..."
+            maxlength="500"
+            value="${esc(data.remark)}">
+        </div>
+      `
+              : ``
+      }
+    `;
+
+        const modalQty = document.getElementById("row-detail-qty");
+        const maxAllow = parseFloat(modalQty?.dataset.max || "0") || 0;
+        const unit = String(modalQty?.dataset.meinh || "ST").toUpperCase();
+
+        // Auto-clear "0" saat fokus
+        modalQty?.addEventListener("focus", function () {
+            if (this.value === "0") this.value = "";
+            this.select && this.value && this.select();
+        });
+
+        // Validasi realtime: jangan > max
+        modalQty?.addEventListener("input", function () {
+            if (this.value === "" || this.value === "-" || this.value === ".")
+                return;
+            const v = parseFloat(String(this.value).replace(",", "."));
+            if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
+                if (warningMessage)
+                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+                pendingResetInput = this;
+                isWarningOpen = true;
+                warningModal?.classList.remove("hidden");
+                this.blur();
+            }
+        });
+
+        // Normalisasi saat blur
+        modalQty?.addEventListener("blur", function () {
+            if (this.value.trim() === "") this.value = "0";
+            let v = parseFloat(String(this.value).replace(",", "."));
+            if (isNaN(v) || v < 0) v = 0;
+            if (["ST", "PC", "PCS", "EA"].includes(unit)) v = Math.floor(v);
+            else if (unit === "M3") v = Math.round(v * 1000) / 1000;
+            this.value = String(v);
+        });
+
+        modalQty?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                rowDetailSave?.click();
+            }
+        });
+
+        // label tombol pilih
+        if (rowDetailSelect) {
+            rowDetailSelect.textContent = data.checked
+                ? "Batalkan Pilih"
+                : "Pilih Item Ini";
+        }
+
+        rowDetailModal?.classList.remove("hidden");
+    }
+
+    function closeRowDetail() {
+        rowDetailModal?.classList.add("hidden");
+        currentRow = null;
+    }
+
+    tableBody.addEventListener("click", (e) => {
+        if (!isMobile()) return;
+
+        const tag = e.target.tagName.toLowerCase();
+        const isInteractive =
+            ["input", "button", "label", "svg", "path"].includes(tag) ||
+            e.target.closest("button");
+        if (isInteractive) return;
+
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+
+        openRowDetail(tr);
+    });
+
+    [rowDetailClose, rowDetailCancel].forEach((btn) =>
+        btn?.addEventListener("click", closeRowDetail)
+    );
+
+    rowDetailSelect?.addEventListener("click", () => {
+        if (!currentRow) return;
+        const cb = currentRow.querySelector(".row-checkbox");
+        if (!cb) return;
+        cb.checked = !cb.checked;
+
+        const vis = visibleRowCheckboxes();
+        const visChecked = vis.filter((x) => x.checked).length;
+        if (selectAll) {
+            selectAll.checked = vis.length > 0 && visChecked === vis.length;
+            selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
+        }
+        updateConfirmButtonState();
+
+        rowDetailSelect.textContent = cb.checked
+            ? "Batalkan Pilih"
+            : "Pilih Item Ini";
+    });
+
+    rowDetailSave?.addEventListener("click", () => {
+        if (!currentRow) return;
+        const inputModal = document.getElementById("row-detail-qty");
+        const rowInput = currentRow.querySelector('input[name="QTY_SPX"]');
+        if (!rowInput || !inputModal) return;
+
+        let v = parseFloat(String(inputModal.value).replace(",", "."));
+        if (isNaN(v)) v = 0;
+
+        const maxAllow =
+            parseFloat(inputModal.dataset.max || rowInput.dataset.max || "0") ||
+            0;
+        const u = String(
+            inputModal.dataset.meinh || rowInput.dataset.meinh || "ST"
+        ).toUpperCase();
+
+        if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
+        else if (u === "M3") v = Math.round(v * 1000) / 1000;
+
+        if (v <= 0) {
+            if (warningMessage)
+                warningMessage.textContent = "Kuantitas harus lebih dari 0.";
+            isWarningOpen = true;
+            pendingResetInput = inputModal;
+            warningModal?.classList.remove("hidden");
+            return;
+        }
+        if (v > maxAllow) {
+            if (warningMessage)
+                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
+            isWarningOpen = true;
+            pendingResetInput = inputModal;
+            warningModal?.classList.remove("hidden");
+            return;
+        }
+
+        // salin qty
+        rowInput.value = String(v);
+
+        // salin remark (WI mode)
+        if (isWiMode) {
+            const modalRemark = document.getElementById("row-detail-remark");
+            const rowRemark = currentRow.querySelector(".remark-input");
+            if (modalRemark && rowRemark)
+                rowRemark.value = modalRemark.value.trim();
+        }
+
+        closeRowDetail();
+    });
+
+    /* =========================
+     CONFIRM FLOW (tetap seperti sebelumnya)
+     ========================= */
+    confirmButton?.addEventListener("click", () => {
         const budatRaw = (budatInput?.value || "").trim();
         if (!budatRaw) {
-            warningMessage.textContent = "Posting Date wajib diisi.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent = "Posting Date wajib diisi.";
+            warningModal?.classList.remove("hidden");
             return;
         }
         const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(budatRaw);
         if (!m) {
-            warningMessage.textContent = "Format Posting Date tidak valid.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent = "Format Posting Date tidak valid.";
+            warningModal?.classList.remove("hidden");
             return;
         }
         const budatDate = new Date(+m[1], +m[2] - 1, +m[3]);
@@ -1538,9 +1689,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const todayLocal = new Date();
         todayLocal.setHours(0, 0, 0, 0);
         if (budatDate > todayLocal) {
-            warningMessage.textContent =
-                "Posting Date tidak boleh melebihi hari ini.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent =
+                    "Posting Date tidak boleh melebihi hari ini.";
+            warningModal?.classList.remove("hidden");
             return;
         }
 
@@ -1559,72 +1711,82 @@ document.addEventListener("DOMContentLoaded", async () => {
             };
         });
 
+        // aturan lama: larang confirm banyak baris untuk AUFNR sama
         const counts = items.reduce(
             (acc, it) => ((acc[it.aufnr] = (acc[it.aufnr] || 0) + 1), acc),
             {}
         );
         const duplicates = Object.entries(counts).filter(([, n]) => n > 1);
         if (duplicates.length) {
-            warningMessage.innerHTML = `Tidak dapat mengonfirmasi beberapa baris untuk PRO (AUFNR) yang sama secara bersamaan.<br><br>Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${duplicates
-                .map(
-                    ([a, n]) =>
-                        `<li><span class="font-mono">${a}</span> &times; ${n} baris</li>`
-                )
-                .join(
-                    ""
-                )}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.innerHTML = `Tidak dapat mengonfirmasi beberapa baris untuk PRO (AUFNR) yang sama secara bersamaan.<br><br>Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${duplicates
+                    .map(
+                        ([a, n]) =>
+                            `<li><span class="font-mono">${esc(
+                                a
+                            )}</span> &times; ${esc(String(n))} baris</li>`
+                    )
+                    .join(
+                        ""
+                    )}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
+            warningModal?.classList.remove("hidden");
             return;
         }
+
         if (items.some((x) => x.qty <= 0)) {
-            warningMessage.textContent =
-                "Kuantitas konfirmasi harus lebih dari 0.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent =
+                    "Kuantitas konfirmasi harus lebih dari 0.";
+            warningModal?.classList.remove("hidden");
             return;
         }
+
         const invalidMax = items.find((x) => x.qty > x.max);
         if (invalidMax) {
             const msg = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
-            errorMessage.textContent = msg;
+            if (errorMessage) errorMessage.textContent = msg;
             prepareWiCopy(msg);
-            errorModal.classList.remove("hidden");
+            errorModal?.classList.remove("hidden");
             return;
         }
 
-        const confirmationList = document.getElementById("confirmation-list");
-        confirmationList.innerHTML = items
-            .map(
-                (
-                    x
-                ) => `<li class="flex justify-between items-center text-sm font-semibold text-slate-700">
-        <div class="flex-1 pr-3"><span class="font-mono">${x.aufnr}</span> / <span class="font-mono">${x.arbpl0}</span> / ${x.maktx}</div>
-        <span class="font-mono">${x.qty}</span></li>`
-            )
-            .join("");
-        document.getElementById("confirm-modal").classList.remove("hidden");
+        if (confirmationListEl) {
+            confirmationListEl.innerHTML = items
+                .map(
+                    (
+                        x
+                    ) => `<li class="flex justify-between items-center text-sm font-semibold text-slate-700">
+            <div class="flex-1 pr-3"><span class="font-mono">${esc(
+                x.aufnr
+            )}</span> / <span class="font-mono">${esc(x.arbpl0)}</span> / ${esc(
+                        x.maktx
+                    )}</div>
+            <span class="font-mono">${esc(String(x.qty))}</span>
+          </li>`
+                )
+                .join("");
+        }
+
+        confirmModal?.classList.remove("hidden");
     });
 
-    let pendingShowSuccess = null;
-    document.getElementById("yes-button").addEventListener("click", () => {
+    yesButton?.addEventListener("click", () => {
         const selected = Array.from(
             document.querySelectorAll(".row-checkbox:checked")
         );
         if (!selected.length) {
-            document.getElementById("confirm-modal").classList.add("hidden");
+            confirmModal?.classList.add("hidden");
             return;
         }
 
-        // Validasi BUDAT (YYYY-MM-DD) tidak melewati hari ini
-        const budatRaw = (
-            document.getElementById("budat-input")?.value || ""
-        ).trim();
+        // Validasi budat
+        const budatRaw = (budatInput?.value || "").trim();
         const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(budatRaw);
         if (!m) {
-            const warningModal = document.getElementById("warning-modal");
-            const warningMessage = document.getElementById("warning-message");
-            warningMessage.textContent =
-                "Posting Date wajib & format harus yyyy-mm-dd.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent =
+                    "Posting Date wajib & format harus yyyy-mm-dd.";
+            warningModal?.classList.remove("hidden");
             return;
         }
         const budatDate = new Date(+m[1], +m[2] - 1, +m[3]);
@@ -1632,28 +1794,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         const todayLocal = new Date();
         todayLocal.setHours(0, 0, 0, 0);
         if (budatDate > todayLocal) {
-            const warningModal = document.getElementById("warning-modal");
-            const warningMessage = document.getElementById("warning-message");
-            warningMessage.textContent =
-                "Posting Date tidak boleh melebihi hari ini.";
-            warningModal.classList.remove("hidden");
+            if (warningMessage)
+                warningMessage.textContent =
+                    "Posting Date tidak boleh melebihi hari ini.";
+            warningModal?.classList.remove("hidden");
             return;
         }
 
-        // Siapkan payload untuk endpoint ASYNC
-        const pickedBudat = budatRaw.replace(/\D/g, ""); // YYYYMMDD
+        const pickedBudat = budatRaw.replace(/\D/g, "");
+
         const items = selected.map((cb) => {
             const row = cb.closest("tr");
             const qty = parseFloat(
                 row.querySelector('input[name="QTY_SPX"]').value || "0"
             );
 
-            // tanggal plan sudah 8 digit di dataset (hasil toYYYYMMDD)
             const ssavd = (row.dataset.ssavd || "").replace(/\D/g, "") || null;
             const sssld = (row.dataset.sssld || "").replace(/\D/g, "") || null;
 
             return {
-                // --- yang lama ---
                 aufnr: row.dataset.aufnr || "",
                 vornr: row.dataset.vornr || "",
                 wi_code: nz(row.dataset.wiCode) || null,
@@ -1665,42 +1824,40 @@ document.addEventListener("DOMContentLoaded", async () => {
                 arbpl0: nz(row.dataset.arbpl0),
                 charg: row.dataset.charg || null,
 
-                // --- metadata TAMBAHAN (WAJIB agar kolom DB tidak NULL) ---
-                werks: row.dataset.werks || null, // plant
-                ltxa1: nz(row.dataset.ltxa1), // op_desc
-                matnrx: row.dataset.matnrx || null, // material
-                maktx: nz(row.dataset.maktx), // material_desc
-                maktx0: nz(row.dataset.maktx0), // fg_desc
-                dispo: row.dataset.dispo || null, // mrp_controller
-                steus: row.dataset.steus || null, // control_key
+                werks: row.dataset.werks || null,
+                ltxa1: nz(row.dataset.ltxa1),
+                matnrx: row.dataset.matnrx || null,
+                maktx: nz(row.dataset.maktx),
+                maktx0: nz(row.dataset.maktx0),
+                dispo: row.dataset.dispo || null,
+                steus: row.dataset.steus || null,
 
-                soitem: row.dataset.soitem || null, // "SO/Item" gabungan
-                kaufn: row.dataset.kdauf || null, // !!! controller pakai 'kaufn' (bukan kdauf)
-                kdpos: row.dataset.kdpos || null, // item, BE akan pad ke 6 digit
+                soitem: row.dataset.soitem || null,
+                kaufn: row.dataset.kdauf || null,
+                kdpos: row.dataset.kdpos || null,
 
-                ssavd: ssavd, // start_date_plan (yyyymmdd)
-                sssld: sssld, // finish_date_plan (yyyymmdd)
+                ssavd,
+                sssld,
                 ltimex: (() => {
                     const v = nz(row.dataset.ltimex);
                     return v == null
                         ? null
                         : parseFloat(String(v).replace(",", "."));
-                })(), // minutes_plan (string angka)
+                })(),
 
-                gstrp: (row.dataset.gstrp || "").replace(/\D/g, "") || null, // optional
-                gltrp: (row.dataset.gltrp || "").replace(/\D/g, "") || null, // optional
+                gstrp: (row.dataset.gstrp || "").replace(/\D/g, "") || null,
+                gltrp: (row.dataset.gltrp || "").replace(/\D/g, "") || null,
             };
         });
 
-        // Tutup modal; JANGAN tampilkan loading apapun
-        document.getElementById("confirm-modal").classList.add("hidden");
+        confirmModal?.classList.add("hidden");
 
-        // Kirim ke queue (biarkan berjalan di background) — gunakan keepalive agar tidak batal saat redirect
         const payload = {
             budat: pickedBudat,
-            wi_code: WI_CODES.length === 1 ? WI_CODE : null, // ✅ hanya isi jika single WI
+            wi_code: WI_CODES.length === 1 ? WI_CODE : null,
             items,
         };
+
         fetch("/api/yppi019/confirm-async", {
             method: "POST",
             keepalive: true,
@@ -1711,68 +1868,55 @@ document.addEventListener("DOMContentLoaded", async () => {
                 "X-Requested-With": "XMLHttpRequest",
             },
             body: JSON.stringify(payload),
-        }).catch(() => {
-            /* abaikan error kirim */
-        });
+        }).catch(() => {});
 
-        // LANGSUNG balik ke halaman /scan (bawa pernr jika ada)
-        window.location.href = (function () {
-            const baseScan =
-                document.querySelector('meta[name="scan-url"]')?.content ||
-                document.getElementById("back-link")?.getAttribute("href") ||
-                document
-                    .getElementById("scan-again-link")
-                    ?.getAttribute("href") ||
-                "/scan";
-            const pernr =
-                new URLSearchParams(location.search).get("pernr") || "";
-            return pernr
-                ? `${baseScan}?pernr=${encodeURIComponent(pernr)}`
-                : baseScan;
-        })();
+        // redirect scan setelah confirm
+        goScanWithPernr();
     });
 
-    // === Close handlers ===
-    cancelButton.addEventListener("click", () =>
-        confirmModal.classList.add("hidden")
+    /* =========================
+     CLOSE HANDLERS
+     ========================= */
+    cancelButton?.addEventListener("click", () =>
+        confirmModal?.classList.add("hidden")
     );
 
-    errorOkButton.addEventListener("click", () => {
+    errorOkButton?.addEventListener("click", () => {
         if (isResultError) {
             goScanWithPernr();
             return;
         }
-        errorModal.classList.add("hidden");
+        errorModal?.classList.add("hidden");
     });
 
-    errorCopyWiButton?.addEventListener("click", async () => {
-        const wiCode = errorCopyWiButton.dataset.wiCode || "";
+    errorCopyWiButtonEl?.addEventListener("click", async () => {
+        const wiCode = errorCopyWiButtonEl.dataset.wiCode || "";
         if (!wiCode) return;
-
         try {
             await navigator.clipboard.writeText(wiCode);
-            const oldText = errorCopyWiButton.textContent;
-            errorCopyWiButton.textContent = "Tersalin";
-            setTimeout(() => {
-                errorCopyWiButton.textContent = oldText;
-            }, 1500);
-        } catch (e) {
-            // fallback simpel kalau clipboard gagal
+            const oldText = errorCopyWiButtonEl.textContent;
+            errorCopyWiButtonEl.textContent = "Tersalin";
+            setTimeout(() => (errorCopyWiButtonEl.textContent = oldText), 1500);
+        } catch {
             alert("Gagal menyalin kode WI. Silakan salin manual.");
         }
     });
 
-    successOkButton.addEventListener("click", () => {
+    successOkButton?.addEventListener("click", () => {
+        if (successAction === "stay") {
+            successModal?.classList.add("hidden");
+            return;
+        }
         goScanWithPernr();
     });
-});
 
-// ===== Guard tombol "Ya" agar tidak double-submit =====
-(() => {
-    function initYesButtonGuard() {
+    /* =========================
+     GUARD "YA" (anti double submit)
+     ========================= */
+    (function initYesButtonGuard() {
         const modal = document.getElementById("confirm-modal");
         const yesBtn = document.getElementById("yes-button");
-        const cancelBtn = document.getElementById("cancel-button");
+        const cancelBtn2 = document.getElementById("cancel-button");
         if (!modal || !yesBtn) return;
 
         const originalHTML = yesBtn.innerHTML;
@@ -1782,13 +1926,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             yesBtn.disabled = true;
             yesBtn.setAttribute("aria-busy", "true");
             yesBtn.classList.add("opacity-60", "cursor-not-allowed");
-            // spinner kecil + label
             yesBtn.innerHTML =
                 '<svg class="w-4 h-4 mr-2 inline-block animate-spin" viewBox="0 0 24 24" fill="none">' +
                 '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>' +
                 '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>' +
                 "</svg>Memproses…";
         }
+
         function enableYes() {
             yesBtn.disabled = false;
             yesBtn.removeAttribute("aria-busy");
@@ -1796,20 +1940,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             yesBtn.innerHTML = originalHTML;
         }
 
-        // 1) Disable segera saat diklik
         yesBtn.addEventListener("click", disableYes, { capture: true });
-        // 2) Re-enable jika pengguna batal
-        if (cancelBtn) cancelBtn.addEventListener("click", enableYes);
-        // 3) Reset setiap kali modal muncul lagi
+        cancelBtn2?.addEventListener("click", enableYes);
+
         const obs = new MutationObserver(() => {
             if (!modal.classList.contains("hidden")) enableYes();
         });
         obs.observe(modal, { attributes: true, attributeFilter: ["class"] });
-    }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initYesButtonGuard);
-    } else {
-        initYesButtonGuard();
-    }
-})();
+    })();
+});

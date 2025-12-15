@@ -61,19 +61,25 @@ class WiDocumentController extends Controller
 
                 foreach ($doc['pro_items'] ?? [] as $item) {
 
-                    // ✅ kalau nik dikirim, tampilkan item yg nik-nya sama saja
                     if ($nik !== '') {
-                        $itemNik = (string)($item['nik'] ?? '');
+                        $itemNik = trim((string)($item['nik'] ?? ''));
                         if ($itemNik !== $nik) continue;
                     }
 
-                    $qtyOrder  = (float)($item['assigned_qty']  ?? 0);
-                    $confirmed = (float)($item['confirmed_qty'] ?? 0);
-
+                    // ✅ FIX: definisikan dulu
                     $matNumber = $item['material_number'] ?? null;
-                    if (is_string($matNumber) && ctype_digit($matNumber)) {
-                        $matNumber = ltrim($matNumber, '0');
+                    if (is_string($matNumber)) {
+                        $matNumber = trim($matNumber);
+                        if ($matNumber !== '' && ctype_digit($matNumber)) {
+                            $matNumber = ltrim($matNumber, '0');
+                        }
                     }
+
+                    $assigned  = (float)($item['assigned_qty'] ?? $item['qty_order'] ?? 0);
+                    $confirmed = (float)($item['confirmed_qty'] ?? 0);
+                    $remarkQty = (float)($item['remark_qty'] ?? 0);
+
+                    $maxQty = max(0, $assigned - $confirmed - $remarkQty);
 
                     $rows[] = [
                         'AUFNR'   => $item['aufnr'] ?? null,
@@ -82,9 +88,11 @@ class WiDocumentController extends Controller
                         'SNAME'   => $item['name']  ?? null,
                         'MEINH'   => $item['uom']   ?? 'ST',
 
-                        'QTY_SPK' => $qtyOrder,
-                        'QTY_SPX' => $qtyOrder,
-                        'WEMNG'   => $confirmed,
+                        'QTY_SPK'    => $assigned,
+                        'WEMNG'      => $confirmed,
+                        'REMARK_QTY' => $remarkQty,
+                        'QTY_SPX'    => $maxQty,
+                        'MAX_QTY'    => $maxQty,
 
                         'MAKTX0'  => $item['material_desc'] ?? null,
                         'MAKTX'   => $item['material_desc'] ?? null,

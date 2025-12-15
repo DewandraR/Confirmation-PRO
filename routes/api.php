@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WiDocumentController;
+use App\Http\Controllers\Yppi019DbApiController;
 /*
 |--------------------------------------------------------------------------
 | API Routes (stateless, TANPA session)

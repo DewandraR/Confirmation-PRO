@@ -45,7 +45,7 @@ Route::middleware(['auth' /*, 'countdown' */])->group(function () {
 // 1) 'api' group (stateless, TANPA session cookie Laravel)
 // 2) 'sap_auth' (middleware kustom yang membaca kredensial SAP dan segera melepas lock)
 Route::middleware(['api', 'sap_auth'])->prefix('api')->group(function () {
-    // API yang membutuhkan otentikasi SAP (memanggil sapHeaders())
+
     Route::post('/yppi019/sync',          [Yppi019DbApiController::class, 'sync']);
     Route::post('/yppi019/sync_bulk',     [Yppi019DbApiController::class, 'syncBulk']);
     Route::get('/yppi019/material',       [Yppi019DbApiController::class, 'material']);
@@ -54,9 +54,14 @@ Route::middleware(['api', 'sap_auth'])->prefix('api')->group(function () {
     Route::post('/yppi019/backdate-log',  [Yppi019DbApiController::class, 'backdateLog']);
     Route::get('/yppi019/hasil',          [Yppi019DbApiController::class, 'hasil'])->name('api.yppi019.hasil');
 
-    // API yang menggunakan Job/Monitor (juga butuh sapHeaders/kredensial)
     Route::post('/yppi019/confirm-async', [Yppi019DbApiController::class, 'confirmAsync'])->name('yppi019.confirm.async');
-    Route::get('/yppi019/confirm-monitor', [Yppi019DbApiController::class, 'confirmMonitor'])->name('yppi019.confirm.monitor');
+    Route::get('/yppi019/confirm-monitor',[Yppi019DbApiController::class, 'confirmMonitor'])->name('yppi019.confirm.monitor');
+
+    // ✅ PINDAHKAN KE SINI
+    Route::post('/yppi019/remark-async', [Yppi019DbApiController::class, 'remarkAsync'])
+        ->name('yppi019.remark.async');
+
+    Route::get('/yppi019/confirm-monitor-ids', [Yppi019DbApiController::class, 'confirmMonitorByIds']);
 });
 
 // === API YPPI019 (BENAR-BENAR STATELESS) ===

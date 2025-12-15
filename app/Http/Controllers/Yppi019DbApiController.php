@@ -584,7 +584,176 @@ class Yppi019DbApiController extends Controller
         return response()->json(['queued' => $ids], 202);
     }
 
+    public function remarkAsync(Request $req)
+    {
+        // 0) Pastikan SAP user ada (harusnya sudah disediakan middleware sap_auth)
+        $sapUser = (string) $req->attributes->get('sap_username');
+        if ($sapUser === '') {
+            return response()->json([
+                'ok'    => false,
+                'error' => 'Sesi SAP habis atau belum login',
+            ], 440);
+        }
 
+        // 1) Validasi payload (tambahkan metadata opsional untuk tampilan)
+        $data = $req->validate([
+            'items' => ['required', 'array', 'min:1'],
+
+            'items.*.wi_code'     => ['required', 'string', 'max:50'],
+            'items.*.aufnr'       => ['required', 'string', 'size:12'],
+            'items.*.vornr'       => ['nullable', 'string', 'max:4'],
+            'items.*.nik'         => ['required', 'string', 'max:32'],
+            'items.*.operator_name' => ['nullable', 'string', 'max:120'],
+            'items.*.remark'      => ['required', 'string', 'max:500'],
+            'items.*.remark_qty'  => ['required', 'numeric', 'gt:0'],
+
+            // ---- metadata display (opsional, tapi disarankan FE kirim) ----
+            'items.*.qty_pro'     => ['nullable', 'numeric'],
+            'items.*.meinh'       => ['nullable', 'string', 'max:8'],
+            'items.*.matnrx'      => ['nullable', 'string', 'max:40'],  // material
+            'items.*.maktx'       => ['nullable', 'string', 'max:200'], // material_desc
+            'items.*.maktx0'      => ['nullable', 'string', 'max:200'], // fg_desc
+
+            'items.*.werks'       => ['nullable', 'string', 'max:8'],
+            'items.*.arbpl0'      => ['nullable', 'string', 'max:40'],
+            'items.*.ltxa1'       => ['nullable', 'string', 'max:200'],
+            'items.*.dispo'       => ['nullable', 'string', 'max:10'],
+            'items.*.steus'       => ['nullable', 'string', 'max:10'],
+            'items.*.charg'       => ['nullable', 'string', 'max:40'],
+            'items.*.soitem'      => ['nullable', 'string', 'max:30'],
+            'items.*.kaufn'       => ['nullable', 'string', 'max:20'],
+            'items.*.kdpos'       => ['nullable', 'string', 'max:6'],
+            'items.*.ssavd'       => ['nullable', 'string', 'max:10'],
+            'items.*.sssld'       => ['nullable', 'string', 'max:10'],
+            'items.*.ltimex'      => ['nullable', 'numeric'],
+        ]);
+
+        $ids = [];
+
+        foreach ($data['items'] as $it) {
+            $aufnr = (string) $it['aufnr'];
+            $vornr = $this->padVornr($it['vornr'] ?? null);
+
+            $nik       = (string) $it['nik'];
+            $opName    = $it['operator_name'] ?? null;
+
+            $remark    = (string) $it['remark'];
+            $remarkQty = (float)  $it['remark_qty'];
+            $wiCode    = (string) $it['wi_code'];
+
+            // 2) Fallback metadata dari record monitor terakhir untuk PRO+VORNR yang sama
+            $ref = \App\Models\Yppi019ConfirmMonitor::query()
+                ->where('aufnr', $aufnr)
+                ->where('vornr', $vornr)
+                ->where('operator_nik', $nik) 
+                ->orderByDesc('id')
+                ->first();
+
+            // 3) Ambil metadata prioritas: dari FE -> fallback ref -> null
+            $meinh = $this->mapUnitForSap((string)($it['meinh'] ?? ($ref->meinh ?? 'PC')));
+
+            $qtyPro = \Illuminate\Support\Arr::get($it, 'qty_pro',
+          \Illuminate\Support\Arr::get($it, 'qtyPro', $ref->qty_pro ?? null));
+
+            $material      = $it['matnrx'] ?? ($ref->material ?? null);
+            $materialDesc  = $it['maktx']  ?? ($ref->material_desc ?? null);
+            $fgDesc        = $it['maktx0'] ?? ($ref->fg_desc ?? null);
+
+            $opName = \Illuminate\Support\Arr::get($it, 'operator_name',
+          \Illuminate\Support\Arr::get($it, 'operatorName', $ref->operator_name ?? null));
+
+            // SO / Item (biar konsisten dengan confirmAsync)
+            $salesOrder = $it['kaufn'] ?? ($ref->sales_order ?? null);
+            $soItem     = $it['kdpos'] ?? ($ref->so_item ?? null);
+            if ($soItem !== null && $soItem !== '') {
+                $soItem = str_pad((string) $soItem, 6, '0', STR_PAD_LEFT);
+            }
+            if (!$salesOrder || !$soItem) {
+                [$soParsed, $itemParsed] = $this->splitSoItem($it['soitem'] ?? null);
+                $salesOrder = $salesOrder ?: $soParsed;
+                $soItem     = $soItem     ?: $itemParsed;
+            }
+
+            // 4) Simpan record monitor (ISI FIELD DISPLAY)
+            $rec = \App\Models\Yppi019ConfirmMonitor::create([
+                'aufnr'             => $aufnr,
+                'vornr'             => $vornr,
+
+                'meinh'             => $meinh,
+                'qty_pro'           => $qtyPro,
+                'qty_confirm'       => $remarkQty,
+
+                'material'          => $material,
+                'material_desc'     => $materialDesc,
+                'fg_desc'           => $fgDesc,
+
+                'confirmation_date' => now()->toDateString(),
+                'posting_date'      => now()->toDateString(),
+
+                'operator_nik'      => $nik,
+                'operator_name'     => $opName,
+
+                // PENTING: ini dipakai filter confirmMonitor()
+                'sap_user'          => $sapUser,
+
+                'status'            => 'PENDING',
+                'status_message'    => null,
+
+                // metadata bisnis (opsional untuk laporan/tampilan)
+                'plant'             => $it['werks']  ?? ($ref->plant ?? null),
+                'work_center'       => $it['arbpl0'] ?? ($ref->work_center ?? null),
+                'op_desc'           => $it['ltxa1']  ?? ($ref->op_desc ?? null),
+                'mrp_controller'    => $it['dispo']  ?? ($ref->mrp_controller ?? null),
+                'control_key'       => $it['steus']  ?? ($ref->control_key ?? null),
+
+                'sales_order'       => $salesOrder,
+                'so_item'           => $soItem,
+                'batch_no'          => $it['charg'] ?? ($ref->batch_no ?? null),
+
+                'start_date_plan'   => $this->ymdToDate($it['ssavd'] ?? null) ?? ($ref->start_date_plan ?? null),
+                'finish_date_plan'  => $this->ymdToDate($it['sssld'] ?? null) ?? ($ref->finish_date_plan ?? null),
+                'minutes_plan'      => $it['ltimex'] ?? ($ref->minutes_plan ?? null),
+
+                // payload untuk ConfirmProJob
+                'request_payload'   => [
+                    'action'     => 'remark',
+                    'wi_mode'    => true,
+                    'wi_code'    => $wiCode,
+
+                    'remark'     => $remark,
+                    'remark_qty' => $remarkQty,
+
+                    'nik'        => $nik,
+                    'aufnr'      => $aufnr,
+                    'vornr'      => $vornr,
+                ],
+            ]);
+
+            // 5) Dispatch job
+            \App\Jobs\ConfirmProJob::dispatch($rec->id);
+
+            $ids[] = $rec->id;
+        }
+
+        return response()->json([
+            'queued' => $ids,
+        ], 202);
+    }
+
+    public function confirmMonitorByIds(Request $req)
+    {
+        $idsRaw = $req->query('ids', '');
+        $ids = array_values(array_filter(array_map('intval', preg_split('/[,\s]+/', $idsRaw))));
+
+        if (!count($ids)) return response()->json(['data' => []]);
+
+        $rows = \App\Models\Yppi019ConfirmMonitor::query()
+            ->whereIn('id', $ids)
+            ->get(['id','aufnr','vornr','operator_nik','status','status_message','processed_at']);
+
+        return response()->json(['data' => $rows]);
+    }
+    
     // GET /api/yppi019/confirm-monitor
     public function confirmMonitor(Request $req)
     {

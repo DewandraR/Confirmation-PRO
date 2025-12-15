@@ -164,6 +164,81 @@ class ConfirmProJob implements ShouldQueue
 
         $payload = $rec->request_payload ?? [];
 
+        $action = (string)($payload['action'] ?? 'confirm');
+
+        if ($action === 'remark') {
+
+    $base  = rtrim(config('services.wi_api.base_url'), '/');
+    $token = config('services.wi_api.token') ?: env('WI_API_TOKEN');
+
+    if (!$base || !$token) {
+        $rec->update([
+            'status' => 'FAILED',
+            'status_message' => 'WI API base_url / token belum diset (cek services.wi_api.* atau WI_API_TOKEN).',
+            'processed_at' => now(),
+        ]);
+        return;
+    }
+
+    $wiCode    = (string)($payload['wi_code'] ?? '');
+    $aufnr     = (string)($payload['aufnr'] ?? $rec->aufnr);
+    $vornr     = $this->padVornr((string)($payload['vornr'] ?? $rec->vornr));
+    $nik       = (string)($payload['nik'] ?? $rec->operator_nik);
+    $remark    = (string)($payload['remark'] ?? '');
+    $remarkQty = (float)($payload['remark_qty'] ?? $rec->qty_confirm);
+
+    try {
+        $res = Http::withToken($token)
+            ->acceptJson()
+            ->timeout(30)
+            ->post($base . '/wi/pro/complete-remark', [
+                'wi_code'    => $wiCode,
+                'aufnr'      => $aufnr,
+                'vornr'      => $vornr,
+                'nik'        => $nik,
+                'remark'     => $remark,
+                'remark_qty' => $remarkQty,
+            ]);
+
+        $j = $res->json();
+        $j = is_array($j) ? $j : []; // kalau body bukan JSON, jangan error
+
+        $apiStatus = strtolower((string)($j['status'] ?? ''));
+        $apiMsg    = (string)($j['message'] ?? $j['error'] ?? '');
+
+        // kalau body bukan JSON, ambil body mentah
+        if ($apiMsg === '') {
+            $apiMsg = trim((string)$res->body());
+        }
+
+        if ($res->ok() && $apiStatus === 'success') {
+            $rec->update([
+                'status' => 'SUCCESS',
+                'status_message' => $apiMsg !== '' ? $apiMsg : 'Remark berhasil ditambahkan',
+                'processed_at' => now(),
+            ]);
+            return;
+        }
+
+        $rec->update([
+            'status' => 'FAILED',
+            'status_message' => \Illuminate\Support\Str::limit(
+                $apiMsg !== '' ? $apiMsg : "Remark gagal (HTTP {$res->status()})",
+                600
+            ),
+            'processed_at' => now(),
+        ]);
+        return;
+
+    } catch (\Throwable $e) {
+        $rec->update([
+            'status' => 'FAILED',
+            'status_message' => 'Remark error: ' . $e->getMessage(),
+            'processed_at' => now(),
+        ]);
+        return;
+    }
+}
         // === DETEKSI WI MODE ===
         $wiCode = $payload['wi_code'] ?? null;
         $wiMode = !empty($wiCode); // WI mode kalau ada wi_code
