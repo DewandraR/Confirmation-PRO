@@ -49,4 +49,19 @@
         white-space: nowrap;
         font-weight: 600; /* Opsional: pertebal angka agar mudah dipindai mata */
     }
+    /* tanggal list (PRO) biar wrap rapi */
+    .hasil-date-list {
+        white-space: normal;
+        line-height: 1.35;
+    }
+
+    /* HP: kasih batas lebar kolom tanggal biar tidak “makan” kolom lain */
+    @media (max-width: 640px) {
+        #hasil-table td:nth-child(2),
+        #hasil-table th:nth-child(2) {
+            max-width: 170px;
+            white-space: normal;
+            word-break: break-word;
+        }
+    }
 }

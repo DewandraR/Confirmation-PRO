@@ -5,11 +5,12 @@
 @php
   $dispos = request('dispos') ?: request('mrps') ?: request('dispo') ?: request('mrp');
   $mrpArr = array_values(array_filter(array_map('trim', explode(',', (string) $dispos))));
-  $hasMrp = request('werks') && count($mrpArr) > 0;
-  $isMrpMode = $hasMrp && !request('pernr');
 
-  // optional: label ringkas untuk title (mis: D24 +1)
-  $mrpLabel = count($mrpArr) > 1 ? ($mrpArr[0].' +'.(count($mrpArr)-1)) : ($mrpArr[0] ?? '');
+  $isProMode = (bool) (request('aufnr') ?: request('pro'));
+  $hasMrp = request('werks') && count($mrpArr) > 0;
+  $isMrpMode = $hasMrp && !request('pernr') && !$isProMode;
+
+  $isSummaryMode = $isMrpMode || $isProMode;
 @endphp
 
     <div class="px-4 py-8 md:px-6">
@@ -22,7 +23,11 @@
                         Hasil Konfirmasi
                         <span class="ml-1 text-white/90 text-base md:text-lg font-semibold">
                             / <span id="title-pernr">
-                                {{ request('pernr') ?: ($isMrpMode ? ((request('bagian') ?: '-') . ' / ' . request('werks')) : '-') }}
+                                @if($isProMode)
+                                    {{ request('aufnr') ?: request('pro') }}
+                                @else
+                                    {{ request('pernr') ?: ($isMrpMode ? ((request('bagian') ?: '-') . ' / ' . request('werks')) : '-') }}
+                                @endif
                             </span>
                             <span id="title-budat">
                                 {{ request('from') && request('to')
@@ -100,7 +105,7 @@
                 {{-- ===== Tabel ===== --}}
                 <div class="px-5 pb-6">
                     <div class="overflow-auto max-h-[72vh] rounded-xl border border-slate-200">
-                        <table id="hasil-table" class="w-full {{ $isMrpMode ? 'min-w-0' : 'min-w-[1200px]' }} text-sm text-center">
+                        <table id="hasil-table" class="w-full {{ $isSummaryMode ? 'min-w-0' : 'min-w-[1200px]' }} text-sm text-center">
                             <thead class="bg-green-700/90 sticky top-0 z-10">
                                 <tr>
                                     <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[70px]">
@@ -110,7 +115,7 @@
                                         Tanggal
                                     </th>
 
-                                    @if($isMrpMode)
+                                    @if($isSummaryMode)
                                         <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[180px] whitespace-nowrap">
                                             Operator
                                         </th>
@@ -162,7 +167,7 @@
                             {{-- Baris data diisi oleh hasil.js --}}
                             <tbody id="hasil-tbody" class="bg-white divide-y divide-slate-200 text-slate-800">
                                 <tr>
-                                    <td class="px-3 py-4 text-slate-500" colspan="{{ $isMrpMode ? 5 : 14 }}">Memuat data…</td>
+                                    <td class="px-3 py-4 text-slate-500" colspan="{{ $isSummaryMode ? 5 : 13 }}">
                                 </tr>
                             </tbody>
                         </table>
@@ -203,9 +208,17 @@
             <div class="px-4 py-2 border-b text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
                 <div><span class="font-semibold">Tanggal:</span> <span id="mrpDetailTanggal">-</span></div>
                 <div><span class="font-semibold">Operator:</span> <span id="mrpDetailOperator">-</span></div>
-                <div><span class="font-semibold">MRP:</span> <span id="mrpDetailMrp">-</span></div>
-                <div><span class="font-semibold">Plant:</span> <span id="mrpDetailWerks">-</span></div>
+
+                {{-- ✅ bungkus agar bisa hide saat PRO --}}
+                <div id="mrpDetailMrpWrap">
+                    <span class="font-semibold">MRP:</span> <span id="mrpDetailMrp">-</span>
+                </div>
+
+                <div id="mrpDetailWerksWrap">
+                    <span class="font-semibold">Plant:</span> <span id="mrpDetailWerks">-</span>
+                </div>
             </div>
+
 
 
             {{-- BODY TABLE (SCROLL) --}}

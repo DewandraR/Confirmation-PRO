@@ -793,21 +793,57 @@ def _is_message_table(rows) -> bool:
 # --- ENDPOINT FINAL: /api/yppi019/hasil ---
 @app.get("/api/yppi019/hasil")
 def api_hasil():
-    """
-    GET /api/yppi019/hasil?pernr=XXXXXX&budat=YYYYMMDD[&aufnr=XXXXXXXXXXXX]
-    ... (dokumentasi lainnya) ...
-    """
     try:
         username, password = get_credentials_from_request()
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
+    # ambil params
+    aufnr = (request.args.get("aufnr") or "").strip()
     pernr = (request.args.get("pernr") or "").strip()
     budat = (request.args.get("budat") or "").strip().replace("-", "")
-    aufnr = (request.args.get("aufnr") or "").strip()  # opsional
     dispo = (request.args.get("dispo") or "").strip()
     werks = (request.args.get("werks") or "").strip()
 
+    # === MODE PRO (AUFNR ONLY) - PRIORITAS TERTINGGI ===
+    if aufnr:
+        sap = None
+        try:
+            sap = connect_sap(username, password)
+
+            args = {"P_AUFNR": pad_aufnr(aufnr)}   # <-- ONLY THIS
+            logger.info("Calling Z_FM_YPPR062 (PRO) with %s", args)
+            res = sap.call("Z_FM_YPPR062", **args)
+
+            rows = res.get("T_DATA1", []) or []
+            messages = res.get("RETURN", []) or []
+
+            err = next((m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")), None)
+            if err:
+                msg = err.get("MESSAGE") or str(err)
+                return jsonify({"ok": False, "error": msg, "messages": to_jsonable(messages)}), 502
+
+            if _is_message_table(rows):
+                rows = []
+
+            return jsonify({
+                "ok": True,
+                "mode": "AUFNR",
+                "rows": to_jsonable(rows),
+                "messages": to_jsonable(messages),
+                "count": len(rows),
+            }), 200
+
+        except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
+            return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
+        except Exception as e:
+            logger.exception("Error api_hasil (PRO)")
+            return jsonify({"ok": False, "error": str(e)}), 500
+        finally:
+            if sap:
+                sap.close()
+
+    # === MODE LAMA: NIK / MRP (BUTUH BUDAT) ===
     if not re.match(r"^\d{8}$", budat):
         return jsonify({"ok": False, "error": "param budat(YYYYMMDD) wajib"}), 400
 
@@ -816,76 +852,45 @@ def api_hasil():
     if not has_pernr and not has_mrp:
         return jsonify({"ok": False, "error": "Isi pernr ATAU pilih dispo+werks"}), 400
 
-    # 1. Deklarasikan variabel 'sap' di luar blok try
-    sap = None 
+    sap = None
     try:
-        # 2. Buka koneksi secara manual
-        sap = connect_sap(username, password) 
-        
+        sap = connect_sap(username, password)
+
         args = {"P_BUDAT": budat}
-
-        if has_pernr:
-            args["P_PERNR"] = pernr
-
+        if has_pernr: args["P_PERNR"] = pernr
         if has_mrp:
             args["P_DISPO"] = dispo
             args["P_WERKS"] = werks
 
-        if aufnr:
-            args["P_AUFNR"] = pad_aufnr(aufnr)
-
         logger.info("Calling Z_FM_YPPR062 with %s", args)
         res = sap.call("Z_FM_YPPR062", **args)
 
-        # Ambil tabel pasti sesuai metadata
         rows = res.get("T_DATA1", []) or []
         messages = res.get("RETURN", []) or []
 
-        # ===== Tambahan LOG =====
-        logger.info(
-            "Z_FM_YPPR062 -> rows=%d, messages=%d",
-            len(rows), len(messages)
-        )
-        if rows and isinstance(rows, list) and isinstance(rows[0], dict):
-            sample_keys = list(rows[0].keys())[:8]
-            sample_row  = {k: rows[0].get(k) for k in sample_keys}
-            logger.debug("Z_FM_YPPR062 first_row_keys=%s sample=%s", sample_keys, sample_row)
-        if messages:
-            kinds = [str(m.get("TYPE", "")).upper() for m in messages]
-            logger.info("Z_FM_YPPR062 message_types=%s", ",".join(kinds))
-
-        # Jika RETURN ada TYPE E/A, anggap error dari SAP
         err = next((m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")), None)
         if err:
             msg = err.get("MESSAGE") or str(err)
-            logger.warning("Z_FM_YPPR062 returned error: %s", msg)
-            # 'finally' akan berjalan sebelum return ini
             return jsonify({"ok": False, "error": msg, "messages": to_jsonable(messages)}), 502
 
-        # Jangan kirim tabel pesan sebagai data
         if _is_message_table(rows):
             rows = []
 
-        payload = {
+        return jsonify({
             "ok": True,
+            "mode": "BUDAT",
             "rows": to_jsonable(rows),
             "messages": to_jsonable(messages),
             "count": len(rows),
-        }
-        # 'finally' akan berjalan sebelum return ini
-        return jsonify(payload), 200
+        }), 200
 
     except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
-        # 'finally' akan berjalan sebelum return ini
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
     except Exception as e:
         logger.exception("Error api_hasil")
-        # 'finally' akan berjalan sebelum return ini
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
-        # 3. Blok 'finally' ini akan SELALU dieksekusi
         if sap:
-            # 4. Tutup koneksi jika koneksi berhasil dibuat
             sap.close()
 
 def _ymd_clean(s: str) -> str:
@@ -905,6 +910,43 @@ def api_hasil_range():
     aufnr = (request.args.get("aufnr") or "").strip()
     dispo = (request.args.get("dispo") or "").strip()
     werks = (request.args.get("werks") or "").strip()
+
+     # === MODE PRO (AUFNR ONLY) - PRIORITAS TERTINGGI ===
+    if aufnr:
+        sap = None
+        try:
+            sap = connect_sap(username, password)
+
+            args = {"P_AUFNR": pad_aufnr(aufnr)}  # ONLY THIS
+            logger.info("Calling Z_FM_YPPR062 (PRO via hasil-range) with %s", args)
+            res = sap.call("Z_FM_YPPR062", **args)
+
+            rows = res.get("T_DATA1", []) or []
+            msgs = res.get("RETURN", []) or []
+
+            err = next((m for m in msgs if str(m.get("TYPE","")).upper() in ("E","A")), None)
+            if err:
+                return jsonify({"ok": False, "error": err.get("MESSAGE") or str(err), "messages": to_jsonable(msgs)}), 502
+
+            if _is_message_table(rows):
+                rows = []
+
+            return jsonify({
+                "ok": True,
+                "mode": "AUFNR",
+                "count": len(rows),
+                "rows": to_jsonable(rows),
+                "messages": to_jsonable(msgs),
+            }), 200
+
+        except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
+            return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
+        except Exception as e:
+            logger.exception("Error api_hasil_range (PRO)")
+            return jsonify({"ok": False, "error": str(e)}), 500
+        finally:
+            if sap:
+                sap.close()
 
     if not re.match(r"^\d{8}$", frm) or not re.match(r"^\d{8}$", to):
         return jsonify({"ok": False, "error": "param from/to(YYYYMMDD) wajib"}), 400

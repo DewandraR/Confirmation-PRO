@@ -768,74 +768,155 @@
     {{-- ⬇️ Modal Hasil Konfirmasi (baru) --}}
     <!-- Modal Hasil Konfirmasi -->
     <div id="hasilModal"
-        class="fixed inset-0 z-[100] hidden p-4 flex items-center justify-center bg-black/40 backdrop-blur-[1px]"
+        class="fixed inset-0 z-[100] hidden p-4 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
         aria-hidden="true">
 
-        {{-- HAPUS div backdrop dan div wrapper yang sebelumnya ada di sini --}}
-
-        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-blue-900 text-white">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
-                    </svg>
-                    <h3 class="font-semibold">Hasil Konfirmasi</h3>
-                </div>
-                <p class="text-white/80 text-xs">Masukkan NIK dan tanggal untuk membuka halaman hasil.</p>
-            </div>
-
-            <form id="hasilForm" class="px-5 py-4 space-y-3">
-
-                <div>
-                    <label class="text-xs text-slate-600">NIK Operator <span class="text-slate-400">(opsional)</span></label>
-                    <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
-                        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="contoh: 100234">
-                    {{-- ⬆️ HAPUS required --}}
-                </div>
-
-                {{-- Divider "ATAU" --}}
-                <div class="flex items-center">
-                    <div class="flex-grow border-t border-slate-200"></div>
-                    <span class="mx-3 text-[11px] text-slate-400 font-semibold tracking-wide">ATAU</span>
-                    <div class="flex-grow border-t border-slate-200"></div>
-                </div>
-
-                {{-- Dropdown MRP - Plant --}}
-                <div>
-                    <label class="text-xs text-slate-600">MRP - Plant <span class="text-slate-400">(opsional)</span></label>
-                    <select id="hasil-mrp-plant" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        <option value="">Memuat opsi…</option>
-                    </select>
-                    <p class="mt-1 text-[11px] text-slate-500">Isi salah satu: NIK <b>atau</b> MRP - Plant.</p>
-                </div>
-                <!-- ganti blok ini SAJA -->
-                <div>
-                    <label class="text-xs text-slate-600">Periode Tanggal<span class="text-red-600">*</span></label>
-                    <div class="relative mt-1">
-                        <input id="hasil-daterange" name="daterange" type="text"
-                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="Pilih rentang tanggal..." required>
-
-                        <svg class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            stroke-width="2">
-
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-100">
+            <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 to-blue-900 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+                
+                <div class="flex items-center gap-3 relative z-10">
+                    <div class="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
                         </svg>
                     </div>
-                </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-
-
-                    <div class="flex items-center justify-end gap-2 pt-2">
-                        <button type="button" id="hasilCancel"
-                            class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>
-                        <button type="submit"
-                            class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Lanjutkan</button>
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight">Hasil Konfirmasi</h3>
+                        <p class="text-emerald-100 text-xs font-medium">Filter data produksi</p>
                     </div>
+                </div>
+            </div>
+
+            <form id="hasilForm" class="px-5 py-5 space-y-4">
+
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 flex flex-col gap-2 shadow-sm relative overflow-hidden group">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-l-xl"></div>
+                    
+                    <div class="flex gap-3">
+                        <div class="shrink-0 mt-0.5">
+                            <svg class="w-5 h-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="text-xs text-indigo-900/90 leading-relaxed font-medium">
+                            <span class="block mb-1 text-indigo-800 font-bold uppercase tracking-wide text-[10px]">Logika Pencarian</span>
+                            Isi <span class="underline decoration-indigo-400 decoration-2">salah satu</span> kolom di bawah ini:
+                            <div class="flex flex-wrap gap-1 mt-1.5">
+                                <span class="px-1.5 py-0.5 rounded bg-white border border-indigo-200 text-[10px] font-bold text-indigo-700">NIK</span>
+                                <span class="text-indigo-400 text-[10px] self-center">atau</span>
+                                <span class="px-1.5 py-0.5 rounded bg-white border border-indigo-200 text-[10px] font-bold text-indigo-700">MRP - Plant</span>
+                                <span class="text-indigo-400 text-[10px] self-center">atau</span>
+                                <span class="px-1.5 py-0.5 rounded bg-white border border-indigo-200 text-[10px] font-bold text-indigo-700">PRO</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-1 pl-8">
+                        <div class="bg-white/60 rounded-lg p-2 border border-indigo-100 flex items-center gap-2">
+                            <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                            <p class="text-[10px] text-slate-600 font-medium leading-tight">
+                                Jika <b class="text-slate-800">PRO</b> diisi Filter tanggal diabaikan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block pl-1">NIK Operator</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" />
+                            </svg>
+                        </div>
+                        <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
+                            class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-all shadow-sm"
+                            placeholder="Contoh: 100234">
+                    </div>
+                </div>
+
+                <div class="relative py-1">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div class="relative flex justify-center">
+                        <span class="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atau</span>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block pl-1">MRP - Plant</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <select id="hasil-mrp-plant" 
+                            class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-all shadow-sm bg-white appearance-none">
+                            <option value="">Memuat opsi…</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative py-1">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div class="relative flex justify-center">
+                        <span class="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atau</span>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block pl-1">PRO (AUFNR)</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 9h2a1 1 0 001-1v-2a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 18h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                        </div>
+                        <input id="hasil-aufnr" name="aufnr" type="text" autocomplete="off"
+                            class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-all shadow-sm font-mono placeholder:font-sans"
+                            placeholder="Contoh: 000123456789">
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 my-2"></div>
+
+                <div class="relative group">
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block pl-1">Periode Tanggal <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <input id="hasil-daterange" name="daterange" type="text"
+                            class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-all shadow-sm"
+                            placeholder="Pilih rentang tanggal...">
+                    </div>
+                    <p class="mt-1 text-[10px] text-slate-400 italic pl-1">Wajib diisi jika mencari by NIK atau MRP.</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" id="hasilCancel"
+                        class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-800 text-white text-sm font-semibold shadow-md hover:shadow-lg hover:from-emerald-700 hover:to-blue-900 active:scale-95 transition-all flex items-center gap-2">
+                        <span>Lanjutkan</span>
+                        <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </button>
+                </div>
             </form>
         </div>
     </div>

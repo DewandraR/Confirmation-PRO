@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!/^\d{8}$/.test(ymd)) return;
         const url = new URL(location.href);
         applyModeParams(url);
-        if (pernr) url.searchParams.set("pernr", pernr);
+        if (!isProMode && pernr) url.searchParams.set("pernr", pernr);
         url.searchParams.set("budat", ymd);
         url.searchParams.delete("from");
         url.searchParams.delete("to");
@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!/^\d{8}$/.test(from) || !/^\d{8}$/.test(to)) return;
         const url = new URL(location.href);
         applyModeParams(url);
-        if (pernr) url.searchParams.set("pernr", pernr);
+        if (!isProMode && pernr) url.searchParams.set("pernr", pernr);
         url.searchParams.set("from", from);
         url.searchParams.set("to", to);
         url.searchParams.delete("budat");
@@ -79,6 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* ===================== Query string ===================== */
     const usp = new URLSearchParams(location.search);
+
+    const aufnr = (usp.get("aufnr") || usp.get("pro") || "").trim(); // ✅ PRO/AUFNR
     const pernr = (usp.get("pernr") || "").trim();
     const budat = (usp.get("budat") || usp.get("date") || "").trim();
     const werks = (usp.get("werks") || "").trim();
@@ -91,14 +93,33 @@ document.addEventListener("DOMContentLoaded", () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
-    const dispo = dispoList[0] || ""; // fallback buat kebutuhan lama
+    const dispo = dispoList[0] || "";
     const bagian = (usp.get("bagian") || "").trim();
 
-    const hasPernr = pernr !== "";
-    const hasMrp = werks !== "" && dispoList.length > 0;
+    // ✅ PRIORITAS MODE
+    const hasAufnr = aufnr !== "";
+    const isProMode = hasAufnr;
+
+    // kalau PRO aktif, jangan anggap NIK/MRP aktif (biar gak campur)
+    const hasPernr = !isProMode && pernr !== "";
+    const hasMrp = !isProMode && werks !== "" && dispoList.length > 0;
     const isMrpMode = hasMrp && !hasPernr;
 
+    // ✅ “summary-mode table” = MRP atau PRO
+    const isSummaryMode = isMrpMode || isProMode;
+
     function applyModeParams(url) {
+        // ✅ PRO/AUFNR paling prioritas
+        if (isProMode) {
+            url.searchParams.set("aufnr", aufnr);
+            url.searchParams.delete("pernr");
+            url.searchParams.delete("werks");
+            url.searchParams.delete("dispo");
+            url.searchParams.delete("dispos");
+            url.searchParams.delete("bagian");
+            return;
+        }
+
         if (hasPernr) url.searchParams.set("pernr", pernr);
         else url.searchParams.delete("pernr");
 
@@ -144,11 +165,14 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("title-budat") ||
         document.getElementById("tagline-budat");
     if (tlPernr)
-        tlPernr.textContent = isMrpMode
-            ? bagian
-                ? `${bagian} / ${werks}`
-                : `${dispo} - ${werks}`
-            : pernr || "-";
+        if (tlPernr)
+            tlPernr.textContent = isProMode
+                ? `PRO ${aufnr}`
+                : isMrpMode
+                ? bagian
+                    ? `${bagian} / ${werks}`
+                    : `${dispo} - ${werks}`
+                : pernr || "-";
     if (tlBudat)
         tlBudat.textContent = isRange
             ? `${fmtBudatDisplay(from)} – ${fmtBudatDisplay(to)}`
@@ -251,8 +275,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const mdMrp = document.getElementById("mrpDetailMrp");
     const mdWerks = document.getElementById("mrpDetailWerks");
     const mdTbody = document.getElementById("mrpDetailTbody");
+    const mdMrpWrap = document.getElementById("mrpDetailMrpWrap");
+    const mdWerksWrap = document.getElementById("mrpDetailWerksWrap");
 
     function openMrpDetailModal(group) {
+        // ✅ Mode PRO: sembunyikan MRP & Plant
+        if (isProMode) {
+            mdMrpWrap?.classList.add("hidden");
+            mdWerksWrap?.classList.add("hidden");
+        } else {
+            mdMrpWrap?.classList.remove("hidden");
+            mdWerksWrap?.classList.remove("hidden");
+
+            // isi MRP & Plant hanya saat MRP mode
+            const mrpsInDetail = Array.from(
+                new Set(
+                    (group.details || []).map((r) => r.__dispo).filter(Boolean)
+                )
+            );
+            const mrpText =
+                (mrpsInDetail.length ? mrpsInDetail : dispoList).join(", ") ||
+                "-";
+
+            if (mdMrp) mdMrp.textContent = mrpText;
+            if (mdWerks) mdWerks.textContent = werks || "-";
+        }
+
         if (!mdModal || !group) return;
 
         // isi info
@@ -263,7 +311,14 @@ document.addEventListener("DOMContentLoaded", () => {
                   )}`
                 : fmtBudatDisplay(group.minYmd || group.maxYmd || group.ymd);
 
-        if (mdTanggal) mdTanggal.textContent = dispPeriod;
+        if (mdTanggal) {
+            if (isProMode) {
+                mdTanggal.innerHTML = joinDatesComma(group.dateList);
+                mdTanggal.classList.add("hasil-date-list");
+            } else {
+                mdTanggal.textContent = dispPeriod;
+            }
+        }
 
         if (mdOperator) mdOperator.textContent = group.op || "-";
 
@@ -416,13 +471,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    const COLSPAN = isMrpMode ? 5 : 13;
+    const COLSPAN = isSummaryMode ? 5 : 13;
 
-    if ((!hasPernr && !hasMrp) || (!budat && !isRange)) {
+    if (
+        (!hasPernr && !hasMrp && !isProMode) ||
+        (!isProMode && !budat && !isRange)
+    ) {
         if (tbody) {
             tbody.innerHTML = `<tr><td class="px-3 py-4 text-red-600" colspan="${COLSPAN}">
-        Parameter kurang. Kembali ke halaman Scan, isi NIK dan tanggal/periode, lalu klik "Hasil Konfirmasi".
-      </td></tr>`;
+      Parameter kurang. Kembali ke halaman Scan, isi NIK dan tanggal/periode, lalu klik "Hasil Konfirmasi".
+    </td></tr>`;
         }
         return;
     }
@@ -480,6 +538,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (headerSlot) {
             headerSlot.innerHTML = "";
             headerSlot.classList.add("hidden");
+        }
+
+        // ✅ MODE PRO/AUFNR: tampilkan 2 kotak saja
+        if (isProMode) {
+            if (!summary) return;
+
+            const totalKerja = sumNum(
+                allRows.map((r) => toNum(getVal(r, "TTCNF")))
+            );
+            const totalInspect = sumNum(
+                allRows.map((r) => toNum(getVal(r, "TTCNF2")))
+            );
+
+            summary.innerHTML = `
+    <div class="mt-3 grid grid-cols-2 gap-3">
+      <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm">
+        <div class="text-xs text-sky-700">Total Menit Kerja</div>
+        <div class="text-xs font-bold sm:text-sm">${fmt2(totalKerja)}</div>
+      </div>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm">
+        <div class="text-xs text-amber-700">Total Menit Inspect</div>
+        <div class="text-xs font-bold sm:text-sm">${fmt2(totalInspect)}</div>
+      </div>
+    </div>
+  `;
+            return;
         }
 
         // =========================
@@ -602,6 +686,17 @@ document.addEventListener("DOMContentLoaded", () => {
     let mrpGroupMap = new Map();
     let mrpClickBound = false;
 
+    function joinDatesComma(ymds) {
+        const parts = (ymds || [])
+            .filter(Boolean)
+            .sort() // urut YYYYMMDD
+            .map(fmtBudatDisplay); // jadi dd/mm/yyyy
+
+        if (!parts.length) return "-";
+        // pakai <wbr> biar bisa wrap rapi di HP setelah koma
+        return parts.join(",<wbr> ");
+    }
+
     function renderMrpSummaryTable(allRows) {
         mrpGroupMap = new Map();
 
@@ -609,9 +704,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const ymd = getDateYmd(r) || "";
             const op = String(getVal(r, "SNAME") || "-").trim() || "-";
 
-            // ✅ kalau range: gabungkan per OPERATOR (bukan per tanggal)
-            // kalau single day: tetap aman (boleh gabung juga, hasilnya sama)
-            const key = isRange ? op : `${ymd}|${op}`;
+            // ✅ PRO = per operator saja (bukan per tanggal)
+            // MRP range = per operator (sudah benar)
+            // MRP single = per tanggal + operator (sudah seperti sekarang)
+            const key = isProMode ? op : isRange ? op : `${ymd}|${op}`;
 
             if (!mrpGroupMap.has(key)) {
                 mrpGroupMap.set(key, {
@@ -619,29 +715,30 @@ document.addEventListener("DOMContentLoaded", () => {
                     op,
                     minYmd: ymd || null,
                     maxYmd: ymd || null,
+                    dateList: [], // ✅ simpan semua tanggal (boleh repeat)
                     totalKerja: 0,
                     totalInspect: 0,
                     details: [],
-                    byDate: new Map(), // ymd -> { ymd, totalKerja, totalInspect }
+                    byDate: new Map(),
                 });
             }
 
             const g = mrpGroupMap.get(key);
 
-            // update rentang tanggal yang benar-benar ada untuk operator ini
             if (ymd) {
+                // ✅ simpan tanggal (repeat pun tetap masuk)
+                g.dateList.push(ymd);
+
                 if (!g.minYmd || ymd < g.minYmd) g.minYmd = ymd;
                 if (!g.maxYmd || ymd > g.maxYmd) g.maxYmd = ymd;
 
-                if (!g.byDate.has(ymd)) {
+                if (!g.byDate.has(ymd))
                     g.byDate.set(ymd, { ymd, totalKerja: 0, totalInspect: 0 });
-                }
                 const d = g.byDate.get(ymd);
                 d.totalKerja += toNum(getVal(r, "TTCNF"));
                 d.totalInspect += toNum(getVal(r, "TTCNF2"));
             }
 
-            // total gabungan
             g.totalKerja += toNum(getVal(r, "TTCNF"));
             g.totalInspect += toNum(getVal(r, "TTCNF2"));
             g.details.push(r);
@@ -658,28 +755,33 @@ document.addEventListener("DOMContentLoaded", () => {
             if (g.minYmd && g.maxYmd && g.minYmd !== g.maxYmd) {
                 return `${fmtBudatDisplay(g.minYmd)} – ${fmtBudatDisplay(
                     g.maxYmd
-                )}`;
+                )}`; // ✅ MRP tetap dash
             }
             return fmtBudatDisplay(g.minYmd || g.maxYmd || "");
         };
 
         tbody.innerHTML = groups
             .map((g, idx) => {
-                const dispPeriod = periodText(g);
                 const dataKey = encodeURIComponent(g.key);
 
+                // ✅ PRO: tampilkan semua tanggal pakai koma (bisa wrap)
+                // ✅ MRP: tetap pakai dash
+                const tanggalHtml = isProMode
+                    ? `<div class="hasil-date-list">${joinDatesComma(
+                          g.dateList
+                      )}</div>`
+                    : `<div class="hasil-date-list">${periodText(g)}</div>`;
+
                 return `
-            <tr class="mrp-summary-row cursor-pointer hover:bg-emerald-50/60 transition-colors"
-                data-key="${dataKey}">
-              <td class="px-2 py-2">${idx + 1}</td>
-              <td class="px-2 py-2 whitespace-normal leading-tight">${dispPeriod}</td>
-              <td class="px-2 py-2 font-semibold text-slate-800">${g.op}</td>
-              <td class="px-2 py-2 whitespace-nowrap">${fmt2(g.totalKerja)}</td>
-              <td class="px-2 py-2 whitespace-nowrap">${fmt2(
-                  g.totalInspect
-              )}</td>
-            </tr>
-          `;
+        <tr class="mrp-summary-row cursor-pointer hover:bg-emerald-50/60 transition-colors"
+            data-key="${dataKey}">
+          <td class="px-2 py-2">${idx + 1}</td>
+          <td class="px-2 py-2">${tanggalHtml}</td>
+          <td class="px-2 py-2 font-semibold text-slate-800">${g.op}</td>
+          <td class="px-2 py-2 whitespace-nowrap">${fmt2(g.totalKerja)}</td>
+          <td class="px-2 py-2 whitespace-nowrap">${fmt2(g.totalInspect)}</td>
+        </tr>
+      `;
             })
             .join("");
     }
@@ -692,8 +794,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // ✅ MODE MRP: tampilkan ringkasan per Tanggal + Operator (klik untuk detail)
-        if (isMrpMode) {
+        // ✅ MODE MRP & PRO sama-sama summary grouping
+        if (isSummaryMode) {
             return renderMrpSummaryTable(rows);
         }
 
@@ -887,14 +989,23 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadSingle(ymd) {
         async function fetchOne(oneDispo) {
             const qs = new URLSearchParams();
-            if (hasPernr) qs.set("pernr", pernr);
-            if (hasMrp) {
-                qs.set("werks", werks);
-                qs.set("dispo", oneDispo);
+
+            if (isProMode) {
+                qs.set("aufnr", aufnr);
+            } else {
+                if (hasPernr) qs.set("pernr", pernr);
+                if (hasMrp) {
+                    qs.set("werks", werks);
+                    qs.set("dispo", oneDispo);
+                }
+                qs.set("budat", ymd); // untuk non-PRO
             }
-            qs.set("budat", ymd);
+
+            // untuk PRO boleh tetap kirim budat juga, tapi tidak wajib
+            if (isProMode && ymd) qs.set("budat", ymd);
 
             const url = `/api/yppi019/hasil?${qs.toString()}`;
+
             const { ok, data, status } = await fetchJson(url);
 
             if (!ok)
@@ -902,7 +1013,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     (data && (data.error || data.message)) || `HTTP ${status}`
                 );
             const rows = Array.isArray(data.rows) ? data.rows : [];
-            return rows.map((r) => ({ ...r, __budat: ymd, __dispo: oneDispo }));
+            return rows.map((r) => ({
+                ...r,
+                __budat: r.BUDAT || r.budat || ymd,
+                __dispo: oneDispo,
+            }));
         }
 
         // ✅ multi mrp -> loop dispo satu-satu
@@ -920,6 +1035,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Range via API (jika tersedia)
     async function tryLoadRangeViaApi(f, t) {
+        // ✅ PRO/AUFNR: panggil sekali saja (tidak loop harian)
+        if (isProMode) {
+            const qs = new URLSearchParams();
+            qs.set("aufnr", aufnr);
+            qs.set("from", f);
+            qs.set("to", t);
+
+            const url = `/api/yppi019/hasil-range?${qs.toString()}`;
+            const { ok, data } = await fetchJson(url);
+            if (!ok) return null;
+
+            const rows = Array.isArray(data.rows) ? data.rows : [];
+            return rows.map((r) => ({
+                ...r,
+                __budat: r.BUDAT || r.budat || null,
+                __dispo: null,
+            }));
+        }
         // ✅ kalau multi dispo (mis. D24,G32) -> panggil endpoint berkali-kali lalu gabungkan
         if (hasMrp && Array.isArray(dispoList) && dispoList.length > 1) {
             let merged = [];
@@ -967,6 +1100,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Range – fallback FE loop harian
     async function loadRangeOnClient(f, t) {
+        if (isProMode) {
+            throw new Error(
+                "Mode PRO tidak mendukung fallback loop harian. Pastikan endpoint /hasil-range aktif."
+            );
+        }
         const days = rangeYMD(f, t);
         // Batas wajar agar UI tetap responsif (sesuaikan kalau perlu)
         const MAX_DAYS = 45;

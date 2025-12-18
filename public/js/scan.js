@@ -1834,6 +1834,48 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const inpDaterange = document.getElementById("hasil-daterange");
+    const inpAufnr = document.getElementById("hasil-aufnr");
+
+    function setDateEnabled(on) {
+        if (!inpDaterange) return;
+        inpDaterange.disabled = !on;
+        inpDaterange.classList.toggle("opacity-60", !on);
+        inpDaterange.classList.toggle("cursor-not-allowed", !on);
+        if (!on) inpDaterange.value = "";
+        if (!on && flatpickrInstance) {
+            // kosongkan pilihan tanggal juga
+            try {
+                flatpickrInstance.clear();
+            } catch {}
+        }
+    }
+
+    function applyExclusiveMode() {
+        const aufnr = (inpAufnr?.value || "").trim();
+        const pernr = (inpPernr?.value || "").trim();
+        const mrpVal = (selMrp?.value || "").trim();
+
+        // PRIORITAS: kalau AUFNR terisi => PRO mode (yang lain diabaikan)
+        if (aufnr) {
+            if (inpPernr) inpPernr.value = "";
+            if (selMrp) selMrp.value = "";
+            setDateEnabled(false);
+            return;
+        }
+
+        // selain PRO mode => date aktif
+        setDateEnabled(true);
+
+        // aturan lama kamu: kalau pilih MRP, NIK dikosongkan
+        if (mrpVal) {
+            if (inpPernr) inpPernr.value = "";
+        }
+
+        // kalau NIK diisi, PRO harus kosong
+        if (pernr) {
+            if (inpAufnr) inpAufnr.value = "";
+        }
+    }
     const btnCancel = document.getElementById("hasilCancel");
 
     if (!btnOpen || !modal || !form || !inpDaterange) return;
@@ -1951,6 +1993,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (!mrpLoadedOnce) loadMrpOptions();
         resetMrpSelection();
+        if (inpAufnr) inpAufnr.value = "";
+        applyExclusiveMode();
         modal.classList.remove("hidden");
         setTimeout(() => inpPernr?.focus(), 50);
     }; // Sembunyikan modal
@@ -1963,6 +2007,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }; // Events
 
     btnOpen.addEventListener("click", show);
+    inpAufnr?.addEventListener("input", applyExclusiveMode);
+    inpPernr?.addEventListener("input", applyExclusiveMode);
+
+    // sudah ada change MRP yang mengosongkan pernr; kita tambah supaya juga mengosongkan aufnr
+    selMrp?.addEventListener("change", () => {
+        if (selMrp.value) {
+            if (inpPernr) inpPernr.value = "";
+            if (inpAufnr) inpAufnr.value = "";
+        }
+        applyExclusiveMode();
+    });
+
     selMrp?.addEventListener("change", () => {
         if (selMrp.value) {
             if (inpPernr) inpPernr.value = "";
@@ -1976,31 +2032,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
     form.addEventListener("submit", (e) => {
         e.preventDefault();
-        const pernr = (inpPernr.value || "").trim();
+
+        const aufnr = (inpAufnr?.value || "").trim();
+        const pernr = (inpPernr?.value || "").trim();
+        const mrpVal = (selMrp?.value || "").trim();
+
+        // =========================
+        // MODE 3: PRO / AUFNR ONLY
+        // =========================
+        if (aufnr) {
+            // PRO mode: ONLY P_AUFNR (tanpa tanggal / tanpa dispo/werks/pernr)
+            const url = new URL("/hasil", location.origin);
+            url.searchParams.set("aufnr", aufnr);
+            location.assign(url.toString());
+            return;
+        }
+
+        // =========================
+        // MODE 1: NIK (butuh tanggal)
+        // MODE 2: MRP (butuh tanggal)
+        // =========================
+        if (!pernr && !mrpVal) {
+            alert(
+                "Isi NIK Operator atau pilih MRP - Plant atau isi PRO (AUFNR)."
+            );
+            return (inpPernr || selMrp || inpAufnr)?.focus?.();
+        }
 
         if (!flatpickrInstance) {
             alert("Pemilih tanggal belum siap.");
             return;
         }
+
         const selectedDates = flatpickrInstance.selectedDates;
-
-        const mrpVal = (selMrp?.value || "").trim();
-
-        if (!pernr && !mrpVal) {
-            alert("Isi NIK Operator atau pilih MRP - Plant.");
-            return (inpPernr || selMrp)?.focus?.();
-        }
-
         if (selectedDates.length < 2) {
             alert("Anda harus memilih rentang tanggal (dari dan sampai).");
             return;
         }
-        const fromDate = selectedDates[0];
-        const toDate = selectedDates[1]; // Simpan NIK terakhir
 
+        const fromDate = selectedDates[0];
+        const toDate = selectedDates[1];
+
+        // Simpan NIK terakhir kalau mode NIK
         try {
-            localStorage.setItem("last_pernr", pernr);
-        } catch {} // Ubah ke format YYYYMMDD
+            if (pernr) localStorage.setItem("last_pernr", pernr);
+        } catch {}
 
         const from = dateToYmd(fromDate);
         const to = dateToYmd(toDate);
@@ -2009,12 +2085,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (pernr) {
             // mode NIK
-            try {
-                localStorage.setItem("last_pernr", pernr);
-            } catch {}
             url.searchParams.set("pernr", pernr);
         } else {
-            // mode MRP (nama_bagian)
+            // mode MRP
             const [werks, mrpsCsv] = mrpVal.split("|");
             const dispos = String(mrpsCsv || "")
                 .split(",")
@@ -2028,19 +2101,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             url.searchParams.set("werks", werks);
 
-            // opsional tapi enak: kirim label nama_bagian untuk ditampilkan di header hasil
             const bagianLabel =
                 selMrp?.options?.[selMrp.selectedIndex]?.textContent?.trim() ||
                 "";
             if (bagianLabel) url.searchParams.set("bagian", bagianLabel);
 
-            if (dispos.length === 1) {
-                // single mrp -> tetap seperti dulu
-                url.searchParams.set("dispo", dispos[0]);
-            } else {
-                // multi mrp -> kirim list untuk diloop di halaman hasil
-                url.searchParams.set("dispos", dispos.join(","));
-            }
+            if (dispos.length === 1) url.searchParams.set("dispo", dispos[0]);
+            else url.searchParams.set("dispos", dispos.join(","));
         }
 
         url.searchParams.set("from", from);

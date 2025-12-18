@@ -285,17 +285,37 @@ class Yppi019DbApiController extends Controller
     /** ➕ Baru: proxy hasil konfirmasi (RFC Z_FM_YPPR062) */
     public function hasil(Request $req)
     {
+        // === MODE PRO (AUFNR ONLY) - PRIORITAS TERTINGGI ===
+        $aufnr = preg_replace('/\D/', '', (string)$req->query('aufnr', ''));
+        if ($aufnr !== '') {
+            try {
+                $res = Http::withHeaders($this->sapHeaders($req))
+                    ->acceptJson()
+                    ->timeout(180)
+                    ->get($this->flaskBase() . '/api/yppi019/hasil', [
+                        'aufnr' => $aufnr,
+                    ]);
+
+                return response($res->body(), $res->status())
+                    ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+            } catch (\Throwable $e) {
+                return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+            }
+        }
+
+        // === MODE LAMA: NIK atau MRP (BUTUH BUDAT) ===
         $pernr = trim((string)$req->query('pernr', ''));
         $budat = preg_replace('/\D/', '', (string)$req->query('budat', ''));
 
-        $dispo = trim((string)$req->query('dispo', '')); // NEW
-        $werks = trim((string)$req->query('werks', '')); // NEW
+        $dispo = trim((string)$req->query('dispo', ''));
+        $werks = trim((string)$req->query('werks', ''));
 
         if (!preg_match('/^\d{8}$/', $budat)) {
             return response()->json(['ok' => false, 'error' => 'param budat(YYYYMMDD) wajib'], 400);
         }
 
-        // Minimal salah satu mode:
         $hasPernr = ($pernr !== '');
         $hasMrp   = ($dispo !== '' && $werks !== '');
         if (!$hasPernr && !$hasMrp) {
@@ -311,7 +331,6 @@ class Yppi019DbApiController extends Controller
                     'budat' => $budat,
                     'dispo' => $hasMrp ? $dispo : null,
                     'werks' => $hasMrp ? $werks : null,
-                    'aufnr' => $req->query('aufnr'), // opsional
                 ], fn($v) => $v !== null && $v !== ''));
 
             return response($res->body(), $res->status())
@@ -903,6 +922,25 @@ class Yppi019DbApiController extends Controller
     }
     public function hasilRange(Request $req)
     {
+        // === MODE PRO (AUFNR ONLY) - PRIORITAS TERTINGGI ===
+        $aufnr = preg_replace('/\D/', '', (string)$req->query('aufnr', ''));
+        if ($aufnr !== '') {
+            try {
+                // panggil endpoint hasil biasa (single call, TANPA tanggal)
+                $res = Http::withHeaders($this->sapHeaders($req))
+                    ->acceptJson()->timeout(300)
+                    ->get($this->flaskBase() . '/api/yppi019/hasil', [
+                        'aufnr' => $aufnr,
+                    ]);
+
+                return response($res->body(), $res->status())
+                    ->header('Content-Type', $res->header('Content-Type', 'application/json'));
+            } catch (ConnectionException $e) {
+                return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
+            } catch (Throwable $e) {
+                return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+            }
+        }
         $pernr = trim((string)$req->query('pernr', ''));
         $from  = preg_replace('/-/', '', (string)($req->query('from', $req->query('budat_from', $req->query('date_from', '')))));
         $to    = preg_replace('/-/', '', (string)($req->query('to',   $req->query('budat_to',   $req->query('date_to',   '')))));
