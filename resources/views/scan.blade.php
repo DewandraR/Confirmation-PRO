@@ -875,16 +875,30 @@
 
                 <div class="relative group">
                     <label class="text-xs font-semibold text-slate-700 mb-1 block pl-1">PRO (AUFNR)</label>
+
+                    {{-- WRAPPER KHUSUS INPUT (relative hanya untuk input + ikon) --}}
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 9h2a1 1 0 001-1v-2a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 18h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            <svg class="h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 9h2a1 1 0 001-1v-2a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 18h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                             </svg>
                         </div>
+
                         <input id="hasil-aufnr" name="aufnr" type="text" autocomplete="off"
-                            class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-all shadow-sm font-mono placeholder:font-sans"
-                            placeholder="Contoh: 000123456789">
+                        class="block w-full rounded-xl border-slate-200 pl-9 px-3 py-2.5 text-sm
+                                focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50
+                                transition-all shadow-sm font-mono placeholder:font-sans"
+                        placeholder="Contoh: 000123456789">
                     </div>
+
+                    {{-- CHIP LIST & HINT DI LUAR WRAPPER INPUT --}}
+                    <div id="hasil-aufnr-list" class="mt-2 flex flex-wrap gap-1"></div>
+
+                    <p class="mt-1 text-[10px] text-slate-400 italic pl-1">
+                        Tekan <b>Enter</b> untuk menambah PRO ke daftar (bisa juga paste banyak: pisah spasi/koma/enter).
+                    </p>
                 </div>
 
                 <div class="border-t border-slate-100 my-2"></div>

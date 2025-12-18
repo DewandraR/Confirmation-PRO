@@ -798,52 +798,103 @@ def api_hasil():
     except ValueError as ve:
         return jsonify({"ok": False, "error": str(ve)}), 401
 
-    # ambil params
-    aufnr = (request.args.get("aufnr") or "").strip()
+    # ----------------------------
+    # Helper: ambil list AUFNR dari query (aufnr/aufnrs/pro), support multi & CSV
+    # ----------------------------
+    def parse_aufnr_list_from_query():
+        vals = []
+        vals += request.args.getlist("aufnr")
+        vals += request.args.getlist("aufnrs")
+        vals += request.args.getlist("pro")
+
+        out = []
+        for v in vals:
+            for tok in re.split(r"[\s,]+", (v or "").strip()):
+                a = pad_aufnr(tok)
+                if a:
+                    out.append(a)
+
+        # unique keep order
+        seen = set()
+        uniq = []
+        for a in out:
+            if a not in seen:
+                seen.add(a)
+                uniq.append(a)
+        return uniq
+
+    # ----------------------------
+    # Ambil params mode lama (NIK/MRP)
+    # ----------------------------
     pernr = (request.args.get("pernr") or "").strip()
     budat = (request.args.get("budat") or "").strip().replace("-", "")
     dispo = (request.args.get("dispo") or "").strip()
     werks = (request.args.get("werks") or "").strip()
 
-    # === MODE PRO (AUFNR ONLY) - PRIORITAS TERTINGGI ===
-    if aufnr:
+    # ============================================================
+    # MODE PRO / AUFNR (PRIORITAS TERTINGGI) - SUPPORT MULTI
+    # ============================================================
+    aufnr_list = parse_aufnr_list_from_query()
+
+    if aufnr_list:
         sap = None
         try:
             sap = connect_sap(username, password)
 
-            args = {"P_AUFNR": pad_aufnr(aufnr)}   # <-- ONLY THIS
-            logger.info("Calling Z_FM_YPPR062 (PRO) with %s", args)
-            res = sap.call("Z_FM_YPPR062", **args)
+            merged_rows = []
+            all_msgs = []
 
-            rows = res.get("T_DATA1", []) or []
-            messages = res.get("RETURN", []) or []
+            for a in aufnr_list:
+                args = {"P_AUFNR": a}  # ONLY THIS (sesuai requirement)
+                logger.info("Calling Z_FM_YPPR062 (PRO MULTI) with %s", args)
 
-            err = next((m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")), None)
-            if err:
-                msg = err.get("MESSAGE") or str(err)
-                return jsonify({"ok": False, "error": msg, "messages": to_jsonable(messages)}), 502
+                res = sap.call("Z_FM_YPPR062", **args)
 
-            if _is_message_table(rows):
-                rows = []
+                rows = res.get("T_DATA1", []) or []
+                msgs = res.get("RETURN", []) or []
+                all_msgs += [m for m in msgs if isinstance(m, dict)]
+
+                # kalau ada error E/A -> stop
+                err = next(
+                    (m for m in msgs if str(m.get("TYPE", "")).upper() in ("E", "A")),
+                    None,
+                )
+                if err:
+                    return jsonify({
+                        "ok": False,
+                        "error": err.get("MESSAGE") or str(err),
+                        "messages": to_jsonable(all_msgs),
+                        "mode": "AUFNR_MULTI",
+                        "aufnrs": aufnr_list,
+                    }), 502
+
+                # jika ternyata "rows" itu tabel pesan, anggap kosong
+                if _is_message_table(rows):
+                    rows = []
+
+                merged_rows.extend(rows)
 
             return jsonify({
                 "ok": True,
-                "mode": "AUFNR",
-                "rows": to_jsonable(rows),
-                "messages": to_jsonable(messages),
-                "count": len(rows),
+                "mode": "AUFNR_MULTI",
+                "aufnrs": aufnr_list,
+                "rows": to_jsonable(merged_rows),
+                "count": len(merged_rows),
+                "messages": to_jsonable(all_msgs),
             }), 200
 
         except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
             return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
         except Exception as e:
-            logger.exception("Error api_hasil (PRO)")
+            logger.exception("Error api_hasil (AUFNR_MULTI)")
             return jsonify({"ok": False, "error": str(e)}), 500
         finally:
             if sap:
                 sap.close()
 
-    # === MODE LAMA: NIK / MRP (BUTUH BUDAT) ===
+    # ============================================================
+    # MODE LAMA: NIK / MRP (BUTUH BUDAT)
+    # ============================================================
     if not re.match(r"^\d{8}$", budat):
         return jsonify({"ok": False, "error": "param budat(YYYYMMDD) wajib"}), 400
 
@@ -857,18 +908,22 @@ def api_hasil():
         sap = connect_sap(username, password)
 
         args = {"P_BUDAT": budat}
-        if has_pernr: args["P_PERNR"] = pernr
+        if has_pernr:
+            args["P_PERNR"] = pernr
         if has_mrp:
             args["P_DISPO"] = dispo
             args["P_WERKS"] = werks
 
-        logger.info("Calling Z_FM_YPPR062 with %s", args)
+        logger.info("Calling Z_FM_YPPR062 (BUDAT) with %s", args)
         res = sap.call("Z_FM_YPPR062", **args)
 
         rows = res.get("T_DATA1", []) or []
         messages = res.get("RETURN", []) or []
 
-        err = next((m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")), None)
+        err = next(
+            (m for m in messages if str(m.get("TYPE", "")).upper() in ("E", "A")),
+            None,
+        )
         if err:
             msg = err.get("MESSAGE") or str(err)
             return jsonify({"ok": False, "error": msg, "messages": to_jsonable(messages)}), 502
@@ -887,7 +942,7 @@ def api_hasil():
     except (ABAPApplicationError, ABAPRuntimeError, CommunicationError, LogonError) as e:
         return jsonify({"ok": False, "error": humanize_rfc_error(e)}), 500
     except Exception as e:
-        logger.exception("Error api_hasil")
+        logger.exception("Error api_hasil (BUDAT)")
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         if sap:

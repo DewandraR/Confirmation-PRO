@@ -80,7 +80,42 @@ document.addEventListener("DOMContentLoaded", () => {
     /* ===================== Query string ===================== */
     const usp = new URLSearchParams(location.search);
 
-    const aufnr = (usp.get("aufnr") || usp.get("pro") || "").trim(); // ✅ PRO/AUFNR
+    // ambil SEMUA aufnr/pro + versi plural (aufnrs)
+    const aufnrTokens = [
+        ...usp.getAll("aufnr"),
+        ...usp.getAll("aufnrs"),
+        ...usp.getAll("pro"),
+    ];
+
+    // fallback kalau cuma 1 param (CSV atau single)
+    if (!aufnrTokens.length) {
+        const one = (
+            usp.get("aufnr") ||
+            usp.get("aufnrs") ||
+            usp.get("pro") ||
+            ""
+        ).trim();
+        if (one) aufnrTokens.push(one);
+    }
+
+    const aufnrRaw = aufnrTokens.join(" ");
+
+    // normalisasi: ambil digit saja + pad 12 (biar konsisten dengan backend)
+    function normAufnr(s) {
+        const d = String(s || "").replace(/\D/g, "");
+        return d ? d.padStart(12, "0") : "";
+    }
+
+    const aufnrList = Array.from(
+        new Set(
+            aufnrRaw
+                .split(/[\s,]+/) // pisah spasi/newline/komma
+                .map(normAufnr)
+                .filter(Boolean)
+        )
+    );
+
+    const aufnr = aufnrList[0] || ""; // legacy fallback
     const pernr = (usp.get("pernr") || "").trim();
     const budat = (usp.get("budat") || usp.get("date") || "").trim();
     const werks = (usp.get("werks") || "").trim();
@@ -97,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const bagian = (usp.get("bagian") || "").trim();
 
     // ✅ PRIORITAS MODE
-    const hasAufnr = aufnr !== "";
+    const hasAufnr = aufnrList.length > 0;
     const isProMode = hasAufnr;
 
     // kalau PRO aktif, jangan anggap NIK/MRP aktif (biar gak campur)
@@ -107,11 +142,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ “summary-mode table” = MRP atau PRO
     const isSummaryMode = isMrpMode || isProMode;
+    const isNikMode = !isProMode && !isMrpMode;
 
     function applyModeParams(url) {
         // ✅ PRO/AUFNR paling prioritas
         if (isProMode) {
-            url.searchParams.set("aufnr", aufnr);
+            url.searchParams.set("aufnr", aufnrList.join(",")); // simpan sebagai CSV
+            url.searchParams.delete("aufnrs");
             url.searchParams.delete("pernr");
             url.searchParams.delete("werks");
             url.searchParams.delete("dispo");
@@ -143,6 +180,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function proLabel(list) {
+        if (!list || !list.length) return "-";
+        if (list.length === 1) return list[0];
+        const shown = list.slice(0, 3).join(", ");
+        const more = list.length - 3;
+        return more > 0 ? `${shown} +${more}` : shown;
+    }
+
     const from = (
         usp.get("from") ||
         usp.get("date_from") ||
@@ -167,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tlPernr)
         if (tlPernr)
             tlPernr.textContent = isProMode
-                ? `PRO ${aufnr}`
+                ? `PRO ${proLabel(aufnrList)}`
                 : isMrpMode
                 ? bagian
                     ? `${bagian} / ${werks}`
@@ -201,9 +246,53 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elBudT) elBudT.value = ymdToDash(to);
     if (elBud1) elBud1.value = ymdToDash(budat);
 
+    function goWithPernr(newPernr) {
+        if (!isNikMode) return;
+
+        const p = String(newPernr || "")
+            .replace(/\D/g, "")
+            .trim();
+        if (!p) return;
+        if (p === pernr) return;
+
+        const url = new URL(location.href);
+
+        // set NIK baru
+        url.searchParams.set("pernr", p);
+
+        // pastikan tidak nyampur mode lain
+        url.searchParams.delete("aufnr");
+        url.searchParams.delete("aufnrs");
+        url.searchParams.delete("pro");
+
+        url.searchParams.delete("werks");
+        url.searchParams.delete("dispo");
+        url.searchParams.delete("dispos");
+        url.searchParams.delete("mrp");
+        url.searchParams.delete("mrps");
+        url.searchParams.delete("bagian");
+
+        // tanggal/range dibiarkan apa adanya (from/to atau budat sudah ada di URL)
+        location.href = url.toString();
+    }
+
+    const inpNik = document.getElementById("hasil-pernr-input");
+    if (isNikMode && inpNik) {
+        // Enter = langsung apply
+        inpNik.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                goWithPernr(inpNik.value);
+            }
+        });
+
+        // Blur = apply juga (kalau user klik keluar input)
+        inpNik.addEventListener("blur", () => goWithPernr(inpNik.value));
+    }
+
     /* ===================== Kontrol tanggal ===================== */
     const inpDaterange = document.getElementById("hasil-daterange-picker");
-    if (inpDaterange && window.flatpickr) {
+    if (!isProMode && inpDaterange && window.flatpickr) {
         // Cek apakah locale 'id' sudah di-load (dari layout)
         const fpLocale = window.flatpickr?.l10ns?.id
             ? window.flatpickr.l10ns.id
@@ -412,9 +501,11 @@ document.addEventListener("DOMContentLoaded", () => {
         <td class="px-3 py-2">${getDateCell(r)}</td>
         <td class="px-3 py-2">${getVal(r, "SNAME") ?? ""}</td>
         <td class="px-3 py-2">${getVal(r, "ARBPL") ?? ""}</td>
+        <td class="px-3 py-2">${getVal(r, "STEUS") ?? ""}</td>
         <td class="px-3 py-2">${getVal(r, "KTEXT") ?? ""}</td>
         <td class="px-3 py-2">${getVal(r, "AUFNR") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "MATNR") ?? ""}</td>
+        <td class="px-3 py-2">${fmtVornr(getVal(r, "VORNR") ?? "")}</td>
+        <td class="px-3 py-2">${fmtMatnr(getVal(r, "MATNR") ?? "")}</td>
         <td class="px-3 py-2">${getVal(r, "MAKTX") ?? ""}</td>
         <td class="px-3 py-2">${getVal(r, "PSMNG") ?? ""}</td>
         <td class="px-3 py-2">${getVal(r, "GMNGX") ?? ""}</td>
@@ -471,7 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    const COLSPAN = isSummaryMode ? 5 : 13;
+    const COLSPAN = isSummaryMode ? 5 : 15;
 
     if (
         (!hasPernr && !hasMrp && !isProMode) ||
@@ -540,29 +631,10 @@ document.addEventListener("DOMContentLoaded", () => {
             headerSlot.classList.add("hidden");
         }
 
-        // ✅ MODE PRO/AUFNR: tampilkan 2 kotak saja
+        // ✅ MODE PRO/AUFNR: JANGAN tampilkan kotak summary di atas
         if (isProMode) {
-            if (!summary) return;
-
-            const totalKerja = sumNum(
-                allRows.map((r) => toNum(getVal(r, "TTCNF")))
-            );
-            const totalInspect = sumNum(
-                allRows.map((r) => toNum(getVal(r, "TTCNF2")))
-            );
-
-            summary.innerHTML = `
-    <div class="mt-3 grid grid-cols-2 gap-3">
-      <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm">
-        <div class="text-xs text-sky-700">Total Menit Kerja</div>
-        <div class="text-xs font-bold sm:text-sm">${fmt2(totalKerja)}</div>
-      </div>
-      <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm">
-        <div class="text-xs text-amber-700">Total Menit Inspect</div>
-        <div class="text-xs font-bold sm:text-sm">${fmt2(totalInspect)}</div>
-      </div>
-    </div>
-  `;
+            // biarkan kosong -> class "empty:hidden" di blade otomatis menyembunyikan area ini
+            if (summary) summary.innerHTML = "";
             return;
         }
 
@@ -687,14 +759,38 @@ document.addEventListener("DOMContentLoaded", () => {
     let mrpClickBound = false;
 
     function joinDatesComma(ymds) {
-        const parts = (ymds || [])
-            .filter(Boolean)
-            .sort() // urut YYYYMMDD
-            .map(fmtBudatDisplay); // jadi dd/mm/yyyy
+        // ambil YYYYMMDD valid, urut
+        const list = (ymds || [])
+            .map((v) => String(v || "").replace(/\D/g, ""))
+            .filter((s) => s.length === 8)
+            .sort();
 
-        if (!parts.length) return "-";
-        // pakai <wbr> biar bisa wrap rapi di HP setelah koma
-        return parts.join(",<wbr> ");
+        if (!list.length) return "-";
+
+        // unik (biar tanggal yang sama tidak dobel)
+        const uniq = [];
+        for (const s of list) {
+            if (!uniq.length || uniq[uniq.length - 1] !== s) uniq.push(s);
+        }
+
+        // group per tahun
+        const byYear = new Map(); // "2025" -> ["dd/mm", ...]
+        for (const s of uniq) {
+            const y = s.slice(0, 4);
+            const dm = `${s.slice(6, 8)}/${s.slice(4, 6)}`; // dd/mm
+            if (!byYear.has(y)) byYear.set(y, []);
+            byYear.get(y).push(dm);
+        }
+
+        // render per tahun: "2024: dd/mm, dd/mm" (tahun hanya sekali)
+        return Array.from(byYear.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([y, arr]) => {
+                return `<span class="font-semibold">${y}</span>: ${arr.join(
+                    ",<wbr> "
+                )}`;
+            })
+            .join("<br>");
     }
 
     function renderMrpSummaryTable(allRows) {
@@ -785,6 +881,26 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .join("");
     }
+
+    function stripLeadingZerosDigitsOnly(v) {
+        const s = String(v ?? "").trim();
+        if (!s) return "";
+        if (!/^\d+$/.test(s)) return s; // bukan angka semua -> biarkan
+        const t = s.replace(/^0+/, ""); // buang nol depan
+        return t === "" ? "0" : t; // kalau tadinya "0000" -> "0"
+    }
+
+    function fmtVornr(v) {
+        return stripLeadingZerosDigitsOnly(v);
+    }
+
+    function fmtMatnr(v) {
+        const s = String(v ?? "").trim();
+        if (!s) return "";
+        if (/[A-Za-z]/.test(s)) return s; // ada huruf -> utuh
+        return stripLeadingZerosDigitsOnly(s); // angka semua -> buang nol depan
+    }
+
     // Render TABLE
     function renderTable(rows) {
         if (!tbody) return;
@@ -803,22 +919,27 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = rows
             .map(
                 (r, i) => `
-      <tr class="align-top">
-        <td class="px-3 py-2">${i + 1}</td>
-        <td class="px-3 py-2">${getDateCell(r)}</td>
-        <td class="px-3 py-2">${getVal(r, "ARBPL") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "KTEXT") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "AUFNR") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "MATNR") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "MAKTX") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "PSMNG") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "GMNGX") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "SISA") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "GMEIN") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "TTCNF") ?? ""}</td>
-        <td class="px-3 py-2">${getVal(r, "TTCNF2") ?? ""}</td>
-      </tr>
-    `
+        <tr class="align-top">
+            <td class="px-3 py-2">${i + 1}</td>
+            <td class="px-3 py-2">${getDateCell(r)}</td>
+
+            <td class="px-3 py-2">${getVal(r, "ARBPL") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "STEUS") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "KTEXT") ?? ""}</td>
+
+            <td class="px-3 py-2">${getVal(r, "AUFNR") ?? ""}</td>
+            <td class="px-3 py-2">${fmtVornr(getVal(r, "VORNR") ?? "")}</td>
+            <td class="px-3 py-2">${fmtMatnr(getVal(r, "MATNR") ?? "")}</td>
+
+            <td class="px-3 py-2">${getVal(r, "MAKTX") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "PSMNG") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "GMNGX") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "SISA") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "GMEIN") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "TTCNF") ?? ""}</td>
+            <td class="px-3 py-2">${getVal(r, "TTCNF2") ?? ""}</td>
+        </tr>
+        `
             )
             .join("");
     }
@@ -832,8 +953,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Tanggal</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Operator</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Work Center</th>
+            <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Control Key	</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Desc. Work Center</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">PRO</th>
+            <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Activity Number</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Material</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Desc</th>
             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">QTY PRO</th>
@@ -925,9 +1048,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const pro = getVal(r, "AUFNR") ?? "-";
                 const wc = getVal(r, "ARBPL") ?? "-";
                 const wcDesc = getVal(r, "KTEXT") ?? "-";
-                const mat = getVal(r, "MATNR") ?? "-";
+                const mat = fmtMatnr(getVal(r, "MATNR") ?? "-");
                 const desc = getVal(r, "MAKTX") ?? "-";
                 const uom = getVal(r, "GMEIN") ?? "-";
+                const steus = getVal(r, "STEUS") ?? "-";
+                const vornr = fmtVornr(getVal(r, "VORNR") ?? "-");
 
                 return `
         <div class="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
@@ -937,10 +1062,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 getDateCell(r)
             )}</div>
           </div>
-          <div class="mt-1 text-[11px] text-slate-600">${escHtml(
-              wc
-          )} • ${escHtml(wcDesc)}</div>
-          <div class="mt-2 text-xs font-medium">${escHtml(desc)}</div>
+         <div class="mt-1 text-[11px] text-slate-600">
+            ${escHtml(wc)} • ${escHtml(steus)} • ${escHtml(wcDesc)}
+            </div>
+            <div class="mt-2 text-[11px] text-slate-600">
+            PRO: <span class="font-semibold">${escHtml(pro)}</span>
+            • Act: <span class="font-semibold">${escHtml(vornr)}</span>
+        </div>
           <div class="mt-1 text-[11px] text-slate-600">${escHtml(mat)}</div>
 
           <div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
@@ -987,6 +1115,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Single-day fetch
     async function loadSingle(ymd) {
+        // ✅ PRO MULTI: fetch per-AUFNR lalu merge
+        if (isProMode) {
+            let all = [];
+            for (const a of aufnrList) {
+                const qs = new URLSearchParams();
+                qs.set("aufnr", a);
+                if (ymd) qs.set("budat", ymd); // optional, aman
+                const url = `/api/yppi019/hasil?${qs.toString()}`;
+
+                const { ok, data, status } = await fetchJson(url);
+                if (!ok) {
+                    throw new Error(
+                        (data && (data.error || data.message)) ||
+                            `HTTP ${status}`
+                    );
+                }
+
+                const rows = Array.isArray(data.rows) ? data.rows : [];
+                all = all.concat(
+                    rows.map((r) => ({
+                        ...r,
+                        __budat: r.BUDAT || r.budat || ymd || null,
+                        __dispo: null,
+                    }))
+                );
+            }
+            return all;
+        }
         async function fetchOne(oneDispo) {
             const qs = new URLSearchParams();
 
@@ -1037,21 +1193,32 @@ document.addEventListener("DOMContentLoaded", () => {
     async function tryLoadRangeViaApi(f, t) {
         // ✅ PRO/AUFNR: panggil sekali saja (tidak loop harian)
         if (isProMode) {
-            const qs = new URLSearchParams();
-            qs.set("aufnr", aufnr);
-            qs.set("from", f);
-            qs.set("to", t);
+            let merged = [];
+            for (const a of aufnrList) {
+                const qs = new URLSearchParams();
+                qs.set("aufnr", a);
+                qs.set("from", f);
+                qs.set("to", t);
 
-            const url = `/api/yppi019/hasil-range?${qs.toString()}`;
-            const { ok, data } = await fetchJson(url);
-            if (!ok) return null;
+                const url = `/api/yppi019/hasil-range?${qs.toString()}`;
+                const { ok, data, status } = await fetchJson(url);
+                if (!ok) {
+                    throw new Error(
+                        (data && (data.error || data.message)) ||
+                            `HTTP ${status}`
+                    );
+                }
 
-            const rows = Array.isArray(data.rows) ? data.rows : [];
-            return rows.map((r) => ({
-                ...r,
-                __budat: r.BUDAT || r.budat || null,
-                __dispo: null,
-            }));
+                const rows = Array.isArray(data.rows) ? data.rows : [];
+                merged = merged.concat(
+                    rows.map((r) => ({
+                        ...r,
+                        __budat: r.BUDAT || r.budat || null,
+                        __dispo: null,
+                    }))
+                );
+            }
+            return merged;
         }
         // ✅ kalau multi dispo (mis. D24,G32) -> panggil endpoint berkali-kali lalu gabungkan
         if (hasMrp && Array.isArray(dispoList) && dispoList.length > 1) {

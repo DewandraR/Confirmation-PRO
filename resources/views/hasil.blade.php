@@ -3,14 +3,42 @@
 
 @section('content')
 @php
+  $aufnrRaw = (string) (request('aufnr') ?: request('pro') ?: '');$aufnrParam = request()->query('aufnr', request()->query('pro', ''));
+
+    $aufnrParts = [];
+        if (is_array($aufnrParam)) {
+    $aufnrParts = $aufnrParam; // sudah list
+        } else {
+        $aufnrParts = preg_split('/[\s,]+/', trim((string)$aufnrParam), -1, PREG_SPLIT_NO_EMPTY);
+        }
+    $aufnrList = [];
+    foreach ($aufnrParts as $p) {
+        $d = preg_replace('/\D/', '', (string)$p);
+        if ($d !== '') $aufnrList[] = str_pad($d, 12, '0', STR_PAD_LEFT);
+    }
+    $aufnrParam = request()->query('aufnr',
+              request()->query('aufnrs',
+              request()->query('pro', '')
+    ));
+  $aufnrList = array_values(array_unique($aufnrList));
+
+  $isProMode = count($aufnrList) > 0;
+
   $dispos = request('dispos') ?: request('mrps') ?: request('dispo') ?: request('mrp');
   $mrpArr = array_values(array_filter(array_map('trim', explode(',', (string) $dispos))));
 
-  $isProMode = (bool) (request('aufnr') ?: request('pro'));
   $hasMrp = request('werks') && count($mrpArr) > 0;
   $isMrpMode = $hasMrp && !request('pernr') && !$isProMode;
 
   $isSummaryMode = $isMrpMode || $isProMode;
+
+  $proLabel = '-';
+  if ($isProMode) {
+    $shown = array_slice($aufnrList, 0, 3);
+    $proLabel = implode(', ', $shown);
+    if (count($aufnrList) > 3) $proLabel .= ' +' . (count($aufnrList) - 3);
+  }
+  $isNikMode = (!$isProMode && !$isMrpMode);
 @endphp
 
     <div class="px-4 py-8 md:px-6">
@@ -24,7 +52,7 @@
                         <span class="ml-1 text-white/90 text-base md:text-lg font-semibold">
                             / <span id="title-pernr">
                                 @if($isProMode)
-                                    {{ request('aufnr') ?: request('pro') }}
+                                    {{ $proLabel }}
                                 @else
                                     {{ request('pernr') ?: ($isMrpMode ? ((request('bagian') ?: '-') . ' / ' . request('werks')) : '-') }}
                                 @endif
@@ -78,29 +106,49 @@
 
                     {{-- Grup 2: Datepicker & Label MRP (di kanan pada desktop, di bawah pada mobile) --}}
                     <div class="flex gap-3 w-full md:w-auto items-center">
-                        {{-- Datepicker --}}
-                        {{-- UBAH: flex-1 agar mengisi ruang di HP, dan perlebar width di desktop (md:w-[280px] lg:w-[320px]) --}}
+                        {{-- Input NIK (HANYA mode NIK) --}}
+                        @if($isNikMode)
+                        <div class="relative flex-1 md:flex-none md:w-[200px] lg:w-[220px]">
+                            <input
+                            id="hasil-pernr-input"
+                            type="text"
+                            inputmode="numeric"
+                            pattern="\d*"
+                            maxlength="10"
+                            value="{{ request('pernr') }}"
+                            class="inline-flex h-9 w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-slate-700 text-sm
+                                    focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 placeholder:text-slate-400"
+                            placeholder="Masukkan NIK..."
+                            autocomplete="off"
+                            >
+                        </div>
+                        @endif
+
+                        {{-- Datepicker (HIDE jika PRO) --}}
+                        @if(!$isProMode)
                         <div class="relative flex-1 md:flex-none md:w-[280px] lg:w-[320px]">
                             <input id="hasil-daterange-picker" type="text"
                                 class="inline-flex h-9 w-full rounded-lg border border-slate-300 px-3 py-2 pl-9 text-center text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 placeholder:text-slate-400 truncate"
                                 placeholder="Pilih tanggal..." required>
 
                             <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                         </div>
+                        @endif
 
-                        {{-- Slot Khusus untuk Label MRP --}}
                         {{-- UBAH: tambahkan flex-none agar ukurannya pas dengan isinya --}}
                         <div id="header-mrp-slot" class="hidden empty:hidden flex-none">
                             {{-- JS akan menyuntikkan badge MRP di sini --}}
                         </div>
                     </div>
                 </div>
-                <div id="hasil-summary" class="px-5 pb-4 empty:hidden"></div>
+                @if(!$isProMode)
+                    <div id="hasil-summary" class="px-5 pb-4 empty:hidden"></div>
+                @endif
+
 
                 {{-- ===== Tabel ===== --}}
                 <div class="px-5 pb-6">
@@ -130,11 +178,17 @@
                                         <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px] whitespace-nowrap">
                                             Work Center
                                         </th>
+                                        <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[110px] whitespace-nowrap">
+                                            Control Key
+                                        </th>
                                         <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px]">
                                             Desc. Work Center
                                         </th>
                                         <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px]">
                                             PRO
+                                        </th>
+                                        <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[130px] whitespace-nowrap">
+                                            Activity Number
                                         </th>
                                         <th class="px-3 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Material
@@ -167,7 +221,7 @@
                             {{-- Baris data diisi oleh hasil.js --}}
                             <tbody id="hasil-tbody" class="bg-white divide-y divide-slate-200 text-slate-800">
                                 <tr>
-                                    <td class="px-3 py-4 text-slate-500" colspan="{{ $isSummaryMode ? 5 : 13 }}">
+                                    <td class="px-3 py-4 text-slate-500" colspan="{{ $isSummaryMode ? 5 : 15 }}">
                                 </tr>
                             </tbody>
                         </table>
@@ -232,8 +286,10 @@
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Tanggal</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Operator</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Work Center</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Control Key</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Desc. Work Center</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">PRO</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Activity Number</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Material</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">Desc</th>
                             <th class="px-3 py-2 text-xs font-semibold text-slate-700 border-b">QTY PRO</th>
@@ -246,7 +302,7 @@
                     </thead>
 
                     <tbody id="mrpDetailTbody" class="bg-white divide-y divide-slate-200">
-                        <tr><td class="px-3 py-4 text-slate-500" colspan="14">Klik baris summary untuk melihat detail…</td></tr>
+                        <tr><td class="px-3 py-4 text-slate-500" colspan="16">Klik baris summary untuk melihat detail…</td></tr>
                     </tbody>
                 </table>
             </div>

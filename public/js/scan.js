@@ -1836,6 +1836,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const inpDaterange = document.getElementById("hasil-daterange");
     const inpAufnr = document.getElementById("hasil-aufnr");
 
+    // ===== MULTI PRO (chip) untuk modal hasil =====
+    const hasilAufnrSet = new Set();
+    const hasilAufnrListEl = document.getElementById("hasil-aufnr-list");
+
+    function normalizeAufnr(v) {
+        let s = String(v || "").trim();
+        if (!s) return "";
+        // ambil digit saja (AUFNR biasanya numeric)
+        s = s.replace(/\D/g, "");
+        if (!s) return "";
+        return s.padStart(12, "0"); // AUFNR 12 digit
+    }
+
+    function addHasilAufnrChip(aufnr) {
+        const n = normalizeAufnr(aufnr);
+        if (!n || hasilAufnrSet.has(n)) return;
+
+        hasilAufnrSet.add(n);
+
+        if (!hasilAufnrListEl) return;
+
+        const div = document.createElement("div");
+        div.className =
+            "px-3 py-1.5 bg-slate-100 rounded-xl flex items-center justify-between text-[11px] font-medium text-slate-700 hover:bg-slate-200 transition";
+        div.textContent = n;
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className =
+            "w-5 h-5 ml-2 bg-red-100 rounded-full flex items-center justify-center text-red-600 hover:bg-red-200";
+        del.innerHTML =
+            '<svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+
+        del.onclick = () => {
+            hasilAufnrSet.delete(n);
+            div.remove();
+        };
+
+        div.appendChild(del);
+        hasilAufnrListEl.appendChild(div);
+    }
+
+    function flushHasilAufnrFromInput() {
+        if (!inpAufnr) return;
+        const raw = String(inpAufnr.value || "").trim();
+        if (!raw) return;
+
+        raw.split(/[,\s;]+/).forEach((x) => addHasilAufnrChip(x));
+        inpAufnr.value = "";
+    }
+
+    function clearHasilAufnrAll() {
+        hasilAufnrSet.clear();
+        if (hasilAufnrListEl) hasilAufnrListEl.innerHTML = "";
+        if (inpAufnr) inpAufnr.value = "";
+    }
+
     function setDateEnabled(on) {
         if (!inpDaterange) return;
         inpDaterange.disabled = !on;
@@ -1851,29 +1908,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function applyExclusiveMode() {
-        const aufnr = (inpAufnr?.value || "").trim();
+        const typedAufnr = (inpAufnr?.value || "").trim();
         const pernr = (inpPernr?.value || "").trim();
         const mrpVal = (selMrp?.value || "").trim();
 
-        // PRIORITAS: kalau AUFNR terisi => PRO mode (yang lain diabaikan)
-        if (aufnr) {
+        // PRO mode kalau ada chip ATAU sedang mengetik
+        const hasPro = hasilAufnrSet.size > 0 || typedAufnr.length > 0;
+
+        if (hasPro) {
+            // ❗ jangan flush di input event
             if (inpPernr) inpPernr.value = "";
             if (selMrp) selMrp.value = "";
             setDateEnabled(false);
             return;
         }
 
-        // selain PRO mode => date aktif
         setDateEnabled(true);
 
-        // aturan lama kamu: kalau pilih MRP, NIK dikosongkan
         if (mrpVal) {
             if (inpPernr) inpPernr.value = "";
+            clearHasilAufnrAll();
+            return;
         }
 
-        // kalau NIK diisi, PRO harus kosong
         if (pernr) {
-            if (inpAufnr) inpAufnr.value = "";
+            clearHasilAufnrAll();
+            return;
         }
     }
     const btnCancel = document.getElementById("hasilCancel");
@@ -1993,7 +2053,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (!mrpLoadedOnce) loadMrpOptions();
         resetMrpSelection();
-        if (inpAufnr) inpAufnr.value = "";
+        clearHasilAufnrAll();
         applyExclusiveMode();
         modal.classList.remove("hidden");
         setTimeout(() => inpPernr?.focus(), 50);
@@ -2008,6 +2068,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnOpen.addEventListener("click", show);
     inpAufnr?.addEventListener("input", applyExclusiveMode);
+    inpAufnr?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            flushHasilAufnrFromInput();
+            applyExclusiveMode();
+        }
+    });
+
+    // kalau user paste banyak lalu klik keluar, tetap masuk list
+    inpAufnr?.addEventListener("paste", () => {
+        setTimeout(() => {
+            const v = String(inpAufnr.value || "");
+            if (/[,\s;]+/.test(v)) {
+                flushHasilAufnrFromInput();
+            }
+            applyExclusiveMode();
+        }, 0);
+    });
     inpPernr?.addEventListener("input", applyExclusiveMode);
 
     // sudah ada change MRP yang mengosongkan pernr; kita tambah supaya juga mengosongkan aufnr
@@ -2033,17 +2111,26 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", (e) => {
         e.preventDefault();
 
-        const aufnr = (inpAufnr?.value || "").trim();
+        // pastikan input yang masih diketik ikut masuk list
+        flushHasilAufnrFromInput();
+
+        const aufnrs = Array.from(hasilAufnrSet);
         const pernr = (inpPernr?.value || "").trim();
         const mrpVal = (selMrp?.value || "").trim();
 
         // =========================
-        // MODE 3: PRO / AUFNR ONLY
+        // MODE 3: PRO / AUFNR (MULTI)
         // =========================
-        if (aufnr) {
-            // PRO mode: ONLY P_AUFNR (tanpa tanggal / tanpa dispo/werks/pernr)
+        if (aufnrs.length > 0) {
             const url = new URL("/hasil", location.origin);
-            url.searchParams.set("aufnr", aufnr);
+
+            if (aufnrs.length === 1) {
+                url.searchParams.set("aufnr", aufnrs[0]); // backward compatible
+            } else {
+                url.searchParams.set("aufnrs", aufnrs.join(",")); // MULTI
+                url.searchParams.set("aufnr", aufnrs[0]); // fallback kalau /hasil belum update
+            }
+
             location.assign(url.toString());
             return;
         }
