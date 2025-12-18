@@ -805,9 +805,16 @@ def api_hasil():
     pernr = (request.args.get("pernr") or "").strip()
     budat = (request.args.get("budat") or "").strip().replace("-", "")
     aufnr = (request.args.get("aufnr") or "").strip()  # opsional
+    dispo = (request.args.get("dispo") or "").strip()
+    werks = (request.args.get("werks") or "").strip()
 
-    if not pernr or not re.match(r"^\d{8}$", budat):
-        return jsonify({"ok": False, "error": "param pernr & budat(YYYYMMDD) wajib"}), 400
+    if not re.match(r"^\d{8}$", budat):
+        return jsonify({"ok": False, "error": "param budat(YYYYMMDD) wajib"}), 400
+
+    has_pernr = bool(pernr)
+    has_mrp   = bool(dispo and werks)
+    if not has_pernr and not has_mrp:
+        return jsonify({"ok": False, "error": "Isi pernr ATAU pilih dispo+werks"}), 400
 
     # 1. Deklarasikan variabel 'sap' di luar blok try
     sap = None 
@@ -815,9 +822,16 @@ def api_hasil():
         # 2. Buka koneksi secara manual
         sap = connect_sap(username, password) 
         
-        args = {"P_PERNR": pernr, "P_BUDAT": budat}
+        args = {"P_BUDAT": budat}
+
+        if has_pernr:
+            args["P_PERNR"] = pernr
+
+        if has_mrp:
+            args["P_DISPO"] = dispo
+            args["P_WERKS"] = werks
+
         if aufnr:
-            # zero-pad 12 digit kalau user mengirimkan PRO
             args["P_AUFNR"] = pad_aufnr(aufnr)
 
         logger.info("Calling Z_FM_YPPR062 with %s", args)
@@ -889,9 +903,16 @@ def api_hasil_range():
     frm   = _ymd_clean(request.args.get("from") or request.args.get("budat_from") or request.args.get("date_from") or "")
     to    = _ymd_clean(request.args.get("to")   or request.args.get("budat_to")   or request.args.get("date_to")   or "")
     aufnr = (request.args.get("aufnr") or "").strip()
+    dispo = (request.args.get("dispo") or "").strip()
+    werks = (request.args.get("werks") or "").strip()
 
-    if not pernr or not re.match(r"^\d{8}$", frm) or not re.match(r"^\d{8}$", to):
-        return jsonify({"ok": False, "error": "param pernr & from/to(YYYYMMDD) wajib"}), 400
+    if not re.match(r"^\d{8}$", frm) or not re.match(r"^\d{8}$", to):
+        return jsonify({"ok": False, "error": "param from/to(YYYYMMDD) wajib"}), 400
+
+    has_pernr = bool(pernr)
+    has_mrp   = bool(dispo and werks)
+    if not has_pernr and not has_mrp:
+        return jsonify({"ok": False, "error": "Isi pernr ATAU pilih dispo+werks"}), 400
 
     # Normalisasi rentang
     d1 = datetime.strptime(frm, "%Y%m%d").date()
@@ -913,7 +934,14 @@ def api_hasil_range():
         cur = d1
         while cur <= d2:
             ymd = cur.strftime("%Y%m%d")
-            args = {"P_PERNR": pernr, "P_BUDAT": ymd}
+            args = {"P_BUDAT": ymd}
+
+            if has_pernr:
+                args["P_PERNR"] = pernr
+            if has_mrp:
+                args["P_DISPO"] = dispo
+                args["P_WERKS"] = werks
+
             if aufnr:
                 args["P_AUFNR"] = pad_aufnr(aufnr)
 

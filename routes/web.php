@@ -6,6 +6,8 @@ use App\Http\Controllers\ScanController;
 use App\Http\Controllers\DetailController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Yppi019DbApiController;
+use App\Http\Controllers\CohvController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -62,6 +64,11 @@ Route::middleware(['api', 'sap_auth'])->prefix('api')->group(function () {
         ->name('yppi019.remark.async');
 
     Route::get('/yppi019/confirm-monitor-ids', [Yppi019DbApiController::class, 'confirmMonitorByIds']);
+    Route::get('/cohv/get-mapping', [CohvController::class, 'getMappingForLoggedUser'])
+    ->name('cohv.get-mapping');
+    Route::get('/yppi019/hasil-range', [Yppi019DbApiController::class, 'hasilRange'])
+    ->name('api.yppi019.hasilRange');
+
 });
 
 // === API YPPI019 (BENAR-BENAR STATELESS) ===

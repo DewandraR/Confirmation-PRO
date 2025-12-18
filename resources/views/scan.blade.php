@@ -785,11 +785,29 @@
             </div>
 
             <form id="hasilForm" class="px-5 py-4 space-y-3">
+
                 <div>
-                    <label class="text-xs text-slate-600">NIK Operator<span class="text-red-600">*</span></label>
+                    <label class="text-xs text-slate-600">NIK Operator <span class="text-slate-400">(opsional)</span></label>
                     <input id="hasil-pernr" name="pernr" type="text" inputmode="numeric" autocomplete="off"
                         class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="contoh: 100234" required>
+                        placeholder="contoh: 100234">
+                    {{-- ⬆️ HAPUS required --}}
+                </div>
+
+                {{-- Divider "ATAU" --}}
+                <div class="flex items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="mx-3 text-[11px] text-slate-400 font-semibold tracking-wide">ATAU</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                {{-- Dropdown MRP - Plant --}}
+                <div>
+                    <label class="text-xs text-slate-600">MRP - Plant <span class="text-slate-400">(opsional)</span></label>
+                    <select id="hasil-mrp-plant" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="">Memuat opsi…</option>
+                    </select>
+                    <p class="mt-1 text-[11px] text-slate-500">Isi salah satu: NIK <b>atau</b> MRP - Plant.</p>
                 </div>
                 <!-- ganti blok ini SAJA -->
                 <div>

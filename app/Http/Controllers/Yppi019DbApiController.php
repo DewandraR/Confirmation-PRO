@@ -286,27 +286,102 @@ class Yppi019DbApiController extends Controller
     public function hasil(Request $req)
     {
         $pernr = trim((string)$req->query('pernr', ''));
-        $budat = preg_replace('/-/', '', (string)$req->query('budat', ''));
+        $budat = preg_replace('/\D/', '', (string)$req->query('budat', ''));
 
-        if ($pernr === '' || !preg_match('/^\d{8}$/', $budat)) {
-            return response()->json(['ok' => false, 'error' => 'param pernr & budat(YYYYMMDD) wajib'], 400);
+        $dispo = trim((string)$req->query('dispo', '')); // NEW
+        $werks = trim((string)$req->query('werks', '')); // NEW
+
+        if (!preg_match('/^\d{8}$/', $budat)) {
+            return response()->json(['ok' => false, 'error' => 'param budat(YYYYMMDD) wajib'], 400);
+        }
+
+        // Minimal salah satu mode:
+        $hasPernr = ($pernr !== '');
+        $hasMrp   = ($dispo !== '' && $werks !== '');
+        if (!$hasPernr && !$hasMrp) {
+            return response()->json(['ok' => false, 'error' => 'Isi pernr ATAU pilih dispo+werks'], 400);
         }
 
         try {
-            // UBAH: Kirim $req ke sapHeaders
             $res = Http::withHeaders($this->sapHeaders($req))
                 ->acceptJson()
                 ->timeout(180)
-                ->get($this->flaskBase() . '/api/yppi019/hasil', [
-                    'pernr' => $pernr,
+                ->get($this->flaskBase() . '/api/yppi019/hasil', array_filter([
+                    'pernr' => $hasPernr ? $pernr : null,
                     'budat' => $budat,
-                ]);
+                    'dispo' => $hasMrp ? $dispo : null,
+                    'werks' => $hasMrp ? $werks : null,
+                    'aufnr' => $req->query('aufnr'), // opsional
+                ], fn($v) => $v !== null && $v !== ''));
 
             return response($res->body(), $res->status())
                 ->header('Content-Type', $res->header('Content-Type', 'application/json'));
-        } catch (ConnectionException $e) {
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
             return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+    public function mrpOptions(Request $req)
+    {
+        $sapId = (string) $req->attributes->get('sap_username'); // contoh: KMI-U128
+        if ($sapId === '') {
+            return response()->json(['ok' => false, 'error' => 'Sesi SAP habis atau belum login'], 440);
+        }
+
+        $base  = rtrim(config('services.wi_api.base_url'), '/');   // https://cohv.kmifilebox.com/api
+        $token = (string) config('services.wi_api.token');
+
+        try {
+            $http = \Illuminate\Support\Facades\Http::acceptJson()->timeout(30);
+
+            // asumsi token = Bearer token
+            if ($token !== '') $http = $http->withToken($token);
+
+            $res = $http->post($base . '/cohv/get-mapping', [
+                'sap_id' => $sapId,
+            ]);
+
+            if (!$res->ok()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => $res->json('error') ?? $res->json('message') ?? $res->body(),
+                ], $res->status());
+            }
+
+            $data = $res->json() ?? [];
+            $options = [];
+            $seen = [];
+
+            foreach (($data['details'] ?? []) as $det) {
+                $kategori = (string) ($det['kategori'] ?? '');
+                foreach (($det['kodes'] ?? []) as $k) {
+                    foreach (($k['mrps'] ?? []) as $mrp) {
+                        $mrp = (string) $mrp;
+                        if ($mrp === '' || $kategori === '') continue;
+
+                        $key = $mrp . '|' . $kategori;
+                        if (isset($seen[$key])) continue;
+                        $seen[$key] = true;
+
+                        $options[] = [
+                            'dispo' => $mrp,
+                            'werks' => $kategori,
+                            'label' => "{$mrp} - {$kategori}", // tampil dropdown
+                        ];
+                    }
+                }
+            }
+
+            return response()->json([
+                'ok' => true,
+                'sap_id' => $sapId,
+                'nama' => $data['nama'] ?? null,
+                'options' => $options,
+            ]);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return response()->json(['ok' => false, 'error' => 'WI API tidak dapat dihubungi: ' . $e->getMessage()], 502);
+        } catch (\Throwable $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
     }
@@ -829,31 +904,37 @@ class Yppi019DbApiController extends Controller
     public function hasilRange(Request $req)
     {
         $pernr = trim((string)$req->query('pernr', ''));
-        // dukung from/to dan alias lain
         $from  = preg_replace('/-/', '', (string)($req->query('from', $req->query('budat_from', $req->query('date_from', '')))));
         $to    = preg_replace('/-/', '', (string)($req->query('to',   $req->query('budat_to',   $req->query('date_to',   '')))));
 
-        if ($pernr === '' || !preg_match('/^\d{8}$/', $from) || !preg_match('/^\d{8}$/', $to)) {
-            return response()->json(['ok' => false, 'error' => 'param pernr & from/to (YYYYMMDD) wajib'], 400);
+        $dispo = trim((string)$req->query('dispo', ''));
+        $werks = trim((string)$req->query('werks', ''));
+
+        if (!preg_match('/^\d{8}$/', $from) || !preg_match('/^\d{8}$/', $to)) {
+            return response()->json(['ok' => false, 'error' => 'param from/to (YYYYMMDD) wajib'], 400);
+        }
+        if ($pernr === '' && ($dispo === '' || $werks === '')) {
+            return response()->json(['ok' => false, 'error' => 'Isi pernr atau pilih MRP - Plant (dispo+werks)'], 400);
         }
 
         try {
-            $res = \Illuminate\Support\Facades\Http::withHeaders($this->sapHeaders($req))
-                ->acceptJson()
-                ->timeout(300)
-                ->get($this->flaskBase() . '/api/yppi019/hasil-range', [
-                    'pernr' => $pernr,
-                    'from'  => $from,
-                    'to'    => $to,
-                    // opsional: forward aufnr kalau Anda mau
-                    'aufnr' => $req->query('aufnr'),
-                ]);
+            $query = array_filter([
+                'pernr' => $pernr,
+                'from'  => $from,
+                'to'    => $to,
+                'dispo' => $dispo,
+                'werks' => $werks,
+            ], fn($v) => $v !== null && $v !== '');
+
+            $res = Http::withHeaders($this->sapHeaders($req))
+                ->acceptJson()->timeout(300)
+                ->get($this->flaskBase() . '/api/yppi019/hasil-range', $query);
 
             return response($res->body(), $res->status())
                 ->header('Content-Type', $res->header('Content-Type', 'application/json'));
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             return response()->json(['ok' => false, 'error' => 'Flask tidak dapat dihubungi: ' . $e->getMessage()], 502);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
     }

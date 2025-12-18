@@ -20,3 +20,33 @@
         max-width: 95vw;
     }
 }
+/* === MRP Summary table: rapat & muat layar HP === */
+@media (max-width: 640px) {
+    #hasil-table {
+        min-width: 0 !important;
+    }
+
+    #hasil-table th,
+    #hasil-table td {
+        /* UBAH DISINI: */
+        padding: 12px 8px; /* Sebelumnya 6px 6px. Diperbesar agar jarak baris lega (enak disentuh jari) */
+        font-size: 14px; /* Sebelumnya 12px. Diubah ke 14px (standar HP) agar terbaca jelas */
+    }
+
+    /* kolom Operator */
+    #hasil-table td:nth-child(3),
+    #hasil-table th:nth-child(3) {
+        /* UBAH DISINI: */
+        max-width: 150px; /* Sebelumnya 120px. Sedikit diperlebar agar nama panjang muat */
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.4; /* Sebelumnya 1.2. Ditinggikan agar huruf tidak dempet */
+    }
+
+    /* angka total biar rapih */
+    #hasil-table td:nth-child(4),
+    #hasil-table td:nth-child(5) {
+        white-space: nowrap;
+        font-weight: 600; /* Opsional: pertebal angka agar mudah dipindai mata */
+    }
+}

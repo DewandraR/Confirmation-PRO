@@ -1823,6 +1823,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("hasilModal");
     const form = document.getElementById("hasilForm");
     const inpPernr = document.getElementById("hasil-pernr");
+    const selMrp = document.getElementById("hasil-mrp-plant");
+    let mrpLoadedOnce = false;
+    function resetMrpSelection() {
+        if (!selMrp) return;
+        selMrp.value = ""; // balik ke "(Pilih Nama Bagian)"
+        try {
+            localStorage.removeItem("last_mrp_plant");
+        } catch {}
+    }
+
     const inpDaterange = document.getElementById("hasil-daterange");
     const btnCancel = document.getElementById("hasilCancel");
 
@@ -1846,6 +1856,78 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }; // Tampilkan modal
 
+    async function fetchJson(url, opt = {}) {
+        const r = await fetch(url, {
+            credentials: "same-origin",
+            headers: {
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            ...opt,
+        });
+        let data = null;
+        try {
+            data = await r.json();
+        } catch {}
+        return {
+            ok: r.ok && data && data.ok !== false,
+            status: r.status,
+            data,
+        };
+    }
+
+    async function loadMrpOptions() {
+        if (!selMrp) return;
+
+        selMrp.innerHTML = `<option value="">Memuat opsi…</option>`;
+
+        const { ok, data } = await fetchJson("/api/cohv/get-mapping");
+        if (!ok) {
+            selMrp.innerHTML = `<option value="">Gagal memuat (coba buka lagi)</option>`;
+            return;
+        }
+
+        // ✅ ambil dari data.details -> tampilkan nama_bagian
+        const map = new Map(); // key: werks|nama_bagian -> { werks, nama, mrps[] }
+
+        (data.details || []).forEach((d) => {
+            (d?.kodes || []).forEach((k) => {
+                const werks = String(d?.kategori ?? "").trim();
+                const nama = String(k?.nama_bagian ?? "").trim(); // ✅ label dropdown
+                const mrps = Array.isArray(k?.mrps)
+                    ? k.mrps.map((x) => String(x).trim()).filter(Boolean)
+                    : [];
+                if (!werks || !nama || mrps.length === 0) return;
+
+                const key = `${werks}|${nama}`;
+                if (!map.has(key)) map.set(key, { werks, nama, mrps: [] });
+
+                // merge mrps (unik)
+                const cur = map.get(key);
+                mrps.forEach((m) => {
+                    if (!cur.mrps.includes(m)) cur.mrps.push(m);
+                });
+            });
+        });
+
+        const bagianOpts = Array.from(map.values()).sort((a, b) =>
+            a.nama.localeCompare(b.nama)
+        );
+
+        selMrp.innerHTML =
+            `<option value="">(Pilih Nama Bagian)</option>` +
+            bagianOpts
+                .map((o) => {
+                    // value: WERKS|MRP1,MRP2,MRP3
+                    const v = `${o.werks}|${o.mrps.join(",")}`;
+                    return `<option value="${v}">${o.nama}</option>`;
+                })
+                .join("");
+
+        resetMrpSelection();
+        mrpLoadedOnce = true;
+    }
+
     const show = () => {
         // Isi NIK terakhir
         if (inpPernr && !inpPernr.value) {
@@ -1867,7 +1949,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 className: "flatpickr-kmi-theme",
             });
         }
-
+        if (!mrpLoadedOnce) loadMrpOptions();
+        resetMrpSelection();
         modal.classList.remove("hidden");
         setTimeout(() => inpPernr?.focus(), 50);
     }; // Sembunyikan modal
@@ -1880,6 +1963,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }; // Events
 
     btnOpen.addEventListener("click", show);
+    selMrp?.addEventListener("change", () => {
+        if (selMrp.value) {
+            if (inpPernr) inpPernr.value = "";
+        }
+    });
+
     btnCancel?.addEventListener("click", hide);
     modal.addEventListener("click", (e) => {
         if (e.target === modal) hide();
@@ -1895,9 +1984,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const selectedDates = flatpickrInstance.selectedDates;
 
-        if (!pernr) {
-            alert("NIK Operator wajib diisi.");
-            return inpPernr.focus();
+        const mrpVal = (selMrp?.value || "").trim();
+
+        if (!pernr && !mrpVal) {
+            alert("Isi NIK Operator atau pilih MRP - Plant.");
+            return (inpPernr || selMrp)?.focus?.();
         }
 
         if (selectedDates.length < 2) {
@@ -1914,9 +2005,48 @@ document.addEventListener("DOMContentLoaded", () => {
         const from = dateToYmd(fromDate);
         const to = dateToYmd(toDate);
 
-        location.assign(
-            `/hasil?pernr=${encodeURIComponent(pernr)}&from=${from}&to=${to}`
-        );
+        const url = new URL("/hasil", location.origin);
+
+        if (pernr) {
+            // mode NIK
+            try {
+                localStorage.setItem("last_pernr", pernr);
+            } catch {}
+            url.searchParams.set("pernr", pernr);
+        } else {
+            // mode MRP (nama_bagian)
+            const [werks, mrpsCsv] = mrpVal.split("|");
+            const dispos = String(mrpsCsv || "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            if (!werks || dispos.length === 0) {
+                alert("Pilihan Nama Bagian tidak valid.");
+                return;
+            }
+
+            url.searchParams.set("werks", werks);
+
+            // opsional tapi enak: kirim label nama_bagian untuk ditampilkan di header hasil
+            const bagianLabel =
+                selMrp?.options?.[selMrp.selectedIndex]?.textContent?.trim() ||
+                "";
+            if (bagianLabel) url.searchParams.set("bagian", bagianLabel);
+
+            if (dispos.length === 1) {
+                // single mrp -> tetap seperti dulu
+                url.searchParams.set("dispo", dispos[0]);
+            } else {
+                // multi mrp -> kirim list untuk diloop di halaman hasil
+                url.searchParams.set("dispos", dispos.join(","));
+            }
+        }
+
+        url.searchParams.set("from", from);
+        url.searchParams.set("to", to);
+
+        location.assign(url.toString());
     });
 })();
 
