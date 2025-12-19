@@ -248,7 +248,7 @@ class WiDocumentController extends Controller
         if (!$response->ok()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'WI API error',
+                'message' => 'Tidak ditemukan WI aktif untuk NIK ini.',
                 'details' => $response->json(),
             ], $response->status());
         }
