@@ -898,6 +898,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
         .join("");
 
+    tableBody.addEventListener("input", (e) => {
+        if (!isWiMode) return;
+        if (e.target && e.target.classList.contains("remark-input")) {
+            scheduleStateUpdate(); // pakai scheduler biar stabil
+        }
+    });
+
+    tableBody.addEventListener("change", (e) => {
+        if (!isWiMode) return;
+        if (e.target && e.target.classList.contains("remark-input")) {
+            scheduleStateUpdate();
+        }
+    });
+
     // Header WC Induk/WC Anak
     const thWc = document.querySelector("th.col-workcenter");
     const thWcAnak = document.querySelector("th.col-wc-anak");
@@ -1007,17 +1021,50 @@ document.addEventListener("DOMContentLoaded", async () => {
             .filter(Boolean);
     }
 
+    function getSelectedRows() {
+        return Array.from(document.querySelectorAll(".row-checkbox:checked"))
+            .map((cb) => cb.closest("tr"))
+            .filter(Boolean);
+    }
+
+    function anySelectedHasRemark(rows) {
+        if (!isWiMode) return false;
+        return rows.some(
+            (tr) =>
+                (tr.querySelector(".remark-input")?.value || "").trim().length >
+                0
+        );
+    }
+
     function updateConfirmButtonState() {
-        const count = visibleRowCheckboxes().filter((cb) => cb.checked).length;
+        const rows = getSelectedRows();
+        const count = rows.length;
+
         selectedCountSpan.textContent = count;
 
-        confirmButton.disabled = count === 0;
+        const hasRemark = anySelectedHasRemark(rows);
+
+        // ✅ RULE BARU:
+        // jika ada remark di baris terpilih → Konfirmasi disable
+        confirmButton.disabled = count === 0 || (isWiMode && hasRemark);
+        confirmButton.title =
+            isWiMode && hasRemark
+                ? "Ada remark terisi. Gunakan tombol Remark."
+                : "";
 
         if (remarkButton) {
             remarkButton.disabled = count === 0;
-            // kalau non-WI mode, tetap hidden
             remarkButton.classList.toggle("hidden", !isWiMode);
         }
+    }
+
+    let _rafState = 0;
+    function scheduleStateUpdate() {
+        if (_rafState) cancelAnimationFrame(_rafState);
+        _rafState = requestAnimationFrame(() => {
+            _rafState = 0;
+            updateConfirmButtonState();
+        });
     }
 
     function applyFilters() {
@@ -1138,7 +1185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectAll?.addEventListener("change", () => {
         const vis = visibleRowCheckboxes();
         vis.forEach((cb) => (cb.checked = selectAll.checked));
-        updateConfirmButtonState();
+        scheduleStateUpdate();
     });
 
     document.addEventListener("change", (e) => {
@@ -1149,7 +1196,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             selectAll.checked = vis.length > 0 && visChecked === vis.length;
             selectAll.indeterminate = visChecked > 0 && visChecked < vis.length;
         }
-        updateConfirmButtonState();
+        scheduleStateUpdate();
     });
 
     updateConfirmButtonState();
@@ -1664,12 +1711,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         closeRowDetail();
+        updateConfirmButtonState();
     });
 
     /* =========================
      CONFIRM FLOW (tetap seperti sebelumnya)
      ========================= */
     confirmButton?.addEventListener("click", () => {
+        // GUARD: kalau ada remark pada baris terpilih, jangan boleh buka modal confirm
+        if (isWiMode) {
+            const rows = getSelectedRows();
+            if (rows.length && anySelectedHasRemark(rows)) {
+                warning(
+                    "Ada Remark terisi. <b>Konfirmasi tidak boleh</b>. Gunakan tombol <b>Remark</b>."
+                );
+                return;
+            }
+        }
         const budatRaw = (budatInput?.value || "").trim();
         if (!budatRaw) {
             if (warningMessage)
@@ -1774,6 +1832,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         const selected = Array.from(
             document.querySelectorAll(".row-checkbox:checked")
         );
+        // GUARD: kalau remark ada isinya, jangan boleh kirim confirm
+        if (isWiMode) {
+            const rows = selected.map((cb) => cb.closest("tr")).filter(Boolean);
+            if (rows.length && anySelectedHasRemark(rows)) {
+                warning(
+                    "Ada Remark terisi. <b>Konfirmasi dibatalkan</b>. Gunakan tombol <b>Remark</b>."
+                );
+                return;
+            }
+        }
+
         if (!selected.length) {
             confirmModal?.classList.add("hidden");
             return;

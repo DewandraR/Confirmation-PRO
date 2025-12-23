@@ -3,9 +3,30 @@
 
 @push('head')
     <meta name="client-timeout-ms" content="2400000">
+
+    @php
+        // === 1) LIST SAP ID YANG HANYA BOLEH WI (TAMBAH/KURANG DI SINI SAJA) ===
+        $WI_ONLY_SAP_USERS = [
+            // 'KMI-U138',
+            // 'KMI-U139',
+            // 'KMI-U140',
+        ];
+
+        // === 2) SAP USER AKTIF (ambil dari request attr kalau ada, fallback session/config) ===
+        $sapUserRaw = (string) (request()->attributes->get('sap_username') ?? session('sap_user') ?? config('sap.user') ?? '');
+        $sapUser = strtoupper(trim($sapUserRaw));
+
+        // === 3) FLAG WI ONLY ===
+        $isWiOnly = in_array($sapUser, $WI_ONLY_SAP_USERS, true);
+    @endphp
+
     {{-- kirim SAP user aktif ke JS --}}
-    <meta name="sap-user" content="{{ session('sap_user') ?? (config('sap.user') ?? '') }}">
+    <meta name="sap-user" content="{{ $sapUser }}">
+
+    {{-- FLAG untuk JS: 1 = WI ONLY, 0 = normal --}}
+    <meta name="sap-wi-only" content="{{ $isWiOnly ? '1' : '0' }}">
 @endpush
+
 
 @section('content')
     {{-- Bagian header dengan gradasi yang disesuaikan --}}
@@ -134,9 +155,39 @@
                 </div>
 
                 {{-- Isi form input data --}}
-                <div class="p-5">
-                    <form id="main-form" class="space-y-5" action="{{ route('detail') }}" method="get" data-timeout-ms="2400000">
+                <form id="main-form" class="space-y-5" action="{{ route('detail') }}" method="get" data-timeout-ms="2400000">
 
+    @if($isWiOnly)
+        {{-- ACTION BAR khusus WI-only: hanya histori + hasil --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button type="button" id="openBackdateHistory"
+                    class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold
+                           bg-gradient-to-r from-green-700 to-blue-900 text-white shadow-md hover:shadow-lg active:scale-[0.98] transition">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 8v5l3 3m5-4a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    Histori Backdate
+                </button>
+
+                <button type="button" id="openHasilKonfirmasi"
+                    class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold
+                           bg-gradient-to-r from-emerald-600 to-blue-900 text-white shadow-md hover:shadow-lg active:scale-[0.98] transition">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 8v8m4-4H8m12 0a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    Hasil Konfirmasi
+                </button>
+            </div>
+
+            <div class="mt-2 text-[11px] text-slate-600">
+                Akun <b>{{ $sapUser }}</b> mode terbatas: hanya <b>Identitas Operator</b>, <b>Histori Backdate</b>, dan <b>Hasil Konfirmasi</b>.
+            </div>
+        </div>
+    @endif
+
+
+    @unless($isWiOnly)
     {{-- ===================== --}}
     {{-- SECTION 1: DATA PRODUKSI --}}
     {{-- ===================== --}}
@@ -153,6 +204,13 @@
                 </div>
             </div>
         </div>
+
+        @if($isWiOnly)
+            <div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Akun <b>{{ $sapUser }}</b> hanya bisa <b>mode WI</b>. Work Center/Plant dan PRO dinonaktifkan.
+            </div>
+        @endif
+
 
         {{-- Work Center & Plant --}}
         <div class="space-y-2">
@@ -203,12 +261,17 @@
                     </div>
 
                     <input id="IV_ARBPL" name="arbpl"
-                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        {{ $isWiOnly ? 'disabled' : '' }}
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium
+                        {{ $isWiOnly ? 'opacity-60 cursor-not-allowed' : '' }}"
                         placeholder="Masukkan atau pindai QR Work Center" />
+
 
                     <div class="relative flex items-center shrink-0">
                         <select id="IV_WERKS" name="werks"
-                            class="bg-transparent outline-none text-xs font-medium text-slate-700 appearance-none pr-6 text-right">
+                            {{ $isWiOnly ? 'disabled' : '' }}
+                            class="bg-transparent outline-none text-xs font-medium text-slate-700 appearance-none pr-6 text-right
+                            {{ $isWiOnly ? 'opacity-60 cursor-not-allowed' : '' }}">
                             <option value="">Pilih Plant</option>
                             <option value="1000">1000</option>
                             <option value="1001">1001</option>
@@ -223,9 +286,11 @@
                     </div>
 
                     <button type="button" id="openQrScanner"
+                        {{ $isWiOnly ? 'disabled' : '' }}
                         class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
                         hover:from-green-700 hover:to-blue-900 transition-all duration-200
-                        shadow-md hover:shadow-lg hover:scale-105"
+                        shadow-md hover:shadow-lg hover:scale-105
+                        {{ $isWiOnly ? 'opacity-60 cursor-not-allowed pointer-events-none' : '' }}"
                         title="Buka QR Scanner">
                         <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
@@ -286,13 +351,17 @@
                     </div>
 
                     <input id="IV_AUFNR" name="aufnr"
-                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
+                        {{ $isWiOnly ? 'disabled' : '' }}
+                        class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium
+                        {{ $isWiOnly ? 'opacity-60 cursor-not-allowed' : '' }}"
                         placeholder="Masukkan atau pindai barcode PRO" />
 
                     <button type="button" id="openScanner"
+                        {{ $isWiOnly ? 'disabled' : '' }}
                         class="shrink-0 p-1.5 rounded-lg bg-gradient-to-r from-green-600 to-blue-900
                         hover:from-green-700 hover:to-blue-900 transition-all duration-200 shadow-md
-                        hover:shadow-lg hover:scale-105"
+                        hover:shadow-lg hover:scale-105
+                        {{ $isWiOnly ? 'opacity-60 cursor-not-allowed pointer-events-none' : '' }}"
                         title="Buka kamera">
                         <svg class="w-3 h-3 text-white" xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24" fill="currentColor">
@@ -359,6 +428,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
 
     {{-- ===================== --}}
@@ -430,7 +500,7 @@
 </form>
                 </div>
             </div>
-
+            @unless($isWiOnly)
             <div class="mt-6 bg-gradient-to-r from-slate-50 to-green-50 rounded-xl p-4 border border-slate-200">
                 <div class="flex items-start gap-3">
                     <div class="w-8 h-8 bg-green-500 rounded-lg flex-shrink-0 flex items-center justify-center">
@@ -455,6 +525,7 @@
                     </div>
                 </div>
             </div>
+            @endunless
         </div>
     </div>
     <section class="mt-4 px-4 md:px-6">

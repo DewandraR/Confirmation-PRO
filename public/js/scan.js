@@ -45,6 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     const CUR_SAP_USER = (getCurrentSapUser() || "").toLowerCase();
+    const IS_WI_ONLY =
+        document.querySelector('meta[name="sap-wi-only"]')?.content === "1";
 
     function ean13CheckDigit(d12) {
         let s = 0,
@@ -76,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addAufnrToList(aufnr) {
+        if (IS_WI_ONLY) return; // WI-only: PRO dilarang
         if (!aufnr || aufnrList.has(aufnr)) return;
         aufnrList.add(aufnr);
         const div = document.createElement("div");
@@ -427,6 +430,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const wiArray = Array.from(wiCodeList);
+
+            // === WI ONLY: abaikan total PRO & WC/Plant (meskipun user paksa isi lewat devtools)
+            if (IS_WI_ONLY) {
+                // kosongkan input dan state PRO/WC biar bersih
+                if (arbplInput) arbplInput.value = "";
+                if (werksInput) werksInput.value = "";
+                if (aufnrInput) aufnrInput.value = "";
+                aufnrList.clear();
+                if (aufnrListContainer) aufnrListContainer.innerHTML = "";
+            }
 
             const hasAufnr = aufnrArray.length > 0;
             const hasWc = arbpl !== "";
@@ -803,6 +816,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openModal() {
+        if (IS_WI_ONLY) {
+            showError(
+                "Mode WI Only",
+                "Akun ini hanya boleh input WI Code dan NIK."
+            );
+            return;
+        }
         modal?.classList.remove("hidden");
         modal?.classList.add("flex");
         startQuagga();
@@ -1053,6 +1073,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openQrModal() {
+        if (IS_WI_ONLY) {
+            showError(
+                "Mode WI Only",
+                "Akun ini hanya boleh input WI Code dan NIK."
+            );
+            return;
+        }
         qrModal?.classList.remove("hidden");
         qrModal?.classList.add("flex");
         setTimeout(startQrScanner, 200);
@@ -1150,6 +1177,11 @@ document.addEventListener("DOMContentLoaded", () => {
     (function () {
         const select = document.getElementById("IV_WERKS");
         if (!select) return;
+
+        if (IS_WI_ONLY) {
+            // biarkan select native (dan sudah disabled dari Blade), jangan bikin dropdown custom
+            return;
+        }
 
         const camBtn = document.getElementById("openQrScanner");
         if (camBtn) camBtn.style.marginLeft = "-4px";
