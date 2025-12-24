@@ -7,7 +7,7 @@
     @php
         // === 1) LIST SAP ID YANG HANYA BOLEH WI (TAMBAH/KURANG DI SINI SAJA) ===
         $WI_ONLY_SAP_USERS = [
-            // 'KMI-U138',
+            'KMI-U138',
             // 'KMI-U139',
             // 'KMI-U140',
         ];
