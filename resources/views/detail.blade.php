@@ -219,7 +219,14 @@
 
                                         <th
                                             class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
-                                            Qty Input</th>
+                                            Qty Input
+                                        </th>
+
+                                        <th
+                                            class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px] col-qty-remark hidden">
+                                            Qty Remark
+                                        </th>
+
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[220px] col-remark hidden">
                                             Remark
@@ -282,11 +289,6 @@
 
                     {{-- Tombol Aksi (Remark + Konfirmasi) --}}
                     <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
-                        <button id="remark-button"
-                            class="hidden px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
-                            disabled>
-                            Remark
-                        </button>
 
                         <button id="confirm-button"
                             class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"

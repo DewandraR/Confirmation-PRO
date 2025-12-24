@@ -307,7 +307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
 
-    // MODE flags (PENTING: dideklarasikan sebelum dipakai)
+    // MODE flags
     const isWiMode = WI_CODES.length > 0;
 
     const isWCMode =
@@ -373,7 +373,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const totalItems = document.getElementById("totalItems");
     const selectAll = document.getElementById("selectAll");
     const confirmButton = document.getElementById("confirm-button");
-    const remarkButton = document.getElementById("remark-button");
     const selectedCountSpan = document.getElementById("selected-count");
 
     const confirmModal = document.getElementById("confirm-modal");
@@ -396,9 +395,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const successModal = document.getElementById("success-modal");
     const successList = document.getElementById("success-list");
     const successOkButton = document.getElementById("success-ok-button");
-
-    // Tombol remark hanya WI mode
-    if (remarkButton) remarkButton.classList.toggle("hidden", !isWiMode);
 
     /* ---------- WI mode: wajib NIK ---------- */
     if (isWiMode && !IV_PERNR) {
@@ -482,6 +478,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // untuk sukses modal: remark = stay, confirm = scan
     let successAction = "scan"; // "scan" | "stay"
+    let pendingConfirmItems = [];
+    let pendingRemarkItems = [];
+    let pendingBudatRaw = "";
 
     /* ---------- Warning helper ---------- */
     const warning = (msg) => {
@@ -656,9 +655,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    const COLSPAN = isWiMode ? 20 : 19;
+    // COLSPAN untuk "Tidak ada data" (ambil dari jumlah <th> bila ada)
+    const getColspan = () => {
+        const thCount = document.querySelectorAll("table thead th").length;
+        if (thCount && thCount > 0) return thCount;
+        // fallback lama
+        return isWiMode ? 27 : 25;
+    };
 
     if (!rowsAll.length) {
+        const COLSPAN = getColspan();
         if (tableBody) {
             tableBody.innerHTML = `<tr><td colspan="${COLSPAN}" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>`;
         }
@@ -758,7 +764,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 r.MATNRX,
                 r.MAKTX,
                 r.MAKTX0,
-                r.LTXA1,
+                ltxa1,
                 r.DISPO,
                 r.STEUS,
                 r.ARBPL0 || r.ARBPL || "",
@@ -784,130 +790,281 @@ document.addEventListener("DOMContentLoaded", async () => {
             const wiCodeRow = String(r.WI_CODE || "").trim(); // sudah di-inject saat fetch WI
 
             return `<tr class="odd:bg-white even:bg-slate-50 hover:bg-green-50/40 transition-colors"
-        data-aufnr="${esc(r.AUFNR || "")}"
-        data-vornr="${esc(vornr)}"
-        data-pernr="${esc(r.PERNR || IV_PERNR || "")}"
-        data-wi-code="${esc(wiCodeRow)}"
-        data-meinh="${esc(r.MEINH || "ST")}"
-        data-gstrp="${esc(toYYYYMMDD(r.GSTRP))}"
-        data-gltrp="${esc(toYYYYMMDD(r.GLTRP))}"
-        data-ssavd="${esc(ssavdYMD)}"
-        data-sssld="${esc(sssldYMD)}"
-        data-ltimex="${esc(ltimexStr)}"
-        data-arbpl0="${esc(wcInduk)}"
-        data-wc-induk="${esc(wcInduk)}"
-        data-wc-anak="${esc(wcAnakView)}"
-        data-ltxa1="${esc(r.LTXA1 || "-")}"
-        data-charg="${esc(r.CHARG || "")}"
-        data-maktx="${esc(r.MAKTX || "-")}"
-        data-qtyspk="${esc(String(qtySPK))}"
-        data-sname="${esc(r.SNAME || "")}"
-        data-matnrx="${esc(r.MATNRX || "")}"
-        data-maktx0="${esc(r.MAKTX0 || "")}"
-        data-dispo="${esc(r.DISPO || "")}"
-        data-steus="${esc(r.STEUS || "")}"
-        data-soitem="${esc(soItem)}"
-        data-kdauf="${esc(r.KDAUF || "")}"
-        data-kdpos="${esc(r.KDPOS || "")}"
-        data-werks="${esc(werksRow || "")}"
-        data-search="${esc(searchStr)}">
+    data-aufnr="${esc(r.AUFNR || "")}"
+    data-vornr="${esc(vornr)}"
+    data-pernr="${esc(r.PERNR || IV_PERNR || "")}"
+    data-wi-code="${esc(wiCodeRow)}"
+    data-meinh="${esc(r.MEINH || "ST")}"
+    data-gstrp="${esc(toYYYYMMDD(r.GSTRP))}"
+    data-gltrp="${esc(toYYYYMMDD(r.GLTRP))}"
+    data-ssavd="${esc(ssavdYMD)}"
+    data-sssld="${esc(sssldYMD)}"
+    data-ltimex="${esc(ltimexStr)}"
+    data-arbpl0="${esc(wcInduk)}"
+    data-wc-induk="${esc(wcInduk)}"
+    data-wc-anak="${esc(wcAnakView)}"
+    data-ltxa1="${esc(ltxa1 || "")}"
+    data-charg="${esc(r.CHARG || "")}"
+    data-maktx="${esc(r.MAKTX || "-")}"
+    data-qtyspk="${esc(String(qtySPK))}"
+    data-sname="${esc(r.SNAME || "")}"
+    data-matnrx="${esc(r.MATNRX || "")}"
+    data-maktx0="${esc(r.MAKTX0 || "")}"
+    data-dispo="${esc(r.DISPO || "")}"
+    data-steus="${esc(r.STEUS || "")}"
+    data-soitem="${esc(soItem)}"
+    data-kdauf="${esc(r.KDAUF || "")}"
+    data-kdpos="${esc(r.KDPOS || "")}"
+    data-werks="${esc(werksRow || "")}"
+    data-search="${esc(searchStr)}">
 
-        <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
-          <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
-        </td>
+    <td class="px-3 py-3 text-center sticky left-0 bg-inherit border-r border-slate-200">
+      <input type="checkbox" class="row-checkbox w-4 h-4 text-green-600 rounded border-slate-300">
+    </td>
 
-        <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
-          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${
-              i + 1
-          }</div>
-        </td>
+    <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
+      <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${
+          i + 1
+      }</div>
+    </td>
 
-        <td class="px-3 py-3 text-sm font-semibold text-slate-900">${esc(
-            r.AUFNR || "-"
-        )}</td>
+    <td class="px-3 py-3 text-sm font-semibold text-slate-900">${esc(
+        r.AUFNR || "-"
+    )}</td>
 
-        <td class="align-middle">
-          <div class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto">
-            ${Number.isFinite(qtySPK) ? esc(String(qtySPK)) : "-"}
-          </div>
-        </td>
+    <td class="align-middle">
+      <div class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto">
+        ${Number.isFinite(qtySPK) ? esc(String(qtySPK)) : "-"}
+      </div>
+    </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700 text-center">
-          <input type="number" name="QTY_SPX"
-            class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
-            value="${esc(String(defaultQty))}"
-            placeholder="${esc(String(defaultQty))}"
-            min="0"
-            data-max="${esc(String(maxAllow))}"
-            data-meinh="${esc(meinh)}"
-            step="${meinh === "M3" ? "0.001" : "1"}"
-            inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
-            title="Maks: ${esc(String(maxAllow))} (sisa SPK=${esc(
+    <!-- Qty Input (Konfirmasi) -->
+    <td class="px-3 py-3 text-sm text-slate-700 text-center">
+      <input type="number" name="QTY_SPX"
+  class="w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-500 text-sm font-mono"
+  value="${esc(String(defaultQty))}"
+  placeholder="${esc(String(defaultQty))}"
+  min="0"
+  data-max-base="${esc(String(maxAllow))}"
+  data-max="${esc(String(maxAllow))}"
+  data-meinh="${esc(meinh)}"
+  step="${meinh === "M3" ? "0.001" : "1"}"
+  inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
+  title="Maks: ${esc(String(maxAllow))} (sisa SPK=${esc(
                 String(sisaSPK)
             )}, sisa SPX=${esc(String(qtySPX))})" />
-          <div class="mt-1 text-[11px] text-slate-400">Maks: <b>${esc(
-              String(maxAllow)
-          )}</b> (${esc(getUnitName(meinh))})</div>
-        </td>
 
-        ${
-            isWiMode
-                ? `<td class="px-3 py-3 text-sm text-slate-700 col-remark">
-                <input type="text"
-                  class="remark-input w-56 px-2 py-1 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
-                  placeholder="Isi remark..."
-                  maxlength="500">
-              </td>`
-                : ``
-        }
+<div class="mt-1 text-[11px] text-slate-400">
+  Maks: <b class="js-max-confirm">${esc(String(maxAllow))}</b> (${esc(
+                getUnitName(meinh)
+            )})
+</div>
+    </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(
-            ssavdDMY || "-"
-        )}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(
-            sssldDMY || "-"
-        )}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(
-            r.MAKTX0 || "-"
-        )}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(
-            r.MATNRX || "-"
-        )}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX || "-")}</td>
+    ${
+        isWiMode
+            ? `
+    <!-- Qty Remark (WI mode) -->
+    <td class="px-3 py-3 text-sm text-slate-700 text-center col-qty-remark">
+      <input type="number" name="QTY_RMK"
+  class="remark-qty-input w-28 px-2 py-1 text-center rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 text-sm font-mono"
+  value="0"
+  placeholder="0"
+  min="0"
+  data-max-base="${esc(String(maxAllow))}"
+  data-max="${esc(String(maxAllow))}"
+  data-meinh="${esc(meinh)}"
+  step="${meinh === "M3" ? "0.001" : "1"}"
+  inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
+  title="Maks: ${esc(String(maxAllow))} (${esc(getUnitName(meinh))})" />
 
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(ltimexStr)}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(
-            r.PERNR || IV_PERNR || "-"
-        )}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.SNAME || "-")}</td>
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.DISPO || "-")}</td>
+<div class="mt-1 text-[11px] text-slate-400">
+  Maks: <b class="js-max-remark">${esc(String(maxAllow))}</b> (${esc(
+                  getUnitName(meinh)
+              )})
+</div>
+    </td>
 
-        <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">
-          ${isWiMode ? esc(wcInduk) : esc(wcWithDesc)}
-        </td>
+    <!-- Pesan Remark (WI mode) -->
+    <td class="px-3 py-3 text-sm text-slate-700 col-remark">
+      <input type="text"
+        class="remark-input w-56 px-2 py-1 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
+        placeholder="Isi remark..."
+        maxlength="500">
+    </td>
+    `
+            : ``
+    }
 
-        <td class="px-3 py-3 text-sm text-slate-700 col-wc-anak">
-          ${isWiMode ? esc(wcAnakView) : ""}
-        </td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(ssavdDMY || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(sssldDMY || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX0 || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MATNRX || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX || "-")}</td>
 
-        <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
-        <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
-            soItem
-        )}</td>
-      </tr>`;
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(ltimexStr)}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(
+        r.PERNR || IV_PERNR || "-"
+    )}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.SNAME || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.DISPO || "-")}</td>
+
+    <td class="px-3 py-3 text-sm text-slate-700 col-workcenter">
+      ${isWiMode ? esc(wcInduk) : esc(wcWithDesc)}
+    </td>
+
+    <td class="px-3 py-3 text-sm text-slate-700 col-wc-anak">
+      ${isWiMode ? esc(wcAnakView) : ""}
+    </td>
+
+    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
+        soItem
+    )}</td>
+  </tr>`;
         })
         .join("");
 
+    /* =========================
+     STATE / LIMIT HELPERS
+     ========================= */
+
+    function setDisabledInput(el, disabled) {
+        if (!el) return;
+        el.disabled = !!disabled;
+        el.classList.toggle("bg-slate-100", !!disabled);
+        el.classList.toggle("cursor-not-allowed", !!disabled);
+        el.classList.toggle("opacity-70", !!disabled);
+    }
+
+    function syncRowQtyLimits(tr, changed /* 'confirm' | 'remark' | 'init' */) {
+        if (!isWiMode || !tr) return;
+
+        const qtyInputEl = tr.querySelector('input[name="QTY_SPX"]');
+        const qtyRemarkEl = tr.querySelector('input[name="QTY_RMK"]');
+        const remarkEl = tr.querySelector(".remark-input");
+
+        if (!qtyInputEl || !qtyRemarkEl) return;
+
+        const baseMax =
+            parseFloat(
+                qtyInputEl.dataset.maxBase || qtyRemarkEl.dataset.maxBase || "0"
+            ) || 0;
+
+        let qc =
+            parseFloat(String(qtyInputEl.value || "0").replace(",", ".")) || 0;
+        let qr =
+            parseFloat(String(qtyRemarkEl.value || "0").replace(",", ".")) || 0;
+
+        qc = Math.max(0, Math.min(qc, baseMax));
+        qr = Math.max(0, Math.min(qr, baseMax));
+
+        // enforce SUM <= baseMax
+        if (qc + qr > baseMax) {
+            if (changed === "remark") {
+                qc = Math.max(0, baseMax - qr);
+                qtyInputEl.value = String(qc);
+            } else {
+                qr = Math.max(0, baseMax - qc);
+                qtyRemarkEl.value = String(qr);
+                if (qr <= 0 && remarkEl) remarkEl.value = "";
+            }
+        }
+
+        const remainForRemark = Math.max(0, baseMax - qc);
+        const remainForConfirm = Math.max(0, baseMax - qr);
+
+        // update max dinamis
+        qtyRemarkEl.dataset.max = String(remainForRemark);
+        qtyRemarkEl.max = String(remainForRemark);
+
+        qtyInputEl.dataset.max = String(remainForConfirm);
+        qtyInputEl.max = String(remainForConfirm);
+
+        // update label sisa max
+        const bConfirm = tr.querySelector(".js-max-confirm");
+        const bRemark = tr.querySelector(".js-max-remark");
+        if (bConfirm) bConfirm.textContent = String(remainForConfirm);
+        if (bRemark) bRemark.textContent = String(remainForRemark);
+
+        // mutual lock
+        if (remainForRemark <= 0) {
+            qtyRemarkEl.value = "0";
+            setDisabledInput(qtyRemarkEl, true);
+            if (remarkEl) {
+                remarkEl.value = "";
+                setDisabledInput(remarkEl, true);
+            }
+        } else {
+            setDisabledInput(qtyRemarkEl, false);
+            if (remarkEl) setDisabledInput(remarkEl, false);
+        }
+
+        if (remainForConfirm <= 0) {
+            qtyInputEl.value = "0";
+            setDisabledInput(qtyInputEl, true);
+        } else {
+            setDisabledInput(qtyInputEl, false);
+        }
+    }
+
+    if (isWiMode) {
+        tableBody
+            .querySelectorAll("tr")
+            .forEach((tr) => syncRowQtyLimits(tr, "init"));
+    }
+
+    // ✅ state update responsif saat input qty/remark/pesan
     tableBody.addEventListener("input", (e) => {
-        if (!isWiMode) return;
-        if (e.target && e.target.classList.contains("remark-input")) {
-            scheduleStateUpdate(); // pakai scheduler biar stabil
+        const t = e.target;
+        if (!t) return;
+
+        const tr = t.closest("tr");
+
+        if (
+            isWiMode &&
+            tr &&
+            (t.matches('input[name="QTY_SPX"]') ||
+                t.matches('input[name="QTY_RMK"]'))
+        ) {
+            syncRowQtyLimits(
+                tr,
+                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm"
+            );
+        }
+
+        if (
+            t.matches('input[name="QTY_SPX"]') ||
+            t.matches('input[name="QTY_RMK"]') ||
+            t.classList.contains("remark-input")
+        ) {
+            scheduleStateUpdate();
         }
     });
 
     tableBody.addEventListener("change", (e) => {
-        if (!isWiMode) return;
-        if (e.target && e.target.classList.contains("remark-input")) {
+        const t = e.target;
+        if (!t) return;
+
+        const tr = t.closest("tr");
+
+        if (
+            isWiMode &&
+            tr &&
+            (t.matches('input[name="QTY_SPX"]') ||
+                t.matches('input[name="QTY_RMK"]'))
+        ) {
+            syncRowQtyLimits(
+                tr,
+                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm"
+            );
+        }
+
+        if (
+            t.matches('input[name="QTY_SPX"]') ||
+            t.matches('input[name="QTY_RMK"]') ||
+            t.classList.contains("remark-input")
+        ) {
             scheduleStateUpdate();
         }
     });
@@ -916,29 +1073,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     const thWc = document.querySelector("th.col-workcenter");
     const thWcAnak = document.querySelector("th.col-wc-anak");
     const thRemark = document.querySelector("th.col-remark");
+    const thQtyRemark = document.querySelector("th.col-qty-remark");
 
     if (isWiMode) {
+        if (thQtyRemark) thQtyRemark.classList.remove("hidden");
+        document
+            .querySelectorAll("td.col-qty-remark")
+            .forEach((el) => (el.style.display = ""));
+
         if (thWc) thWc.textContent = "WC Induk";
         if (thWcAnak) thWcAnak.classList.remove("hidden");
         document
             .querySelectorAll("td.col-wc-anak")
             .forEach((el) => (el.style.display = ""));
-        // remark header
         if (thRemark) thRemark.classList.remove("hidden");
     } else {
+        if (thQtyRemark) thQtyRemark.classList.add("hidden");
+        document
+            .querySelectorAll("td.col-qty-remark")
+            .forEach((el) => (el.style.display = "none"));
+
         if (thWc) thWc.textContent = "Work Center";
         if (thWcAnak) thWcAnak.classList.add("hidden");
         document
             .querySelectorAll("td.col-wc-anak")
             .forEach((el) => (el.style.display = "none"));
-        // remark header
+
         if (thRemark) thRemark.classList.add("hidden");
         document
             .querySelectorAll("td.col-remark")
             .forEach((el) => (el.style.display = "none"));
     }
 
-    // WC mode: tampilkan " / LTXA1" di header (sebelah WC)
+    // WC mode: tampilkan " / LTXA1" di header
     if (isWCMode && headAUFNR) {
         const getOpDesc = (r) =>
             String(
@@ -1027,34 +1194,88 @@ document.addEventListener("DOMContentLoaded", async () => {
             .filter(Boolean);
     }
 
-    function anySelectedHasRemark(rows) {
-        if (!isWiMode) return false;
-        return rows.some(
-            (tr) =>
-                (tr.querySelector(".remark-input")?.value || "").trim().length >
-                0
-        );
+    function getRowNums(tr) {
+        const qtyInputEl = tr.querySelector('input[name="QTY_SPX"]');
+        const qtyRemarkEl = tr.querySelector('input[name="QTY_RMK"]');
+        const remarkEl = tr.querySelector(".remark-input");
+
+        const qtyConfirm =
+            parseFloat((qtyInputEl?.value || "0").replace(",", ".")) || 0;
+        const qtyRemark =
+            parseFloat((qtyRemarkEl?.value || "0").replace(",", ".")) || 0;
+        const remarkText = (remarkEl?.value || "").trim();
+
+        const baseMax =
+            parseFloat(
+                qtyInputEl?.dataset.maxBase ||
+                    qtyRemarkEl?.dataset.maxBase ||
+                    "0"
+            ) || 0;
+
+        const maxConfirm =
+            parseFloat(qtyInputEl?.dataset.max || baseMax || "0") || 0;
+        const maxRemark =
+            parseFloat(qtyRemarkEl?.dataset.max || baseMax || "0") || 0;
+
+        return {
+            qtyConfirm,
+            qtyRemark,
+            remarkText,
+            baseMax,
+            maxConfirm,
+            maxRemark,
+        };
+    }
+
+    // WI rule: Qty Remark <-> Pesan Remark wajib berpasangan
+    function remarkPairValid(tr) {
+        if (!isWiMode) return true;
+        const { qtyRemark, remarkText } = getRowNums(tr);
+        const hasQty = qtyRemark > 0;
+        const hasMsg = remarkText.length > 0;
+        return (hasQty && hasMsg) || (!hasQty && !hasMsg);
+    }
+
+    function rowHasAction(tr) {
+        const { qtyConfirm, qtyRemark } = getRowNums(tr);
+        return qtyConfirm > 0 || qtyRemark > 0;
     }
 
     function updateConfirmButtonState() {
         const rows = getSelectedRows();
         const count = rows.length;
 
-        selectedCountSpan.textContent = count;
+        if (selectedCountSpan) selectedCountSpan.textContent = count;
 
-        const hasRemark = anySelectedHasRemark(rows);
+        if (!confirmButton) return;
 
-        // ✅ RULE BARU:
-        // jika ada remark di baris terpilih → Konfirmasi disable
-        confirmButton.disabled = count === 0 || (isWiMode && hasRemark);
-        confirmButton.title =
-            isWiMode && hasRemark
-                ? "Ada remark terisi. Gunakan tombol Remark."
-                : "";
+        if (count === 0) {
+            confirmButton.disabled = true;
+            confirmButton.title = "";
+            return;
+        }
 
-        if (remarkButton) {
-            remarkButton.disabled = count === 0;
-            remarkButton.classList.toggle("hidden", !isWiMode);
+        // Non-WI: tombol aktif, validasi detail saat klik
+        if (!isWiMode) {
+            confirmButton.disabled = false;
+            confirmButton.title = "";
+            return;
+        }
+
+        // WI: cek pair remark & minimal aksi
+        const invalidPair = rows.find((tr) => !remarkPairValid(tr));
+        const noAction = rows.every((tr) => !rowHasAction(tr));
+
+        confirmButton.disabled = !!invalidPair || noAction;
+
+        if (invalidPair) {
+            confirmButton.title =
+                "Qty Remark dan Pesan Remark harus diisi berpasangan.";
+        } else if (noAction) {
+            confirmButton.title =
+                "Isi Qty Input atau Qty Remark pada item terpilih.";
+        } else {
+            confirmButton.title = "";
         }
     }
 
@@ -1202,55 +1423,68 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateConfirmButtonState();
 
     /* =========================
-     VALIDASI QTY INPUT
+     VALIDASI QTY INPUT (TABLE)
      ========================= */
-    document.querySelectorAll('input[name="QTY_SPX"]').forEach((input) => {
-        input.addEventListener("focus", function () {
-            if (this.value === "0") this.value = "";
-        });
+    document
+        .querySelectorAll('input[name="QTY_SPX"], input[name="QTY_RMK"]')
+        .forEach((input) => {
+            input.addEventListener("focus", function () {
+                if (this.value === "0") this.value = "";
+            });
 
-        input.addEventListener("input", function () {
-            if (this.value === "" || this.value === "-" || this.value === ".")
-                return;
-            const v = parseFloat(String(this.value).replace(",", "."));
-            const maxAllow = parseFloat(this.dataset.max || "0");
-            if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
-                if (warningMessage)
-                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                pendingResetInput = this;
-                isWarningOpen = true;
-                warningModal?.classList.remove("hidden");
-                this.blur();
-            }
-        });
-
-        input.addEventListener("blur", function () {
-            if (this.value.trim() === "") this.value = "0";
-            let v = parseFloat(this.value.replace(",", ".") || "0");
-            if (isNaN(v)) v = 0;
-
-            const maxAllow = parseFloat(this.dataset.max || "0");
-            if (v > maxAllow || v < 0) {
-                if (!isWarningOpen) {
+            input.addEventListener("input", function () {
+                if (
+                    this.value === "" ||
+                    this.value === "-" ||
+                    this.value === "."
+                )
+                    return;
+                const v = parseFloat(String(this.value).replace(",", "."));
+                const maxAllow = parseFloat(this.dataset.max || "0");
+                if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
                     if (warningMessage)
-                        warningMessage.textContent =
-                            v > maxAllow
-                                ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
-                                : "Nilai tidak boleh negatif.";
+                        warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
                     pendingResetInput = this;
                     isWarningOpen = true;
                     warningModal?.classList.remove("hidden");
+                    this.blur();
                 }
-                return;
-            }
+            });
 
-            const u = (this.dataset.meinh || "ST").toUpperCase();
-            if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
-            else if (u === "M3") v = Math.round(v * 1000) / 1000;
+            input.addEventListener("blur", function () {
+                if (this.value.trim() === "") this.value = "0";
+                let v = parseFloat(this.value.replace(",", ".") || "0");
+                if (isNaN(v)) v = 0;
 
-            this.value = String(v);
+                const maxAllow = parseFloat(this.dataset.max || "0");
+                if (v > maxAllow || v < 0) {
+                    if (!isWarningOpen) {
+                        if (warningMessage)
+                            warningMessage.textContent =
+                                v > maxAllow
+                                    ? `Nilai tidak boleh melebihi batas: ${maxAllow}.`
+                                    : "Nilai tidak boleh negatif.";
+                        pendingResetInput = this;
+                        isWarningOpen = true;
+                        warningModal?.classList.remove("hidden");
+                    }
+                    return;
+                }
+
+                const u = (this.dataset.meinh || "ST").toUpperCase();
+                if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
+                else if (u === "M3") v = Math.round(v * 1000) / 1000;
+
+                this.value = String(v);
+                const tr = this.closest("tr");
+                if (isWiMode && tr) {
+                    syncRowQtyLimits(
+                        tr,
+                        this.name === "QTY_RMK" ? "remark" : "confirm"
+                    );
+                }
+            });
         });
-    });
 
     warningOkButton?.addEventListener("click", () => {
         if (isResultWarning) {
@@ -1265,130 +1499,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         isWarningOpen = false;
         warningModal?.classList.add("hidden");
-    });
-
-    /* =========================
-     REMARK FLOW (WI MODE ONLY)
-     ========================= */
-    let remarkBusy = false;
-
-    remarkButton?.addEventListener("click", async () => {
-        if (!isWiMode || remarkBusy) return;
-
-        const selected = Array.from(
-            document.querySelectorAll(".row-checkbox:checked")
-        );
-        if (!selected.length) return;
-
-        // validasi wajib remark + qty > 0
-        const items = [];
-        const bad = [];
-
-        selected.forEach((cb) => {
-            const row = cb.closest("tr");
-            if (!row) return;
-
-            const qtyInput = row.querySelector('input[name="QTY_SPX"]');
-            const remarkInput = row.querySelector(".remark-input");
-
-            const remarkQty = parseFloat(qtyInput?.value || "0");
-            const remark = (remarkInput?.value || "").trim();
-
-            if (!remark || !(remarkQty > 0)) bad.push(row.dataset.aufnr || "-");
-
-            items.push({
-                wi_code: row.dataset.wiCode || "",
-                aufnr: row.dataset.aufnr || "",
-                vornr: row.dataset.vornr || "",
-                nik: normNik(row.dataset.pernr || ""),
-
-                operator_name: (row.dataset.sname || "").trim() || null,
-                qty_pro: parseFloat(row.dataset.qtyspk || "0"),
-                meinh: row.dataset.meinh || "ST",
-                remark,
-                remark_qty: remarkQty,
-
-                // tambahan biar DB nggak kosong
-                werks: row.dataset.werks || null,
-                arbpl0: row.dataset.arbpl0 || null,
-                matnrx: row.dataset.matnrx || null,
-                maktx: row.dataset.maktx || null,
-                maktx0: row.dataset.maktx0 || null,
-                dispo: row.dataset.dispo || null,
-                steus: row.dataset.steus || null,
-                soitem: row.dataset.soitem || null,
-                charg: row.dataset.charg || null,
-                ssavd: row.dataset.ssavd || null,
-                sssld: row.dataset.sssld || null,
-                ltimex: row.dataset.ltimex || null,
-            });
-        });
-
-        if (bad.length) {
-            if (warningMessage)
-                warningMessage.textContent =
-                    "Remark wajib diisi dan Qty Input harus > 0 untuk semua item yang dipilih.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-
-        // Kirim ke API baru (tetap di halaman detail)
-        remarkBusy = true;
-        remarkButton.disabled = true;
-        remarkButton.classList.add("opacity-60", "cursor-not-allowed");
-
-        try {
-            const res = await apiPost("/api/yppi019/remark-async", { items });
-            const json = await safeJson(res);
-
-            if (res.status === 202 && Array.isArray(json.queued)) {
-                successAction = "stay";
-                if (successList) {
-                    successList.innerHTML = `
-                <li class="text-sm text-slate-700">
-                    Remark masuk antrian: <b>${json.queued.length}</b> item.
-                </li>`;
-                }
-                successModal?.classList.remove("hidden");
-
-                // uncheck + clear remark
-                selected.forEach((cb) => {
-                    cb.checked = false;
-                    const row = cb.closest("tr");
-                    const ri = row?.querySelector(".remark-input");
-                    if (ri) ri.value = "";
-                });
-                updateConfirmButtonState();
-
-                return; // ✅ penting: stop di sini
-            }
-
-            // kalau bukan 202, anggap gagal
-            const msg =
-                json?.message ||
-                json?.error ||
-                (res.status === 422
-                    ? "Validasi gagal (cek field wajib)."
-                    : "") ||
-                `Gagal mengirim remark. (HTTP ${res.status})`;
-
-            if (errorMessage) errorMessage.textContent = msg;
-            prepareWiCopy(msg);
-            errorModal?.classList.remove("hidden");
-            return;
-        } catch (e) {
-            const msg =
-                e?.name === "AbortError"
-                    ? "Waktu tunggu habis. Coba lagi."
-                    : e?.message || "Gagal mengirim remark.";
-            if (errorMessage) errorMessage.textContent = msg;
-            prepareWiCopy(msg);
-            errorModal?.classList.remove("hidden");
-        } finally {
-            remarkBusy = false;
-            remarkButton.disabled = false;
-            remarkButton.classList.remove("opacity-60", "cursor-not-allowed");
-        }
     });
 
     /* =========================
@@ -1413,10 +1523,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentRow = tr;
 
         const qtyInput = tr.querySelector('input[name="QTY_SPX"]');
+        const qtyRemarkInput = tr.querySelector('input[name="QTY_RMK"]'); // WI only
         const cb = tr.querySelector(".row-checkbox");
+
         const rowRemarkVal = (
             tr.querySelector(".remark-input")?.value || ""
         ).trim();
+        const rowQtyRemarkVal = qtyRemarkInput
+            ? qtyRemarkInput.value || "0"
+            : "0";
 
         const data = {
             aufnr: tr.dataset.aufnr || "-",
@@ -1439,176 +1554,336 @@ document.addEventListener("DOMContentLoaded", async () => {
             qtyspk: tr.dataset.qtyspk || "0",
             meinh: tr.dataset.meinh || "ST",
             qtycur: qtyInput ? qtyInput.value || "0" : "0",
-            max: qtyInput ? qtyInput.dataset.max || "0" : "0",
+            qtyremarkcur: rowQtyRemarkVal,
+            // base max diambil dari data-max-base (lebih tepat)
+            max: qtyInput
+                ? qtyInput.dataset.maxBase || qtyInput.dataset.max || "0"
+                : "0",
             checked: cb ? cb.checked : false,
             remark: rowRemarkVal,
         };
 
         const unitNamePopup = getUnitName(data.meinh);
+        const unit = String(data.meinh || "ST").toUpperCase();
 
         const wcBlock = isWiMode
             ? `
-        <div>
-          <div class="text-[11px] text-slate-500">WC Induk</div>
-          <div class="font-semibold">${esc(data.wcInduk)}</div>
-        </div>
-        <div>
-          <div class="text-[11px] text-slate-500">WC Anak</div>
-          <div class="font-semibold">${esc(data.wcAnak || "No WC group")}</div>
-        </div>
-      `
+      <div>
+        <div class="text-[11px] text-slate-500">WC Induk</div>
+        <div class="font-semibold">${esc(data.wcInduk)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">WC Anak</div>
+        <div class="font-semibold">${esc(data.wcAnak || "No WC group")}</div>
+      </div>
+    `
             : `
-        <div>
-          <div class="text-[11px] text-slate-500">Work Center</div>
-          <div class="font-semibold">${esc(
-              data.wc + (data.ltxa1 ? " / " + data.ltxa1 : "")
-          )}</div>
-        </div>
-      `;
+      <div>
+        <div class="text-[11px] text-slate-500">Work Center</div>
+        <div class="font-semibold">${esc(
+            data.wc + (data.ltxa1 ? " / " + data.ltxa1 : "")
+        )}</div>
+      </div>
+    `;
 
+        // Tambah id max label agar bisa di-update saat sync modal
         rowDetailBody.innerHTML = `
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <div class="text-[11px] text-slate-500">PRO</div>
-          <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
-        </div>
-        <div>
-          <div class="text-[11px] text-slate-500">Material</div>
-          <div class="font-semibold">${esc(data.matnrx)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">Description</div>
-          <div class="font-semibold">${esc(data.maktx)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">Deskripsi FG</div>
-          <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">Sales Order / Item</div>
-          <div class="font-semibold font-mono">${esc(data.soitem)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">Start Date</div>
-          <div class="font-semibold">${esc(data.ssavd)}</div>
-        </div>
-        <div>
-          <div class="text-[11px] text-slate-500">Finish Date</div>
-          <div class="font-semibold">${esc(data.sssld)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">Qty PRO</div>
-          <div class="font-semibold">${esc(data.qtyspk)}</div>
-        </div>
-        <div>
-          <div class="text-[11px] text-slate-500">Menit</div>
-          <div class="font-semibold">${esc(data.ltimex)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">MRP</div>
-          <div class="font-semibold">${esc(data.dispo)}</div>
-        </div>
-
-        ${wcBlock}
-
-        <div>
-          <div class="text-[11px] text-slate-500">Control Key</div>
-          <div class="font-semibold">${esc(data.steus)}</div>
-        </div>
-
-        <div>
-          <div class="text-[11px] text-slate-500">NIK Operator</div>
-          <div class="font-semibold">${esc(data.pernr)}</div>
-        </div>
-        <div>
-          <div class="text-[11px] text-slate-500">Nama Operator</div>
-          <div class="font-semibold">${esc(data.sname)}</div>
-        </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <div class="text-[11px] text-slate-500">PRO</div>
+        <div class="font-semibold font-mono">${esc(data.aufnr)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Material</div>
+        <div class="font-semibold">${esc(data.matnrx)}</div>
       </div>
 
+      <div>
+        <div class="text-[11px] text-slate-500">Description</div>
+        <div class="font-semibold">${esc(data.maktx)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Deskripsi FG</div>
+        <div class="font-semibold">${esc(data.maktx0 || "-")}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Sales Order / Item</div>
+        <div class="font-semibold font-mono">${esc(data.soitem)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Start Date</div>
+        <div class="font-semibold">${esc(data.ssavd)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Finish Date</div>
+        <div class="font-semibold">${esc(data.sssld)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">Qty PRO</div>
+        <div class="font-semibold">${esc(data.qtyspk)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Menit</div>
+        <div class="font-semibold">${esc(data.ltimex)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">MRP</div>
+        <div class="font-semibold">${esc(data.dispo)}</div>
+      </div>
+
+      ${wcBlock}
+
+      <div>
+        <div class="text-[11px] text-slate-500">Control Key</div>
+        <div class="font-semibold">${esc(data.steus)}</div>
+      </div>
+
+      <div>
+        <div class="text-[11px] text-slate-500">NIK Operator</div>
+        <div class="font-semibold">${esc(data.pernr)}</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-slate-500">Nama Operator</div>
+        <div class="font-semibold">${esc(data.sname)}</div>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <label class="text-[11px] text-slate-500 block mb-1">Qty Input (${esc(
+          unitNamePopup
+      )})</label>
+      <input id="row-detail-qty" type="number"
+        inputmode="${unit === "M3" ? "decimal" : "numeric"}"
+        class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
+        step="${unit === "M3" ? "0.001" : "1"}"
+        min="0"
+        placeholder="${esc(data.max)}"
+        value="${esc(data.qtycur)}"
+        data-max-base="${esc(data.max)}"
+        data-max="${esc(data.max)}"
+        data-meinh="${esc(data.meinh)}">
+      <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-confirm">${esc(
+          data.max
+      )}</b> (${esc(unitNamePopup)})</div>
+    </div>
+
+    ${
+        isWiMode
+            ? `
       <div class="mt-3">
-        <label class="text-[11px] text-slate-500 block mb-1">Qty Input (${esc(
+        <label class="text-[11px] text-slate-500 block mb-1">Qty Remark (${esc(
             unitNamePopup
         )})</label>
-        <input id="row-detail-qty" type="number"
-          inputmode="${
-              (data.meinh || "").toUpperCase() === "M3" ? "decimal" : "numeric"
-          }"
+        <input id="row-detail-qty-remark" type="number"
+          inputmode="${unit === "M3" ? "decimal" : "numeric"}"
           class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
-          step="${(data.meinh || "").toUpperCase() === "M3" ? "0.001" : "1"}"
+          step="${unit === "M3" ? "0.001" : "1"}"
           min="0"
-          placeholder="${esc(data.max)}"
-          value="${esc(data.qtycur)}"
+          placeholder="0"
+          value="${esc(String(data.qtyremarkcur || "0"))}"
+          data-max-base="${esc(data.max)}"
           data-max="${esc(data.max)}"
           data-meinh="${esc(data.meinh)}">
-        <div class="mt-1 text-[11px] text-slate-500">Maks: <b>${esc(
+        <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-remark">${esc(
             data.max
         )}</b> (${esc(unitNamePopup)})</div>
       </div>
 
-      ${
-          isWiMode
-              ? `
-        <div class="mt-3">
-          <label class="text-[11px] text-slate-500 block mb-1">Remark</label>
-          <input id="row-detail-remark" type="text"
-            class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
-            placeholder="Isi remark..."
-            maxlength="500"
-            value="${esc(data.remark)}">
-        </div>
-      `
-              : ``
-      }
-    `;
+      <div class="mt-3">
+        <label class="text-[11px] text-slate-500 block mb-1">Pesan Remark</label>
+        <input id="row-detail-remark" type="text"
+          class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500"
+          placeholder="Isi remark..."
+          maxlength="500"
+          value="${esc(data.remark)}">
+      </div>
+    `
+            : ``
+    }
+  `;
 
+        // ====== FIX BUG: ambil element modal setelah innerHTML terpasang ======
         const modalQty = document.getElementById("row-detail-qty");
-        const maxAllow = parseFloat(modalQty?.dataset.max || "0") || 0;
-        const unit = String(modalQty?.dataset.meinh || "ST").toUpperCase();
+        const modalQtyRemark = document.getElementById("row-detail-qty-remark");
+        const modalRemark = document.getElementById("row-detail-remark");
+        const lblMaxConfirm = document.getElementById("row-detail-max-confirm");
+        const lblMaxRemark = document.getElementById("row-detail-max-remark");
+        // ===== UX: saat fokus, "0" langsung hilang dan teks terseleksi =====
+        function isZeroLike(v) {
+            const s = String(v ?? "").trim();
+            return s === "0" || s === "0.0" || s === "0.00" || s === "0.000";
+        }
+        function attachOverwriteBehavior(inputEl) {
+            if (!inputEl) return;
 
-        // Auto-clear "0" saat fokus
-        modalQty?.addEventListener("focus", function () {
-            if (this.value === "0") this.value = "";
-            this.select && this.value && this.select();
-        });
+            inputEl.addEventListener("focus", () => {
+                // select all supaya angka lama ketimpa
+                try {
+                    inputEl.select();
+                } catch {}
+                // kalau isinya 0, kosongkan biar user tinggal ketik
+                if (isZeroLike(inputEl.value)) inputEl.value = "";
+            });
+        }
+        attachOverwriteBehavior(modalQty);
+        attachOverwriteBehavior(modalQtyRemark);
 
-        // Validasi realtime: jangan > max
-        modalQty?.addEventListener("input", function () {
-            if (this.value === "" || this.value === "-" || this.value === ".")
-                return;
-            const v = parseFloat(String(this.value).replace(",", "."));
-            if (!isNaN(v) && v > maxAllow && !isWarningOpen) {
-                if (warningMessage)
-                    warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-                pendingResetInput = this;
-                isWarningOpen = true;
-                warningModal?.classList.remove("hidden");
-                this.blur();
+        const baseMax =
+            parseFloat(
+                qtyInput?.dataset.maxBase ||
+                    qtyRemarkInput?.dataset.maxBase ||
+                    qtyInput?.dataset.max ||
+                    qtyRemarkInput?.dataset.max ||
+                    data.max ||
+                    "0"
+            ) || 0;
+
+        // Sync limit di modal (agar sum qty <= baseMax, mirip tabel)
+        function isIncompleteNumberStr(s) {
+            const v = String(s ?? "").trim();
+            return v === "" || v === "-" || v === "." || /^\d+\.$/.test(v); // contoh "1."
+        }
+
+        function syncModalLimits(changed /* 'confirm'|'remark'|'init' */) {
+            if (!modalQty) return;
+
+            const qcStr = String(modalQty.value ?? "");
+            const qrStr = String(modalQtyRemark?.value ?? "");
+
+            // kalau user sedang ngetik format belum lengkap (misal "1.")
+            // jangan paksa timpa value sekarang (biar UX tidak berantakan)
+            const qcIncomplete = isIncompleteNumberStr(qcStr);
+            const qrIncomplete =
+                isWiMode && modalQtyRemark
+                    ? isIncompleteNumberStr(qrStr)
+                    : false;
+
+            let qc = qcIncomplete
+                ? null
+                : parseFloat(qcStr.replace(",", ".")) || 0;
+            let qr = 0;
+
+            if (isWiMode && modalQtyRemark) {
+                qr = qrIncomplete
+                    ? null
+                    : parseFloat(qrStr.replace(",", ".")) || 0;
             }
-        });
 
-        // Normalisasi saat blur
-        modalQty?.addEventListener("blur", function () {
-            if (this.value.trim() === "") this.value = "0";
-            let v = parseFloat(String(this.value).replace(",", "."));
+            // treat null as 0 untuk hitung limit (tapi jangan timpa value inputnya)
+            const qcNum = qc === null ? 0 : qc;
+            const qrNum = qr === null ? 0 : qr;
+
+            // clamp ke baseMax
+            let qcClamped = Math.max(0, Math.min(qcNum, baseMax));
+            let qrClamped = Math.max(0, Math.min(qrNum, baseMax));
+
+            // enforce SUM <= baseMax
+            if (qcClamped + qrClamped > baseMax) {
+                if (changed === "remark") {
+                    qcClamped = Math.max(0, baseMax - qrClamped);
+                } else {
+                    qrClamped = Math.max(0, baseMax - qcClamped);
+                    if (qrClamped <= 0 && modalRemark) modalRemark.value = "";
+                }
+            }
+
+            // 🔥 INI YANG PENTING:
+            // kalau user input > max, value input harus langsung ditimpa (bukan cuma variabelnya)
+            if (!qcIncomplete) modalQty.value = String(qcClamped);
+
+            const remainForRemark = Math.max(0, baseMax - qcClamped);
+            const remainForConfirm = Math.max(0, baseMax - qrClamped);
+
+            modalQty.dataset.max = String(remainForConfirm);
+            modalQty.max = String(remainForConfirm);
+            if (lblMaxConfirm)
+                lblMaxConfirm.textContent = String(remainForConfirm);
+
+            if (isWiMode && modalQtyRemark) {
+                if (!qrIncomplete) modalQtyRemark.value = String(qrClamped);
+
+                modalQtyRemark.dataset.max = String(remainForRemark);
+                modalQtyRemark.max = String(remainForRemark);
+                if (lblMaxRemark)
+                    lblMaxRemark.textContent = String(remainForRemark);
+
+                // mutual lock
+                if (remainForRemark <= 0) {
+                    modalQtyRemark.value = "0";
+                    setDisabledInput(modalQtyRemark, true);
+                    if (modalRemark) {
+                        modalRemark.value = "";
+                        setDisabledInput(modalRemark, true);
+                    }
+                } else {
+                    setDisabledInput(modalQtyRemark, false);
+                    if (modalRemark) setDisabledInput(modalRemark, false);
+                }
+            }
+
+            if (remainForConfirm <= 0) {
+                modalQty.value = "0";
+                setDisabledInput(modalQty, true);
+            } else {
+                setDisabledInput(modalQty, false);
+            }
+        }
+
+        function normalizeAndClamp(inputEl) {
+            if (!inputEl) return;
+            if (inputEl.value.trim() === "") inputEl.value = "0";
+            let v = parseFloat(String(inputEl.value).replace(",", "."));
             if (isNaN(v) || v < 0) v = 0;
+
             if (["ST", "PC", "PCS", "EA"].includes(unit)) v = Math.floor(v);
             else if (unit === "M3") v = Math.round(v * 1000) / 1000;
-            this.value = String(v);
+
+            // clamp ke max dinamis
+            const maxAllow =
+                parseFloat(inputEl.dataset.max || inputEl.max || "0") || 0;
+            if (v > maxAllow) v = maxAllow;
+
+            inputEl.value = String(v);
+        }
+
+        // handler input modal
+        modalQty?.addEventListener("input", () => syncModalLimits("confirm"));
+        modalQty?.addEventListener("change", () => syncModalLimits("confirm"));
+        modalQty?.addEventListener("blur", () => {
+            normalizeAndClamp(modalQty);
+            syncModalLimits("confirm");
         });
 
-        modalQty?.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                rowDetailSave?.click();
-            }
+        if (isWiMode && modalQtyRemark) {
+            modalQtyRemark.addEventListener("input", () =>
+                syncModalLimits("remark")
+            );
+            modalQtyRemark.addEventListener("change", () =>
+                syncModalLimits("remark")
+            );
+            modalQtyRemark.addEventListener("blur", () => {
+                normalizeAndClamp(modalQtyRemark);
+                syncModalLimits("remark");
+            });
+        }
+
+        // enter = save
+        [modalQty, modalQtyRemark, modalRemark].forEach((el) => {
+            el?.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    rowDetailSave?.click();
+                }
+            });
         });
+
+        // init
+        syncModalLimits("init");
 
         // label tombol pilih
         if (rowDetailSelect) {
@@ -1665,162 +1940,313 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     rowDetailSave?.addEventListener("click", () => {
         if (!currentRow) return;
-        const inputModal = document.getElementById("row-detail-qty");
-        const rowInput = currentRow.querySelector('input[name="QTY_SPX"]');
-        if (!rowInput || !inputModal) return;
 
-        let v = parseFloat(String(inputModal.value).replace(",", "."));
-        if (isNaN(v)) v = 0;
+        const inputModalQty = document.getElementById("row-detail-qty");
+        const inputModalQtyRemark = document.getElementById(
+            "row-detail-qty-remark"
+        );
+        const inputModalRemark = document.getElementById("row-detail-remark");
 
-        const maxAllow =
-            parseFloat(inputModal.dataset.max || rowInput.dataset.max || "0") ||
-            0;
-        const u = String(
-            inputModal.dataset.meinh || rowInput.dataset.meinh || "ST"
+        const rowQtyInput = currentRow.querySelector('input[name="QTY_SPX"]');
+        const rowQtyRemark = currentRow.querySelector('input[name="QTY_RMK"]');
+        const rowRemark = currentRow.querySelector(".remark-input");
+
+        if (!rowQtyInput || !inputModalQty) return;
+
+        const unit = String(
+            inputModalQty.dataset.meinh || rowQtyInput.dataset.meinh || "ST"
         ).toUpperCase();
 
-        if (["ST", "PC", "PCS", "EA"].includes(u)) v = Math.floor(v);
-        else if (u === "M3") v = Math.round(v * 1000) / 1000;
+        const baseMax =
+            parseFloat(
+                rowQtyInput.dataset.maxBase ||
+                    rowQtyRemark?.dataset.maxBase ||
+                    inputModalQty.dataset.maxBase ||
+                    "0"
+            ) || 0;
 
-        if (v <= 0) {
+        // parse
+        let qConfirm =
+            parseFloat(String(inputModalQty.value || "0").replace(",", ".")) ||
+            0;
+        let qRemark = 0;
+        let msgRemark = "";
+
+        if (isWiMode) {
+            qRemark =
+                parseFloat(
+                    String(inputModalQtyRemark?.value || "0").replace(",", ".")
+                ) || 0;
+            msgRemark = (inputModalRemark?.value || "").trim();
+        }
+
+        // normalize rounding
+        if (["ST", "PC", "PCS", "EA"].includes(unit)) {
+            qConfirm = Math.floor(qConfirm);
+            qRemark = Math.floor(qRemark);
+        } else if (unit === "M3") {
+            qConfirm = Math.round(qConfirm * 1000) / 1000;
+            qRemark = Math.round(qRemark * 1000) / 1000;
+        }
+
+        // bounds
+        if (qConfirm < 0) qConfirm = 0;
+        if (qRemark < 0) qRemark = 0;
+
+        // enforce SUM <= baseMax (penting!)
+        if (qConfirm + qRemark > baseMax) {
             if (warningMessage)
-                warningMessage.textContent = "Kuantitas harus lebih dari 0.";
+                warningMessage.innerHTML = `Total <b>Qty Input + Qty Remark</b> tidak boleh melebihi <b>${baseMax}</b>.`;
             isWarningOpen = true;
-            pendingResetInput = inputModal;
+            pendingResetInput = inputModalQty;
             warningModal?.classList.remove("hidden");
             return;
         }
-        if (v > maxAllow) {
-            if (warningMessage)
-                warningMessage.textContent = `Nilai tidak boleh melebihi batas: ${maxAllow}.`;
-            isWarningOpen = true;
-            pendingResetInput = inputModal;
-            warningModal?.classList.remove("hidden");
-            return;
-        }
 
-        // salin qty
-        rowInput.value = String(v);
+        // ===== RULE BARU UNTUK MOBILE =====
+        if (!isWiMode) {
+            // Non-WI: qty confirm wajib > 0
+            if (qConfirm <= 0) {
+                if (warningMessage)
+                    warningMessage.textContent =
+                        "Kuantitas harus lebih dari 0.";
+                isWarningOpen = true;
+                pendingResetInput = inputModalQty;
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+        } else {
+            const hasQtyR = qRemark > 0;
+            const hasMsg = msgRemark.length > 0;
 
-        // salin remark (WI mode)
-        if (isWiMode) {
-            const modalRemark = document.getElementById("row-detail-remark");
-            const rowRemark = currentRow.querySelector(".remark-input");
-            if (modalRemark && rowRemark)
-                rowRemark.value = modalRemark.value.trim();
-        }
+            // Pair rule
+            if ((hasQtyR && !hasMsg) || (!hasQtyR && hasMsg)) {
+                if (warningMessage)
+                    warningMessage.innerHTML =
+                        "Qty Remark dan Pesan Remark <b>wajib</b> diisi berpasangan.";
+                isWarningOpen = true;
+                pendingResetInput = hasQtyR
+                    ? inputModalRemark
+                    : inputModalQtyRemark;
+                warningModal?.classList.remove("hidden");
+                return;
+            }
 
-        closeRowDetail();
-        updateConfirmButtonState();
-    });
-
-    /* =========================
-     CONFIRM FLOW (tetap seperti sebelumnya)
-     ========================= */
-    confirmButton?.addEventListener("click", () => {
-        // GUARD: kalau ada remark pada baris terpilih, jangan boleh buka modal confirm
-        if (isWiMode) {
-            const rows = getSelectedRows();
-            if (rows.length && anySelectedHasRemark(rows)) {
-                warning(
-                    "Ada Remark terisi. <b>Konfirmasi tidak boleh</b>. Gunakan tombol <b>Remark</b>."
-                );
+            // Minimal ada aksi
+            if (qConfirm <= 0 && qRemark <= 0) {
+                if (warningMessage)
+                    warningMessage.innerHTML =
+                        "Isi <b>Qty Input</b> atau <b>Qty Remark</b> minimal salah satu.";
+                isWarningOpen = true;
+                pendingResetInput = inputModalQty;
+                warningModal?.classList.remove("hidden");
                 return;
             }
         }
-        const budatRaw = (budatInput?.value || "").trim();
-        if (!budatRaw) {
-            if (warningMessage)
-                warningMessage.textContent = "Posting Date wajib diisi.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(budatRaw);
-        if (!m) {
-            if (warningMessage)
-                warningMessage.textContent = "Format Posting Date tidak valid.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-        const budatDate = new Date(+m[1], +m[2] - 1, +m[3]);
-        budatDate.setHours(0, 0, 0, 0);
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
-        if (budatDate > todayLocal) {
-            if (warningMessage)
-                warningMessage.textContent =
-                    "Posting Date tidak boleh melebihi hari ini.";
-            warningModal?.classList.remove("hidden");
-            return;
+
+        // ===== SIMPAN BALIK KE ROW =====
+        rowQtyInput.value = String(qConfirm);
+
+        if (isWiMode) {
+            if (rowQtyRemark && inputModalQtyRemark)
+                rowQtyRemark.value = String(qRemark);
+            if (rowRemark && inputModalRemark) rowRemark.value = msgRemark;
+
+            // sinkron max dinamis di row (supaya disable/label ikut benar)
+            syncRowQtyLimits(currentRow, "init");
         }
 
-        const items = Array.from(
-            document.querySelectorAll(".row-checkbox:checked")
-        ).map((cb) => {
-            const row = cb.closest("tr");
-            const qtyInput = row.querySelector('input[name="QTY_SPX"]');
+        closeRowDetail();
+        scheduleStateUpdate();
+    });
+
+    /* =========================
+     CONFIRM FLOW
+     ========================= */
+    confirmButton?.addEventListener("click", () => {
+        const rows = getSelectedRows();
+        if (!rows.length) return;
+
+        // ambil semua item (selected), lengkap dengan 2 qty + pesan remark
+        const items = rows.map((row) => {
+            const nums = getRowNums(row);
+
             return {
                 row,
-                qty: parseFloat(qtyInput.value || "0"),
-                max: parseFloat(qtyInput.dataset.max || "0"),
                 aufnr: row.dataset.aufnr,
                 arbpl0: row.dataset.arbpl0,
                 maktx: row.dataset.maktx,
+
+                qtyConfirm: nums.qtyConfirm,
+                qtyRemark: nums.qtyRemark,
+                remarkText: nums.remarkText,
+
+                // ✅ PENTING: WI max confirm & max remark beda (dinamis)
+                maxConfirm: nums.maxConfirm,
+                maxRemark: nums.maxRemark,
+                baseMax: nums.baseMax,
             };
         });
 
-        // aturan lama: larang confirm banyak baris untuk AUFNR sama
-        const counts = items.reduce(
-            (acc, it) => ((acc[it.aufnr] = (acc[it.aufnr] || 0) + 1), acc),
-            {}
+        // ===== VALIDASI RULE BARU =====
+        if (isWiMode) {
+            // 1) Pair rule
+            const badPair = items.find(
+                (x) =>
+                    (x.qtyRemark > 0 && x.remarkText.length === 0) ||
+                    (x.qtyRemark <= 0 && x.remarkText.length > 0)
+            );
+            if (badPair) {
+                warning(
+                    "Qty Remark dan Pesan Remark <b>wajib</b> diisi berpasangan."
+                );
+                return;
+            }
+
+            // 2) Minimal harus ada aksi
+            const noAction = items.every(
+                (x) => x.qtyConfirm <= 0 && x.qtyRemark <= 0
+            );
+            if (noAction) {
+                warning(
+                    "Isi <b>Qty Input</b> atau <b>Qty Remark</b> untuk item yang dipilih."
+                );
+                return;
+            }
+
+            // 3) enforce sum <= baseMax (jaga-jaga)
+            const badSum = items.find(
+                (x) => x.qtyConfirm + x.qtyRemark > x.baseMax
+            );
+            if (badSum) {
+                warning(
+                    `Total <b>Qty Input + Qty Remark</b> tidak boleh melebihi <b>${badSum.baseMax}</b>.`
+                );
+                return;
+            }
+        } else {
+            // Non-WI: wajib Qty Input > 0
+            if (items.some((x) => x.qtyConfirm <= 0)) {
+                if (warningMessage)
+                    warningMessage.textContent =
+                        "Kuantitas konfirmasi harus lebih dari 0.";
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+        }
+
+        // split untuk kebutuhan 2 job
+        const confirmItems = items.filter((x) => x.qtyConfirm > 0);
+        const remarkItems = items.filter((x) => x.qtyRemark > 0);
+
+        // ===== BUDAT hanya wajib jika ada confirmItems =====
+        let budatRaw = "";
+        if (confirmItems.length > 0) {
+            budatRaw = (budatInput?.value || "").trim();
+            if (!budatRaw) {
+                if (warningMessage)
+                    warningMessage.textContent = "Posting Date wajib diisi.";
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(budatRaw);
+            if (!m) {
+                if (warningMessage)
+                    warningMessage.textContent =
+                        "Format Posting Date tidak valid.";
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+
+            const budatDate = new Date(+m[1], +m[2] - 1, +m[3]);
+            budatDate.setHours(0, 0, 0, 0);
+            const todayLocal = new Date();
+            todayLocal.setHours(0, 0, 0, 0);
+
+            if (budatDate > todayLocal) {
+                if (warningMessage)
+                    warningMessage.textContent =
+                        "Posting Date tidak boleh melebihi hari ini.";
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+        }
+
+        // ===== aturan duplikat AUFNR hanya untuk CONFIRM =====
+        if (confirmItems.length > 0) {
+            const counts = confirmItems.reduce(
+                (acc, it) => ((acc[it.aufnr] = (acc[it.aufnr] || 0) + 1), acc),
+                {}
+            );
+            const duplicates = Object.entries(counts).filter(([, n]) => n > 1);
+            if (duplicates.length) {
+                if (warningMessage)
+                    warningMessage.innerHTML = `Tidak dapat mengonfirmasi beberapa baris untuk PRO (AUFNR) yang sama secara bersamaan.<br><br>Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${duplicates
+                        .map(
+                            ([a, n]) =>
+                                `<li><span class="font-mono">${esc(
+                                    a
+                                )}</span> &times; ${esc(String(n))} baris</li>`
+                        )
+                        .join(
+                            ""
+                        )}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
+                warningModal?.classList.remove("hidden");
+                return;
+            }
+        }
+
+        // ===== validasi MAX (yang > 0 saja) =====
+        const invalidConfirmMax = items.find(
+            (x) =>
+                x.qtyConfirm > 0 &&
+                x.qtyConfirm > (isWiMode ? x.maxConfirm : x.maxConfirm)
         );
-        const duplicates = Object.entries(counts).filter(([, n]) => n > 1);
-        if (duplicates.length) {
-            if (warningMessage)
-                warningMessage.innerHTML = `Tidak dapat mengonfirmasi beberapa baris untuk PRO (AUFNR) yang sama secara bersamaan.<br><br>Duplikat terpilih:<ul class="list-disc pl-5 mt-1">${duplicates
-                    .map(
-                        ([a, n]) =>
-                            `<li><span class="font-mono">${esc(
-                                a
-                            )}</span> &times; ${esc(String(n))} baris</li>`
-                    )
-                    .join(
-                        ""
-                    )}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-
-        if (items.some((x) => x.qty <= 0)) {
-            if (warningMessage)
-                warningMessage.textContent =
-                    "Kuantitas konfirmasi harus lebih dari 0.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-
-        const invalidMax = items.find((x) => x.qty > x.max);
-        if (invalidMax) {
-            const msg = `Isi kuantitas valid (>0 & ≤ ${invalidMax.max}) untuk semua item yang dipilih.`;
+        if (invalidConfirmMax) {
+            const msg = `Qty Input melebihi batas. Isi kuantitas valid (>0 & ≤ ${invalidConfirmMax.maxConfirm}).`;
             if (errorMessage) errorMessage.textContent = msg;
             prepareWiCopy(msg);
             errorModal?.classList.remove("hidden");
             return;
         }
 
+        const invalidRemarkMax = items.find(
+            (x) => x.qtyRemark > 0 && x.qtyRemark > x.maxRemark
+        );
+        if (invalidRemarkMax) {
+            const msg = `Qty Remark melebihi batas. Isi kuantitas valid (>0 & ≤ ${invalidRemarkMax.maxRemark}).`;
+            if (errorMessage) errorMessage.textContent = msg;
+            prepareWiCopy(msg);
+            errorModal?.classList.remove("hidden");
+            return;
+        }
+
+        // simpan pending
+        pendingConfirmItems = confirmItems;
+        pendingRemarkItems = remarkItems;
+        pendingBudatRaw = budatRaw; // kosong kalau remark-only
+
+        // isi list modal
         if (confirmationListEl) {
             confirmationListEl.innerHTML = items
                 .map(
-                    (
-                        x
-                    ) => `<li class="flex justify-between items-center text-sm font-semibold text-slate-700">
-            <div class="flex-1 pr-3"><span class="font-mono">${esc(
-                x.aufnr
-            )}</span> / <span class="font-mono">${esc(x.arbpl0)}</span> / ${esc(
-                        x.maktx
-                    )}</div>
-            <span class="font-mono">${esc(String(x.qty))}</span>
-          </li>`
+                    (x) => `
+<li class="text-sm text-slate-700">
+  <div class="font-semibold">
+    <span class="font-mono">${esc(x.aufnr)}</span> /
+    <span class="font-mono">${esc(x.arbpl0)}</span> /
+    ${esc(x.maktx)}
+  </div>
+  <div class="mt-1 text-xs text-slate-500 flex gap-4">
+    <span>Qty Input: <b class="font-mono">${esc(
+        String(x.qtyConfirm || 0)
+    )}</b></span>
+    <span>Qty Remark: <b class="font-mono">${esc(
+        String(x.qtyRemark || 0)
+    )}</b></span>
+  </div>
+</li>`
                 )
                 .join("");
         }
@@ -1828,119 +2254,153 @@ document.addEventListener("DOMContentLoaded", async () => {
         confirmModal?.classList.remove("hidden");
     });
 
-    yesButton?.addEventListener("click", () => {
-        const selected = Array.from(
-            document.querySelectorAll(".row-checkbox:checked")
-        );
-        // GUARD: kalau remark ada isinya, jangan boleh kirim confirm
-        if (isWiMode) {
-            const rows = selected.map((cb) => cb.closest("tr")).filter(Boolean);
-            if (rows.length && anySelectedHasRemark(rows)) {
-                warning(
-                    "Ada Remark terisi. <b>Konfirmasi dibatalkan</b>. Gunakan tombol <b>Remark</b>."
-                );
-                return;
-            }
-        }
-
-        if (!selected.length) {
+    yesButton?.addEventListener("click", async () => {
+        // kalau tidak ada apa-apa, tutup modal
+        if (!pendingConfirmItems.length && !pendingRemarkItems.length) {
             confirmModal?.classList.add("hidden");
             return;
         }
 
-        // Validasi budat
-        const budatRaw = (budatInput?.value || "").trim();
-        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(budatRaw);
-        if (!m) {
-            if (warningMessage)
-                warningMessage.textContent =
-                    "Posting Date wajib & format harus yyyy-mm-dd.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-        const budatDate = new Date(+m[1], +m[2] - 1, +m[3]);
-        budatDate.setHours(0, 0, 0, 0);
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
-        if (budatDate > todayLocal) {
-            if (warningMessage)
-                warningMessage.textContent =
-                    "Posting Date tidak boleh melebihi hari ini.";
-            warningModal?.classList.remove("hidden");
-            return;
-        }
-
-        const pickedBudat = budatRaw.replace(/\D/g, "");
-
-        const items = selected.map((cb) => {
-            const row = cb.closest("tr");
-            const qty = parseFloat(
-                row.querySelector('input[name="QTY_SPX"]').value || "0"
-            );
-
-            const ssavd = (row.dataset.ssavd || "").replace(/\D/g, "") || null;
-            const sssld = (row.dataset.sssld || "").replace(/\D/g, "") || null;
-
-            return {
-                aufnr: row.dataset.aufnr || "",
-                vornr: row.dataset.vornr || "",
-                wi_code: nz(row.dataset.wiCode) || null,
-                pernr: row.dataset.pernr || "",
-                operator_name: row.dataset.sname || null,
-                qty_confirm: qty,
-                qty_pro: parseFloat(row.dataset.qtyspk || "0"),
-                meinh: row.dataset.meinh || "ST",
-                arbpl0: nz(row.dataset.arbpl0),
-                charg: row.dataset.charg || null,
-
-                werks: row.dataset.werks || null,
-                ltxa1: nz(row.dataset.ltxa1),
-                matnrx: row.dataset.matnrx || null,
-                maktx: nz(row.dataset.maktx),
-                maktx0: nz(row.dataset.maktx0),
-                dispo: row.dataset.dispo || null,
-                steus: row.dataset.steus || null,
-
-                soitem: row.dataset.soitem || null,
-                kaufn: row.dataset.kdauf || null,
-                kdpos: row.dataset.kdpos || null,
-
-                ssavd,
-                sssld,
-                ltimex: (() => {
-                    const v = nz(row.dataset.ltimex);
-                    return v == null
-                        ? null
-                        : parseFloat(String(v).replace(",", "."));
-                })(),
-
-                gstrp: (row.dataset.gstrp || "").replace(/\D/g, "") || null,
-                gltrp: (row.dataset.gltrp || "").replace(/\D/g, "") || null,
-            };
-        });
-
         confirmModal?.classList.add("hidden");
 
-        const payload = {
-            budat: pickedBudat,
-            wi_code: WI_CODES.length === 1 ? WI_CODE : null,
-            items,
-        };
+        try {
+            // 1) KIRIM REMARK (jika ada)
+            if (pendingRemarkItems.length > 0) {
+                const remarkPayloadItems = pendingRemarkItems.map((x) => {
+                    const row = x.row;
+                    const { qtyRemark, remarkText } = getRowNums(row);
 
-        fetch("/api/yppi019/confirm-async", {
-            method: "POST",
-            keepalive: true,
-            headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                "X-CSRF-TOKEN": CSRF,
-                "X-Requested-With": "XMLHttpRequest",
-            },
-            body: JSON.stringify(payload),
-        }).catch(() => {});
+                    return {
+                        wi_code: row.dataset.wiCode || "",
+                        aufnr: row.dataset.aufnr || "",
+                        vornr: row.dataset.vornr || "",
+                        pernr: normNik(row.dataset.pernr || ""),
+                        nik: normNik(row.dataset.pernr || ""),
 
-        // redirect scan setelah confirm
-        goScanWithPernr();
+                        operator_name: (row.dataset.sname || "").trim() || null,
+                        qty_pro: parseFloat(row.dataset.qtyspk || "0"),
+                        meinh: row.dataset.meinh || "ST",
+
+                        remark: remarkText,
+                        remark_qty: qtyRemark,
+
+                        // metadata
+                        werks: row.dataset.werks || null,
+                        arbpl0: row.dataset.arbpl0 || null,
+                        matnrx: row.dataset.matnrx || null,
+                        maktx: row.dataset.maktx || null,
+                        maktx0: row.dataset.maktx0 || null,
+                        dispo: row.dataset.dispo || null,
+                        steus: row.dataset.steus || null,
+                        soitem: row.dataset.soitem || null,
+                        charg: row.dataset.charg || null,
+                        ssavd: row.dataset.ssavd || null,
+                        sssld: row.dataset.sssld || null,
+                        ltimex: row.dataset.ltimex || null,
+                    };
+                });
+
+                const rRes = await apiPost("/api/yppi019/remark-async", {
+                    items: remarkPayloadItems,
+                });
+                const rJson = await safeJson(rRes);
+                if (!(rRes.status === 202)) {
+                    const msg =
+                        rJson?.message ||
+                        rJson?.error ||
+                        `Gagal enqueue remark (HTTP ${rRes.status})`;
+                    throw new Error(msg);
+                }
+            }
+
+            // 2) KIRIM CONFIRM (jika ada)
+            if (pendingConfirmItems.length > 0) {
+                const pickedBudat = (pendingBudatRaw || "").replace(/\D/g, "");
+
+                const confirmItemsPayload = pendingConfirmItems.map((x) => {
+                    const row = x.row;
+                    const qty = parseFloat(
+                        row.querySelector('input[name="QTY_SPX"]').value || "0"
+                    );
+
+                    const ssavd =
+                        (row.dataset.ssavd || "").replace(/\D/g, "") || null;
+                    const sssld =
+                        (row.dataset.sssld || "").replace(/\D/g, "") || null;
+
+                    return {
+                        aufnr: row.dataset.aufnr || "",
+                        vornr: row.dataset.vornr || "",
+                        wi_code: nz(row.dataset.wiCode) || null,
+
+                        pernr: row.dataset.pernr || "",
+                        operator_name: row.dataset.sname || null,
+
+                        qty_confirm: qty,
+                        qty_pro: parseFloat(row.dataset.qtyspk || "0"),
+                        meinh: row.dataset.meinh || "ST",
+
+                        arbpl0: nz(row.dataset.arbpl0),
+                        charg: row.dataset.charg || null,
+
+                        werks: row.dataset.werks || null,
+                        ltxa1: nz(row.dataset.ltxa1),
+                        matnrx: row.dataset.matnrx || null,
+                        maktx: nz(row.dataset.maktx),
+                        maktx0: nz(row.dataset.maktx0),
+                        dispo: row.dataset.dispo || null,
+                        steus: row.dataset.steus || null,
+
+                        soitem: row.dataset.soitem || null,
+                        kaufn: row.dataset.kdauf || null,
+                        kdpos: row.dataset.kdpos || null,
+
+                        ssavd,
+                        sssld,
+                        ltimex: (() => {
+                            const v = nz(row.dataset.ltimex);
+                            return v == null
+                                ? null
+                                : parseFloat(String(v).replace(",", "."));
+                        })(),
+
+                        gstrp:
+                            (row.dataset.gstrp || "").replace(/\D/g, "") ||
+                            null,
+                        gltrp:
+                            (row.dataset.gltrp || "").replace(/\D/g, "") ||
+                            null,
+                    };
+                });
+
+                const payload = {
+                    budat: pickedBudat,
+                    wi_code: WI_CODES.length === 1 ? WI_CODE : null,
+                    items: confirmItemsPayload,
+                };
+
+                const cRes = await apiPost(
+                    "/api/yppi019/confirm-async",
+                    payload
+                );
+                const cJson = await safeJson(cRes);
+                if (!(cRes.status === 202)) {
+                    const msg =
+                        cJson?.message ||
+                        cJson?.error ||
+                        `Gagal enqueue confirm (HTTP ${cRes.status})`;
+                    throw new Error(msg);
+                }
+            }
+
+            // 3) enqueue sukses, redirect scan
+            goScanWithPernr();
+        } catch (e) {
+            const msg = e?.message || "Gagal mengirim job.";
+            if (errorMessage) errorMessage.textContent = msg;
+            prepareWiCopy(msg);
+            errorModal?.classList.remove("hidden");
+        }
     });
 
     /* =========================
