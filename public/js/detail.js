@@ -2060,6 +2060,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         scheduleStateUpdate();
     });
 
+    // =========================
+    // ANTI DOUBLE SUBMIT (YA BUTTON)
+    // =========================
+    let isSubmittingConfirm = false;
+
+    function setYesButtonLoading(isLoading) {
+        if (!yesButton) return;
+
+        if (!yesButton.dataset.originalHtml) {
+            yesButton.dataset.originalHtml = yesButton.innerHTML;
+        }
+
+        if (isLoading) {
+            yesButton.disabled = true;
+            yesButton.setAttribute("aria-busy", "true");
+            yesButton.classList.add("opacity-60", "cursor-not-allowed");
+            yesButton.innerHTML =
+                '<svg class="w-4 h-4 mr-2 inline-block animate-spin" viewBox="0 0 24 24" fill="none">' +
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>' +
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>' +
+                "</svg>Memproses…";
+        } else {
+            yesButton.disabled = false;
+            yesButton.removeAttribute("aria-busy");
+            yesButton.classList.remove("opacity-60", "cursor-not-allowed");
+            yesButton.innerHTML = yesButton.dataset.originalHtml || "Ya";
+        }
+    }
+
     /* =========================
      CONFIRM FLOW
      ========================= */
@@ -2255,6 +2284,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     yesButton?.addEventListener("click", async () => {
+        // ✅ HARD GUARD: cegah klik berkali-kali
+        if (isSubmittingConfirm) return;
+        isSubmittingConfirm = true;
+        setYesButtonLoading(true);
+
+        // optional: disable cancel juga biar tidak nutup modal saat proses
+        cancelButton && (cancelButton.disabled = true);
         // kalau tidak ada apa-apa, tutup modal
         if (!pendingConfirmItems.length && !pendingRemarkItems.length) {
             confirmModal?.classList.add("hidden");
@@ -2400,15 +2436,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (errorMessage) errorMessage.textContent = msg;
             prepareWiCopy(msg);
             errorModal?.classList.remove("hidden");
+
+            // ✅ kalau gagal, buka kunci lagi biar user bisa klik YA ulang
+            isSubmittingConfirm = false;
+            setYesButtonLoading(false);
+            cancelButton && (cancelButton.disabled = false);
+            return;
         }
     });
 
     /* =========================
      CLOSE HANDLERS
      ========================= */
-    cancelButton?.addEventListener("click", () =>
-        confirmModal?.classList.add("hidden")
-    );
+    cancelButton?.addEventListener("click", () => {
+        confirmModal?.classList.add("hidden");
+        isSubmittingConfirm = false;
+        setYesButtonLoading(false);
+        cancelButton.disabled = false;
+    });
 
     errorOkButton?.addEventListener("click", () => {
         if (isResultError) {
@@ -2438,43 +2483,4 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         goScanWithPernr();
     });
-
-    /* =========================
-     GUARD "YA" (anti double submit)
-     ========================= */
-    (function initYesButtonGuard() {
-        const modal = document.getElementById("confirm-modal");
-        const yesBtn = document.getElementById("yes-button");
-        const cancelBtn2 = document.getElementById("cancel-button");
-        if (!modal || !yesBtn) return;
-
-        const originalHTML = yesBtn.innerHTML;
-
-        function disableYes() {
-            if (yesBtn.disabled) return;
-            yesBtn.disabled = true;
-            yesBtn.setAttribute("aria-busy", "true");
-            yesBtn.classList.add("opacity-60", "cursor-not-allowed");
-            yesBtn.innerHTML =
-                '<svg class="w-4 h-4 mr-2 inline-block animate-spin" viewBox="0 0 24 24" fill="none">' +
-                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>' +
-                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>' +
-                "</svg>Memproses…";
-        }
-
-        function enableYes() {
-            yesBtn.disabled = false;
-            yesBtn.removeAttribute("aria-busy");
-            yesBtn.classList.remove("opacity-60", "cursor-not-allowed");
-            yesBtn.innerHTML = originalHTML;
-        }
-
-        yesBtn.addEventListener("click", disableYes, { capture: true });
-        cancelBtn2?.addEventListener("click", enableYes);
-
-        const obs = new MutationObserver(() => {
-            if (!modal.classList.contains("hidden")) enableYes();
-        });
-        obs.observe(modal, { attributes: true, attributeFilter: ["class"] });
-    })();
 });
