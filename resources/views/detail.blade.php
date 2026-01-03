@@ -304,19 +304,33 @@
     {{-- ===== Modal Konfirmasi ===== --}}
     <div id="confirm-modal"
         class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden">
-            <div class="bg-gradient-to-r from-green-700 to-blue-900 px-4 py-3 border-b border-green-600">
+        <div
+            class="bg-white rounded-2xl shadow-xl border border-slate-200/50 w-full max-w-sm overflow-hidden
+                    flex flex-col max-h-[85vh]">
+
+            <div class="bg-gradient-to-r from-green-700 to-blue-900 px-4 py-3 border-b border-green-600 shrink-0">
                 <h4 class="text-lg font-semibold text-white">Konfirmasi Aksi</h4>
             </div>
-            <div class="p-4 space-y-4">
+
+            <!-- BODY: ini yang bisa di-scroll -->
+            <div class="p-4 space-y-4 overflow-y-auto">
                 <p class="text-sm text-slate-700 mb-2">Anda akan mengonfirmasi data berikut:</p>
-                <ul id="confirmation-list" class="space-y-2"></ul>
+
+                <!-- Kasih max height juga ke list biar lebih stabil -->
+                <ul id="confirmation-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1 overscroll-contain"></ul>
             </div>
-            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+
+            <!-- FOOTER: tombol selalu kelihatan -->
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
                 <button id="yes-button" type="button"
-                    class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors">Ya</button>
+                class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors">
+                Ya
+                </button>
+
                 <button id="cancel-button" type="button"
-                    class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold transition-colors">Batal</button>
+                class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold transition-colors">
+                Batal
+                </button>
             </div>
         </div>
     </div>
