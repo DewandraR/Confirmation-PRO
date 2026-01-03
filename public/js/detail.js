@@ -301,14 +301,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
-    const WI_CODE = WI_CODES[0] || ""; // kompatibel lama
+    // MODE flags — HARUS DULUAN
+    const isWiMode = WI_CODES.length > 0;
+
+    // WI compatibility
+    const WI_CODE = WI_CODES[0] || "";
+
+    // WIW special rule
+    const isWIWMode =
+        isWiMode &&
+        WI_CODES.length > 0 &&
+        WI_CODES.some((code) => /^WIW/i.test(code));
 
     const IV_PERNR = (p.get("pernr") || "").trim();
     const IV_ARBPL = p.get("arbpl") || "";
     const IV_WERKS = p.get("werks") || "";
-
-    // MODE flags
-    const isWiMode = WI_CODES.length > 0;
 
     const isWCMode =
         rawList.trim() === "" &&
@@ -413,7 +420,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const budatInputText = document.getElementById("budat-input-text"); // visible dd/mm/yyyy
     const budatOpen = document.getElementById("budat-open");
 
-    const isBudatLocked = LOCK_BUDAT_USERS.includes(CUR_SAP_USER) || isWiMode;
+    const isBudatLocked =
+        LOCK_BUDAT_USERS.includes(CUR_SAP_USER) || (isWiMode && !isWIWMode);
 
     if (isBudatLocked) {
         const today = new Date();
@@ -436,6 +444,37 @@ document.addEventListener("DOMContentLoaded", async () => {
             budatOpen.disabled = true;
             budatOpen.classList.add("opacity-60", "cursor-not-allowed");
         }
+    }
+
+    // ===== WIW MODE: BUDAT hanya hari ini & kemarin =====
+    if (isWIWMode && budatInput && budatInputText) {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+
+        const toYMD = (d) =>
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+                2,
+                "0"
+            )}-${String(d.getDate()).padStart(2, "0")}`;
+
+        const todayYMD = toYMD(today);
+        const yesterdayYMD = toYMD(yesterday);
+
+        // set range
+        budatInput.min = yesterdayYMD;
+        budatInput.max = todayYMD;
+        budatInput.disabled = false;
+
+        budatInputText.readOnly = false;
+        budatInputText.classList.remove("bg-slate-100", "cursor-not-allowed");
+
+        budatOpen.disabled = false;
+        budatOpen.classList.remove("opacity-60", "cursor-not-allowed");
+
+        // default: hari ini
+        budatInput.value = todayYMD;
+        syncHiddenToText();
     }
 
     /* ---------- Search / Filter controls ---------- */
@@ -502,19 +541,45 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     function syncTextToHidden() {
         if (!budatInput || !budatInputText) return;
+
         const ymd = dmyToYmd(budatInputText.value);
         if (!ymd) {
             warning("Format tanggal harus dd/mm/yyyy.");
             budatInputText.value = ymdToDmy(budatInput.value);
             return;
         }
+
         if (isFutureYmd(ymd)) {
             warning("Posting Date tidak boleh melebihi hari ini.");
             budatInputText.value = ymdToDmy(budatInput.value);
             return;
         }
+
+        if (isWIWMode) {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            // ✅ parse ymd sebagai LOCAL DATE (hindari bug UTC)
+            const [yy, mm, dd] = ymd.split("-").map(Number);
+            const picked = new Date(yy, mm - 1, dd);
+
+            picked.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            yesterday.setHours(0, 0, 0, 0);
+
+            if (picked < yesterday || picked > today) {
+                warning(
+                    "Posting Date hanya boleh hari ini atau kemarin untuk WIW."
+                );
+                budatInputText.value = ymdToDmy(budatInput.value);
+                return;
+            }
+        }
+
         budatInput.value = ymd;
     }
+
     function syncHiddenToText() {
         if (!budatInput || !budatInputText) return;
         budatInputText.value = ymdToDmy(budatInput.value);

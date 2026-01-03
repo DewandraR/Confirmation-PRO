@@ -566,7 +566,15 @@ class Yppi019DbApiController extends Controller
         $lockedBudatUsers = [];
 
         if ($hasAnyWi) {
-            $data['budat'] = now()->format('Ymd'); // paksa hari ini jika ada WI
+            $requestBudat = preg_replace('/\D/', '', (string)($data['budat'] ?? ''));
+            $today = now()->format('Ymd');
+
+            // kalau FE kirim budat dan beda dari today, hormati
+            if ($requestBudat === '' ) {
+                $data['budat'] = $today;
+            } else {
+                $data['budat'] = $requestBudat; // keep user choice
+            }
         } elseif (in_array(strtoupper($sapUser), $lockedBudatUsers, true)) {
             $data['budat'] = now()->format('Ymd');
         }
