@@ -180,6 +180,20 @@ class ConfirmProJob implements ShouldQueue
         return;
     }
 
+    $wiCode = (string)($payload['wi_code'] ?? '');
+    $aufnr  = (string)($payload['aufnr'] ?? $rec->aufnr);
+    $vornr  = $this->padVornr((string)($payload['vornr'] ?? $rec->vornr));
+
+    $exists = $this->isWiCodeUnexpiredForOperation($wiCode, $aufnr, $vornr);
+    if ($exists === false) {
+        $rec->update([
+            'status'         => 'FAILED',
+            'status_message' => 'WICODE ' . $wiCode . ' SUDAH TIDAK ADA',
+            'processed_at'   => now(),
+        ]);
+        return;
+    }
+
     $wiCode    = (string)($payload['wi_code'] ?? '');
     $aufnr     = (string)($payload['aufnr'] ?? $rec->aufnr);
     $vornr     = $this->padVornr((string)($payload['vornr'] ?? $rec->vornr));
@@ -242,6 +256,21 @@ class ConfirmProJob implements ShouldQueue
         // === DETEKSI WI MODE ===
         $wiCode = $payload['wi_code'] ?? null;
         $wiMode = !empty($wiCode); // WI mode kalau ada wi_code
+
+        if ($wiMode) {
+            $currentAufnr = (string) $rec->aufnr;
+            $currentVornr = $this->padVornr($rec->vornr);
+
+            $exists = $this->isWiCodeUnexpiredForOperation((string)$wiCode, $currentAufnr, $currentVornr);
+            if ($exists === false) {
+                $rec->update([
+                    'status'         => 'FAILED',
+                    'status_message' => 'WICODE ' . $wiCode . ' SUDAH TIDAK ADA',
+                    'processed_at'   => now(),
+                ]);
+                return;
+            }
+        }
         $confirmQty = $payload['confirm_qty'] ?? $rec->qty_confirm; // fallback ke kolom monitor
 
          // === NON-WI MODE: cek dulu apakah PRO/VORNR ini punya WI unexpired ===
@@ -475,6 +504,66 @@ class ConfirmProJob implements ShouldQueue
                 'status_message' => $e->getMessage(),
                 'processed_at'   => now(),
             ]);
+        }
+    }
+    private function wiApiCreds(): array
+    {
+        $base  = rtrim((string) config('services.wi_api.base_url'), '/');
+        $token = (string) (config('services.wi_api.token') ?: env('WI_API_TOKEN'));
+        return [$base, $token];
+    }
+
+    /**
+     * true  = wi_code ada dan match aufnr+vornr
+     * false = wi_code tidak ada / tidak match / list kosong
+     * null  = tidak bisa verifikasi (config kosong / API error) -> biar tidak “mematikan” proses
+     */
+    private function isWiCodeUnexpiredForOperation(string $wiCode, string $aufnr, string $vornr): ?bool
+    {
+        [$base, $token] = $this->wiApiCreds();
+
+        if ($wiCode === '' || $aufnr === '' || $vornr === '') return false;
+        if (!$base || !$token) return null;
+
+        try {
+            $res = Http::withToken($token)
+                ->acceptJson()
+                ->timeout(30)
+                ->get($base . '/wi/aufnr/unexpired');
+
+            if (!$res->ok()) return null;
+
+            $json = $res->json() ?? [];
+            if (($json['status'] ?? null) !== 'success') return null;
+
+            $data = $json['data'] ?? null;
+            if (!is_array($data)) return null;
+
+            if (!array_key_exists($wiCode, $data)) return false;
+
+            $items = $data[$wiCode];
+            if (!is_array($items) || count($items) === 0) return false;
+
+            foreach ($items as $row) {
+                if (!is_array($row)) continue;
+
+                $auf = (string) ($row['aufnr'] ?? '');
+                $vor = $this->padVornr($row['vornr'] ?? null);
+
+                if ($auf === $aufnr && $vor === $vornr) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (Throwable $e) {
+            Log::warning('WI unexpired exact check failed', [
+                'wi_code' => $wiCode,
+                'aufnr'   => $aufnr,
+                'vornr'   => $vornr,
+                'error'   => $e->getMessage(),
+            ]);
+            return null;
         }
     }
 }
