@@ -132,7 +132,7 @@
                                     @if(!$isWiModeBlade)
                                     <button id="fltDspt" type="button"
                                         class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
-                                        DSPT
+                                        Dispatch
                                     </button>
                                     @endif
 
