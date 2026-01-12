@@ -390,7 +390,7 @@
                     </svg>
                 </span>
                 <div class="min-w-0">
-                    <div class="text-sm font-semibold text-slate-800 leading-tight">Kode Dokumen WI</div>
+                    <div class="text-sm font-semibold text-slate-800 leading-tight">Kode Dokumen Penugasan</div>
                     <div class="text-[11px] text-slate-500 leading-tight">
                         Bisa lebih dari satu (pisah spasi/koma). Tekan <b>Enter</b> untuk menambah chip.
                     </div>
@@ -415,7 +415,7 @@
 
                     <input id="wi_code" name="wi_code"
                         class="min-w-0 flex-1 outline-none bg-transparent text-xs placeholder-slate-400 font-medium"
-                        placeholder="Masukkan Kode WI" />
+                        placeholder="Masukkan Kode Penugasan" />
                 </div>
 
                 {{-- daftar chip WI --}}
@@ -817,7 +817,7 @@
                     <div id="wiCopyContainer" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                         <div class="flex flex-col gap-2">
                             <p class="text-[11px] text-amber-800">
-                                PRO ini butuh <b>Kode WI</b>. Salin kode di bawah ini lalu tempel ke kolom "Kode Dokumen WI" di form input.
+                                PRO ini butuh <b>Kode Dokumen Penugasan</b>. Salin kode di bawah ini lalu tempel ke kolom "Kode Dokumen Penugasan" di form input.
                             </p>
                             <div class="flex gap-2">
                                 <input type="text" id="wiCodeTarget" readonly

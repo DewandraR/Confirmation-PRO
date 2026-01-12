@@ -96,24 +96,45 @@
                             {{-- ===== QUICK DATE FILTERS (NEW) ===== --}}
                             <div class="w-full md:w-auto">
                                 <div class="flex flex-wrap items-center gap-2">
+                                    @php
+                                        // WI mode jika ada wi_codes=... atau wi_code=... (bisa single atau multiple ?wi_code=a&wi_code=b)
+                                        $wiCodesParam = trim((string) request()->query('wi_codes', ''));
+                                        $wiCodeParam  = request()->query('wi_code', null);
+
+                                        $hasWiCode = false;
+                                        if (is_array($wiCodeParam)) {
+                                            $hasWiCode = collect($wiCodeParam)->filter(fn($v) => trim((string)$v) !== '')->isNotEmpty();
+                                        } else {
+                                            $hasWiCode = trim((string)$wiCodeParam) !== '';
+                                        }
+
+                                        $isWiModeBlade = ($wiCodesParam !== '') || $hasWiCode;
+                                    @endphp
                                     <button id="fltToday"
-                                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
                                         Today
                                     </button>
                                     <button id="fltOutgoing"
-                                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
                                         On Proses
                                     </button>
                                     <button id="fltPeriod"
-                                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                                        class="hidden px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
                                         Period
                                     </button>
 
                                     <!-- tambahkan di samping tombol Period -->
                                     <button type="button" id="fltAllDate"
-                                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-slate-50">
+                                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
                                         All date
                                     </button>
+
+                                    @if(!$isWiModeBlade)
+                                    <button id="fltDspt" type="button"
+                                        class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
+                                        DSPT
+                                    </button>
+                                    @endif
 
 
                                     {{-- Range picker hanya saat Period aktif --}}
@@ -271,6 +292,10 @@
                                             WC Anak
                                         </th>
 
+                                        <th
+                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[160px] col-status-op hidden">
+                                            Status Operations
+                                        </th>
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             Control Key

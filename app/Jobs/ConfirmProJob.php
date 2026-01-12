@@ -253,7 +253,7 @@ class ConfirmProJob implements ShouldQueue
 
             if ($wiForOp) {
                 // PRO+VORNR ini wajib dikonfirmasi lewat WI, jadi stop di sini
-                $msg = 'PRO tersebut telah memiliki kode WI mohon konfirmasi dengan kode WI "' . $wiForOp . '"';
+                $msg = 'PRO tersebut telah memiliki dokumen penugasan mohon konfirmasi dengan kode dokumennya "' . $wiForOp . '"';
 
                 $rec->update([
                     'status'         => 'FAILED',

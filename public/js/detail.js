@@ -487,6 +487,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fltOutgoing = document.getElementById("fltOutgoing");
     const fltPeriod = document.getElementById("fltPeriod");
     const fltAllDate = document.getElementById("fltAllDate");
+    const fltDspt = document.getElementById("fltDspt");
+    // WI mode: DSPT tidak boleh tampil
+    if (isWiMode && fltDspt) {
+        fltDspt.classList.add("hidden");
+        if (statusFilterMode === "dspt") statusFilterMode = "all";
+    }
     const periodPicker = document.getElementById("periodPicker");
     const periodFrom = document.getElementById("periodFrom");
     const periodTo = document.getElementById("periodTo");
@@ -816,6 +822,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                     : "";
 
             const ltimexStr = fmtMinutes(r.LTIMEX);
+            const statusOpView =
+                String(r.STATS2 ?? r.STATS ?? "").trim() || "-";
 
             // SO/Item
             const kdpos6 = padKdpos(r.KDPOS);
@@ -847,6 +855,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 soItem,
                 (r.KDAUF || "") + "/" + kdpos6,
                 (r.KDAUF || "") + kdpos6,
+                r.STATS || "",
+                r.STATS2 || "",
                 wcWithDesc,
             ]
                 .map(toKey)
@@ -865,6 +875,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     data-ssavd="${esc(ssavdYMD)}"
     data-sssld="${esc(sssldYMD)}"
     data-ltimex="${esc(ltimexStr)}"
+    data-stats="${esc(r.STATS || "")}"
+    data-stats2="${esc(r.STATS2 || "")}"
     data-arbpl0="${esc(wcInduk)}"
     data-wc-induk="${esc(wcInduk)}"
     data-wc-anak="${esc(wcAnakView)}"
@@ -981,6 +993,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     <td class="px-3 py-3 text-sm text-slate-700 col-wc-anak">
       ${isWiMode ? esc(wcAnakView) : ""}
     </td>
+    <td class="px-3 py-3 text-sm text-slate-700 col-status-op">${esc(
+        statusOpView
+    )}</td>
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
@@ -1139,8 +1154,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const thWcAnak = document.querySelector("th.col-wc-anak");
     const thRemark = document.querySelector("th.col-remark");
     const thQtyRemark = document.querySelector("th.col-qty-remark");
+    const thStatusOp = document.querySelector("th.col-status-op");
 
     if (isWiMode) {
+        if (thStatusOp) thStatusOp.classList.add("hidden");
+        document
+            .querySelectorAll("td.col-status-op")
+            .forEach((el) => (el.style.display = "none"));
         if (thQtyRemark) thQtyRemark.classList.remove("hidden");
         document
             .querySelectorAll("td.col-qty-remark")
@@ -1153,6 +1173,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             .forEach((el) => (el.style.display = ""));
         if (thRemark) thRemark.classList.remove("hidden");
     } else {
+        if (thStatusOp) thStatusOp.classList.remove("hidden");
+        document
+            .querySelectorAll("td.col-status-op")
+            .forEach((el) => (el.style.display = ""));
+
         if (thQtyRemark) thQtyRemark.classList.add("hidden");
         document
             .querySelectorAll("td.col-qty-remark")
@@ -1208,6 +1233,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     let qCurrent = "";
     let pfYMD = "";
     let ptYMD = "";
+
+    let statusFilterMode = "all"; // 'all' | 'dspt'
+
+    function rowPassesStatusFilter(tr) {
+        if (statusFilterMode !== "dspt") return true;
+        const s = String(
+            tr.dataset.stats2 || tr.dataset.stats || ""
+        ).toUpperCase();
+        return s.includes("DSPT");
+    }
 
     function ymdToday() {
         const d = new Date();
@@ -1360,8 +1395,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 qCurrent.length === 0
                     ? true
                     : (tr.dataset.search || "").includes(qCurrent);
-            const dateHit = rowPassesDateFilter(tr);
-            const hit = searchHit && dateHit;
+            const statusHit = rowPassesStatusFilter(tr);
+
+            // ✅ DSPT berdiri sendiri: tidak pakai filter tanggal
+            const dateHit =
+                statusFilterMode === "dspt" ? true : rowPassesDateFilter(tr);
+
+            const hit = searchHit && dateHit && statusHit;
             tr.style.display = hit ? "" : "none";
             if (hit) shown++;
         });
@@ -1408,7 +1448,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyFilters();
 
     function setActive(btn) {
-        [fltToday, fltOutgoing, fltPeriod, fltAllDate].forEach((b) => {
+        [fltToday, fltOutgoing, fltPeriod, fltAllDate, fltDspt].forEach((b) => {
             if (!b) return;
             b.classList.remove(
                 "bg-emerald-600",
@@ -1428,6 +1468,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     fltOutgoing?.addEventListener("click", () => {
+        statusFilterMode = "all";
         dateFilterMode = "outgoing";
         setActive(fltOutgoing);
         periodPicker?.classList.add("hidden");
@@ -1435,10 +1476,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     fltAllDate?.addEventListener("click", () => {
+        statusFilterMode = "all";
         dateFilterMode = "none";
         pfYMD = "";
         ptYMD = "";
         setActive(fltAllDate);
+        periodPicker?.classList.add("hidden");
+        applyFilters();
+    });
+
+    fltDspt?.addEventListener("click", () => {
+        statusFilterMode = "dspt";
+
+        // ✅ reset date filter biar tidak kebawa dari On Proses / Period
+        dateFilterMode = "none";
+        pfYMD = "";
+        ptYMD = "";
+
+        setActive(fltDspt);
         periodPicker?.classList.add("hidden");
         applyFilters();
     });
@@ -1457,6 +1512,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     clearFilterBtn?.addEventListener("click", () => {
+        statusFilterMode = "all";
         dateFilterMode = "none";
         pfYMD = "";
         ptYMD = "";
@@ -1605,6 +1661,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             wcInduk: tr.dataset.wcInduk || tr.dataset.arbpl0 || "-",
             wcAnak: tr.dataset.wcAnak || "",
             ltxa1: tr.dataset.ltxa1 || "",
+            statusop: tr.dataset.stats2 || tr.dataset.stats || "-",
             maktx: tr.dataset.maktx || "-",
             maktx0: tr.dataset.maktx0 || "-",
             matnrx: tr.dataset.matnrx || "-",
@@ -1702,6 +1759,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
 
       ${wcBlock}
+
+      ${
+          !isWiMode
+              ? `
+  <div>
+    <div class="text-[11px] text-slate-500">Status Operations</div>
+    <div class="font-semibold">${esc(data.statusop)}</div>
+  </div>
+`
+              : ``
+      }
 
       <div>
         <div class="text-[11px] text-slate-500">Control Key</div>
