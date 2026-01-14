@@ -1056,6 +1056,38 @@ def api_hasil_range():
             sap.close()
 
 # ---------------- Confirm & Other Endpoints ----------------
+def pick_best_sap_message(sap_ret: Any) -> str:
+    if not isinstance(sap_ret, dict):
+        return ""
+
+    det = sap_ret.get("DETAIL_RETURN")
+    if isinstance(det, list):
+        for m in det:
+            if isinstance(m, dict) and str(m.get("TYPE","")).upper() in ("E","A") and m.get("MESSAGE"):
+                return str(m["MESSAGE"]).strip()
+        for m in det:
+            if isinstance(m, dict) and m.get("MESSAGE"):
+                return str(m["MESSAGE"]).strip()
+
+    for _, v in sap_ret.items():
+        if isinstance(v, list) and v and isinstance(v[0], dict):
+            for m in v:
+                t = str(m.get("TYPE","")).upper()
+                if t in ("E","A") and m.get("MESSAGE"):
+                    return str(m["MESSAGE"]).strip()
+            for m in v:
+                if isinstance(m, dict) and m.get("MESSAGE"):
+                    return str(m["MESSAGE"]).strip()
+
+    for key in ("EV_MSG", "MESSAGE", "MSG", "EV_MESSAGE", "EV_TEXT"):
+        val = sap_ret.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+
+    return ""
+
+
+# route (DECORATOR HARUS DI SINI)
 @app.post("/api/yppi019/confirm")
 def api_confirm():
     try:
@@ -1180,6 +1212,8 @@ def api_confirm():
                     return msgs
 
                 msgs = _collect_msgs(sap_ret)
+                best_msg = pick_best_sap_message(sap_ret)
+
                 err = next((m for m in msgs if str(m.get("TYPE","")).upper() in ("E","A")), None)
                 if err:
                     try:
@@ -1187,12 +1221,12 @@ def api_confirm():
                     except Exception:
                         pass
                     db.rollback()
+
                     return jsonify({
                         "ok": False,
-                        "error": err.get("MESSAGE") or "SAP returned error",
-                        "sap_return": to_jsonable(sap_ret)
+                        "error": best_msg or "SAP returned error",
+                        "sap_return": to_jsonable(sap_ret),
                     }), 500
-
                 try:
                     commit_ret = sap.call("BAPI_TRANSACTION_COMMIT", WAIT="X")
                     logger.info("BAPI_TRANSACTION_COMMIT result: %s", commit_ret)
