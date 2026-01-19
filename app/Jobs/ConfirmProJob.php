@@ -366,13 +366,20 @@ class ConfirmProJob implements ShouldQueue
 
             if ($hasSapErr) {
                 $msg = (string)($json['error'] ?? $json['message'] ?? 'Konfirmasi gagal');
-                foreach ($entries as $e) {
-                    $t = strtoupper((string)($e['TYPE'] ?? ''));
-                    if (($t === 'E' || $t === 'A') && !empty($e['MESSAGE'])) {
-                        $msg = (string)$e['MESSAGE'];
-                        break;
-                    }
+
+                // ambil EV_MSG dari SAP return (kalau ada)
+                $evMsg = trim((string) data_get($json, 'sap_return.EV_MSG', ''));
+
+                // kalau msg diawali 000..., ganti ke EV_MSG
+                if ($evMsg !== '' && Str::startsWith(ltrim($msg), '000')) {
+                    $msg = $evMsg;
                 }
+
+                // (opsional) juga kalau ada entry error E/A tapi MESSAGE-nya 000..., ganti
+                if ($evMsg !== '' && Str::startsWith(ltrim($msg), '000')) {
+                    $msg = $evMsg;
+                }
+
                 $rec->update([
                     'status'         => 'FAILED',
                     'status_message' => Str::limit($msg, 600),

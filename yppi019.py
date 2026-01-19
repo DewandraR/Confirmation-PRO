@@ -1471,4 +1471,4 @@ def api_backdate_history():
 
 if __name__ == "__main__":
     ensure_tables()
-    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=False, use_reloader=False, threaded=True)
+    app.run(host=HTTP_HOST, port=HTTP_PORT, debug=False, use_reloader=False, threaded=True)        
