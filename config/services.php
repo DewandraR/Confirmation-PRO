@@ -39,7 +39,7 @@ return [
         'base'         => env('YPPI019_BASE', 'http://0.0.0.0:5005'),
     ],
     'wi_api' => [
-        'base_url' => env('WI_API_BASE_URL', 'https://cohv.kmifilebox.com/api'),
+        'base_url' => env('WI_API_BASE_URL', 'https://cohv.kayumebelsmg.net/api'),
         'token'    => env('WI_API_TOKEN'),
     ],
     

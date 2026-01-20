@@ -1056,36 +1056,57 @@ def api_hasil_range():
             sap.close()
 
 # ---------------- Confirm & Other Endpoints ----------------
+
+def _is_bad_000(msg: str) -> bool:
+    # contoh msg jelek: "00000000000000000001 confirmations are incorrect..."
+    return (msg or "").strip().startswith("000")
+
+
 def pick_best_sap_message(sap_ret: Any) -> str:
     if not isinstance(sap_ret, dict):
         return ""
 
+    # pesan yang lebih manusiawi biasanya ada di EV_MSG
+    ev_msg = str(sap_ret.get("EV_MSG") or "").strip()
+
+    def ok(msg: Any) -> Optional[str]:
+        s = str(msg or "").strip()
+        if not s:
+            return None
+        # kalau message diawali 000... dan EV_MSG ada -> pakai EV_MSG
+        if _is_bad_000(s) and ev_msg:
+            return ev_msg
+        return s
+
+    # 1) prioritas: DETAIL_RETURN error dulu
     det = sap_ret.get("DETAIL_RETURN")
     if isinstance(det, list):
         for m in det:
             if isinstance(m, dict) and str(m.get("TYPE","")).upper() in ("E","A") and m.get("MESSAGE"):
-                return str(m["MESSAGE"]).strip()
+                return ok(m.get("MESSAGE")) or ""
+        # kalau ga ada error, ambil message pertama yang ada
         for m in det:
             if isinstance(m, dict) and m.get("MESSAGE"):
-                return str(m["MESSAGE"]).strip()
+                return ok(m.get("MESSAGE")) or ""
 
+    # 2) cari table message lain (RETURN/ET_RETURN/apa pun)
     for _, v in sap_ret.items():
         if isinstance(v, list) and v and isinstance(v[0], dict):
             for m in v:
                 t = str(m.get("TYPE","")).upper()
                 if t in ("E","A") and m.get("MESSAGE"):
-                    return str(m["MESSAGE"]).strip()
+                    return ok(m.get("MESSAGE")) or ""
             for m in v:
                 if isinstance(m, dict) and m.get("MESSAGE"):
-                    return str(m["MESSAGE"]).strip()
+                    return ok(m.get("MESSAGE")) or ""
 
+    # 3) fallback key umum
     for key in ("EV_MSG", "MESSAGE", "MSG", "EV_MESSAGE", "EV_TEXT"):
-        val = sap_ret.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()
+        out = ok(sap_ret.get(key))
+        if out:
+            return out
 
     return ""
-
 
 # route (DECORATOR HARUS DI SINI)
 @app.post("/api/yppi019/confirm")
