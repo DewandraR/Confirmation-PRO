@@ -383,62 +383,73 @@
 }
 
 /* =========================================================
-   FIX AppMySite WebView: modal aman dari header/footer overlay
+   FULLSCREEN-ish Hasil Konfirmasi (aman AppMySite WebView)
+   Target: ~96–98% area layar yang tersedia
    ========================================================= */
 
-/* tinggi bar AppMySite (boleh kamu adjust) */
+/* Sesuaikan ini kalau header/footer AppMySite beda tinggi */
 :root{
-  --ams-top: 76px;
-  --ams-bottom: 110px;
+  --ams-top: 64px;
+  --ams-bottom: 96px;
+
+  /* gap kecil biar “hampir full-screen” */
+  --hasil-gap: 6px;
 }
 
+/* Pastikan tinggi modal pakai viewport yang paling masuk akal */
 #hasilModal{
+  /* tetap boleh scroll kalau keyboard muncul */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 
-  align-items: flex-start !important; /* penting */
+  /* ini override dari class tailwind items-center */
+  align-items: stretch !important;
+  justify-content: center !important;
 
-  padding-top: calc(var(--ams-top) + 12px + env(safe-area-inset-top));
-  padding-bottom: calc(var(--ams-bottom) + 12px + env(safe-area-inset-bottom));
+  /* override p-4 tailwind: kita bikin lebih “rapet” */
+  padding-top: calc(var(--ams-top) + var(--hasil-gap) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--ams-bottom) + var(--hasil-gap) + env(safe-area-inset-bottom));
+  padding-left: calc(var(--hasil-gap) + env(safe-area-inset-left));
+  padding-right: calc(var(--hasil-gap) + env(safe-area-inset-right));
+
+  height: 100vh;
 }
 
+/* kalau support dvh, lebih akurat untuk mobile */
+@supports (height: 100dvh){
+  #hasilModal{ height: 100dvh; }
+}
+
+/* Card ngisi hampir seluruh ruang modal (minus padding di atas) */
 #hasilModal .hasil-card{
   display: flex;
   flex-direction: column;
 
-  width: min(92vw, 420px);
-  height: calc(100dvh - (var(--ams-top) + var(--ams-bottom) + 24px));
-  max-height: none;
+  width: 100%;
+  max-width: 520px;          /* lebih lega dari 420/480 */
+  height: 100%;
+  max-height: 100%;
 
-  overflow: hidden; /* biar header gak “nyembul” */
+  overflow: hidden;
+  border-radius: 18px;
 }
 
-#hasilModal .hasil-card > div:first-child{
-  flex: 0 0 auto; /* header jangan ikut shrink */
-}
-
+/* Area form yang scroll (bukan seluruh modal) */
 #hasilForm{
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 16px;
+
+  padding: 16px;
 }
 
-/* jangan scale kecil-kecil lagi */
-@media (max-height: 740px){
-  #hasilModal .hasil-card{ transform: none; }
-}
-@media (max-height: 680px){
-  #hasilModal .hasil-card{ transform: none; }
-}
-
-/* Header (child pertama) jangan ikut mengecil */
-#hasilModal .hasil-card > div:first-child {
-    flex: 0 0 auto;
-}
-
-/* Biar area form yang nge-scroll, bukan “nabrak” header */
-#hasilForm {
-    min-height: 0;
+/* Optional: kalau di HP pendek, rapetin sedikit padding header biar konten lebih banyak */
+@media (max-height: 720px){
+  #hasilModal .hasil-card > div:first-child{
+    padding: 12px 14px !important;
+  }
+  #hasilForm{
+    padding: 14px;
+  }
 }
