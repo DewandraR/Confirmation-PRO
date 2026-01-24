@@ -989,7 +989,7 @@
                     <p class="mt-1 text-[10px] text-slate-400 italic pl-1">Wajib diisi jika mencari by NIK atau MRP.</p>
                 </div>
 
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <div id="hasilActions" class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                     <button type="button" id="hasilCancel"
                         class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors">
                         Batal
