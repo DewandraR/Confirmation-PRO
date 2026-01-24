@@ -51,12 +51,16 @@
 .dropdown-enter-active {
     opacity: 1;
     transform: scale(0.97);
-    transition: opacity 0.12s ease, transform 0.12s ease;
+    transition:
+        opacity 0.12s ease,
+        transform 0.12s ease;
 }
 .dropdown-leave-active {
     opacity: 0;
     transform: scale(0.97);
-    transition: opacity 0.12s ease, transform 0.12s ease;
+    transition:
+        opacity 0.12s ease,
+        transform 0.12s ease;
 }
 .dd-opt-focus {
     background-color: rgb(240 253 244);
@@ -368,4 +372,41 @@
     to {
         background-position: -100% 0;
     }
+}
+
+#hasilActions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 5;
+}
+
+/* =========================================================
+   FIX AppMySite WebView: tombol modal ketutup header/footer
+   ========================================================= */
+#hasilModal{
+  /* bikin overlay-nya bisa discroll */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* jangan center vertikal, biar gak "jatuh" ke area footer */
+  align-items: flex-start;
+
+  /* ruang aman atas-bawah (sesuaikan kalau perlu) */
+  padding-top: 70px;      /* antisipasi header AppMySite */
+  padding-bottom: 130px;  /* antisipasi bottom nav AppMySite */
+}
+
+/* batasi tinggi card supaya selalu muat di layar */
+#hasilModal .hasil-card{
+  max-height: calc(100dvh - 200px); /* 70+130 kira-kira */
+}
+
+/* kalau konten lebih panjang, biar bagian dalam card yang scroll */
+#hasilModal .hasil-card #hasilForm{
+  max-height: calc(100dvh - 260px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
 }
