@@ -842,7 +842,7 @@
         class="fixed inset-0 z-[100] hidden p-4 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
         aria-hidden="true">
 
-        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-100">
+        <div class="hasil-card w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-100">
             <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 to-blue-900 text-white relative overflow-hidden">
                 <div class="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
                 
