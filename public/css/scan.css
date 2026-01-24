@@ -387,75 +387,76 @@
    ========================================================= */
 
 /* tinggi bar AppMySite (boleh kamu adjust) */
-:root{
-  --ams-top: 76px;      /* header AppMySite */
-  --ams-bottom: 110px;  /* bottom nav AppMySite */
+:root {
+    --ams-top: 76px; /* header AppMySite */
+    --ams-bottom: 110px; /* bottom nav AppMySite */
 }
 
-#hasilModal{
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+#hasilModal {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 
-  /* jangan center vertikal */
-  align-items: flex-start;
+    /* jangan center vertikal */
+    align-items: flex-start;
 
-  /* ruang aman atas-bawah */
-  padding-top: calc(var(--ams-top) + 12px + env(safe-area-inset-top));
-  padding-bottom: calc(var(--ams-bottom) + 12px + env(safe-area-inset-bottom));
+    /* ruang aman atas-bawah */
+    padding-top: calc(var(--ams-top) + 12px + env(safe-area-inset-top));
+    padding-bottom: calc(
+        var(--ams-bottom) + 12px + env(safe-area-inset-bottom)
+    );
 }
 
 /* card jadi layout kolom, biar body bisa scroll */
-#hasilModal .hasil-card{
-  display: flex;
-  flex-direction: column;
+#hasilModal .hasil-card {
+    display: flex;
+    flex-direction: column;
 
-  width: min(92vw, 420px);
+    width: min(92vw, 420px);
 
-  /* fallback untuk webview yang belum support dvh */
-  max-height: calc(100vh - (var(--ams-top) + var(--ams-bottom) + 24px));
-  max-height: calc(100dvh - (var(--ams-top) + var(--ams-bottom) + 24px));
+    /* fallback untuk webview yang belum support dvh */
+    max-height: calc(100vh - (var(--ams-top) + var(--ams-bottom) + 24px));
+    max-height: calc(100dvh - (var(--ams-top) + var(--ams-bottom) + 24px));
 }
 
 /* body form yang scroll */
-#hasilForm{
-  flex: 1 1 auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 14px 16px;
+#hasilForm {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 16px;
 }
 
 /* action bar selalu kelihatan */
-#hasilActions{
-  position: sticky;
-  bottom: 0;
-  background: #fff;
-  z-index: 20;
+#hasilActions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 20;
 
-  padding-top: 12px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    padding-top: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 /* mode compact buat layar pendek (AppMySite biasanya pendek) */
-@media (max-height: 740px){
-  #hasilModal .hasil-card{
-    transform: scale(.94);
-    transform-origin: top center;
-  }
+@media (max-height: 740px) {
+    #hasilModal .hasil-card {
+        transform: none;
+    }
 
-  #hasilForm input,
-  #hasilForm select{
-    padding-top: .55rem !important;
-    padding-bottom: .55rem !important;
-    font-size: .9rem !important;
-  }
+    #hasilForm input,
+    #hasilForm select {
+        padding-top: 0.55rem !important;
+        padding-bottom: 0.55rem !important;
+        font-size: 0.9rem !important;
+    }
 
-  #hasilForm label{
-    font-size: .72rem !important;
-  }
+    #hasilForm label {
+        font-size: 0.72rem !important;
+    }
 }
 
-@media (max-height: 680px){
-  #hasilModal .hasil-card{
-    transform: scale(.90);
-  }
+@media (max-height: 680px) {
+    #hasilModal .hasil-card {
+        transform: none;
+    }
 }
