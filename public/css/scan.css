@@ -440,7 +440,8 @@
 /* mode compact buat layar pendek (AppMySite biasanya pendek) */
 @media (max-height: 740px) {
     #hasilModal .hasil-card {
-        transform: none;
+        transform: scale(0.1);
+        transform-origin: top center;
     }
 
     #hasilForm input,
@@ -457,6 +458,6 @@
 
 @media (max-height: 680px) {
     #hasilModal .hasil-card {
-        transform: none;
+        transform: scale(0.98);
     }
 }
