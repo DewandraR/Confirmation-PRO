@@ -1033,7 +1033,7 @@
 {{-- ↓ Tidak ada CSS inline. Semua style khusus halaman dipindah ke scan.css --}}
 @push('styles')
     {{-- Kita ganti 'v' nya secara manual untuk memaksa browser download ulang --}}
-    <link rel="stylesheet" href="{{ asset('css/scan.css') }}?v=kmi-theme-v1">
+    <link rel="stylesheet" href="{{ asset('css/scan.css') }}?v=kmi-theme-v2-20260124">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
 @endpush
 
