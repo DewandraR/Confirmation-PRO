@@ -249,6 +249,11 @@
                                         </th>
 
                                         <th
+                                            class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[180px] col-remark-cat hidden">
+                                            Kategori Remark
+                                        </th>
+
+                                        <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[220px] col-remark hidden">
                                             Remark
                                         </th>

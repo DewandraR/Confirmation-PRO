@@ -12,6 +12,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class Yppi019DbApiController extends Controller
 {
@@ -709,6 +710,19 @@ class Yppi019DbApiController extends Controller
             'items.*.remark'      => ['required', 'string', 'max:500'],
             'items.*.remark_qty'  => ['required', 'numeric', 'gt:0'],
 
+            'items.*.tag' => ['required', 'string', Rule::in([
+                'Perbaikan Kayu',
+                'Perbaikan Logam',
+                'Perbaikan Aksesori',
+                'Perbaikan Warna / Perbaikan Cat',
+                'Sedang Dikerjakan',
+                'Masalah Kualitas',
+                'Komponen Dipesan',
+                'Menunggu Informasi Lebih Lanjut',
+                'Error Dalam Pengembangan',
+                'Lainnya',
+            ])],
+
             // ---- metadata display (opsional, tapi disarankan FE kirim) ----
             'items.*.qty_pro'     => ['nullable', 'numeric'],
             'items.*.meinh'       => ['nullable', 'string', 'max:8'],
@@ -824,6 +838,7 @@ class Yppi019DbApiController extends Controller
 
                     'remark'     => $remark,
                     'remark_qty' => $remarkQty,
+                    'tag' => trim((string)($it['tag'] ?? '')),
 
                     'nik'        => $nik,
                     'aufnr'      => $aufnr,

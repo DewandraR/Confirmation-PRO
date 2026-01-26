@@ -105,7 +105,7 @@ const toYYYYMMDD = (d) => {
         const x = new Date();
         return `${x.getFullYear()}${String(x.getMonth() + 1).padStart(
             2,
-            "0"
+            "0",
         )}${String(x.getDate()).padStart(2, "0")}`;
     }
     const s = String(d);
@@ -208,7 +208,7 @@ function collectSapReturnEntries(ret) {
                     o &&
                     typeof o === "object" &&
                     (o.MESSAGE || o.TYPE || o.ID) &&
-                    entries.push(o)
+                    entries.push(o),
             );
     }
     return entries;
@@ -216,7 +216,7 @@ function collectSapReturnEntries(ret) {
 
 const hasSapError = (ret) =>
     collectSapReturnEntries(ret).some((e) =>
-        ["E", "A"].includes(String(e?.TYPE || "").toUpperCase())
+        ["E", "A"].includes(String(e?.TYPE || "").toUpperCase()),
     );
 
 // normalisasi pesan error server (hindari "0") + handle 423
@@ -228,7 +228,7 @@ function mapServerErrorMessage(result) {
         entries.find(
             (e) =>
                 ["E", "A"].includes(String(e?.TYPE || "").toUpperCase()) &&
-                e?.MESSAGE
+                e?.MESSAGE,
         )?.MESSAGE ||
         entries.find((e) => e?.MESSAGE)?.MESSAGE ||
         j.error ||
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!AUFNRS.length && single) AUFNRS = [single];
     AUFNRS = [
         ...new Set(
-            AUFNRS.map(normalizeAufnr).filter((x) => /^\d{12}$/.test(x))
+            AUFNRS.map(normalizeAufnr).filter((x) => /^\d{12}$/.test(x)),
         ),
     ];
 
@@ -455,7 +455,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const toYMD = (d) =>
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
                 2,
-                "0"
+                "0",
             )}-${String(d.getDate()).padStart(2, "0")}`;
 
         const todayYMD = toYMD(today);
@@ -576,7 +576,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (picked < yesterday || picked > today) {
                 warning(
-                    "Posting Date hanya boleh hari ini atau kemarin untuk WIW."
+                    "Posting Date hanya boleh hari ini atau kemarin untuk WIW.",
                 );
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
@@ -616,7 +616,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const wiResults = await Promise.allSettled(
                 WI_CODES.map(async (code) => {
                     const url = `/api/wi/material?wi_code=${encodeURIComponent(
-                        code
+                        code,
                     )}&pernr=${encodeURIComponent(IV_PERNR)}`;
 
                     const res = await fetchWithTimeout(url, {
@@ -627,7 +627,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     if (!res.ok) {
                         throw new Error(
                             (json && (json.error || json.message)) ||
-                                `WI ${code}: HTTP ${res.status}`
+                                `WI ${code}: HTTP ${res.status}`,
                         );
                     }
 
@@ -638,7 +638,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         ...o,
                         WI_CODE: o.WI_CODE || code,
                     }));
-                })
+                }),
             );
 
             wiResults.forEach((r, idx) => {
@@ -647,7 +647,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     failures.push(
                         `WI ${WI_CODES[idx]}: ${
                             r.reason?.message || "gagal diambil"
-                        }`
+                        }`,
                     );
             });
         } else if (AUFNRS.length > 0) {
@@ -655,7 +655,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const results = await Promise.allSettled(
                 AUFNRS.map(async (aufnr) => {
                     let url = `/api/yppi019/material?aufnr=${encodeURIComponent(
-                        aufnr
+                        aufnr,
                     )}&pernr=${encodeURIComponent(IV_PERNR)}&auto_sync=0`;
                     if (IV_ARBPL)
                         url += `&arbpl=${encodeURIComponent(IV_ARBPL)}`;
@@ -668,25 +668,25 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const json = await safeJson(res);
                     if (!res.ok)
                         throw new Error(
-                            json.error || json.message || `HTTP ${res.status}`
+                            json.error || json.message || `HTTP ${res.status}`,
                         );
 
                     const t = json.T_DATA1;
                     return Array.isArray(t) ? t : t ? [t] : [];
-                })
+                }),
             );
 
             results.forEach((r) =>
                 r.status === "fulfilled"
                     ? (rowsAll = rowsAll.concat(r.value))
-                    : failures.push(r.reason?.message || "unknown")
+                    : failures.push(r.reason?.message || "unknown"),
             );
         } else {
             // WC mode
             const url = `/api/yppi019/material?arbpl=${encodeURIComponent(
-                IV_ARBPL
+                IV_ARBPL,
             )}&werks=${encodeURIComponent(IV_WERKS)}&pernr=${encodeURIComponent(
-                IV_PERNR
+                IV_PERNR,
             )}&auto_sync=0`;
 
             const res = await fetchWithTimeout(url, {
@@ -695,7 +695,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const json = await safeJson(res);
             if (!res.ok)
                 throw new Error(
-                    json.error || json.message || `HTTP ${res.status}`
+                    json.error || json.message || `HTTP ${res.status}`,
                 );
 
             const t = json.T_DATA1;
@@ -770,6 +770,41 @@ document.addEventListener("DOMContentLoaded", async () => {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
 
+    // ===== REMARK CATEGORY OPTIONS (NEW) =====
+    const REMARK_CATEGORIES = [
+        { value: "", label: "Pilih kategori..." },
+        { value: "Perbaikan Kayu", label: "Perbaikan Kayu" },
+        { value: "Perbaikan Logam", label: "Perbaikan Logam" },
+        { value: "Perbaikan Aksesori", label: "Perbaikan Aksesori" },
+        {
+            value: "Perbaikan Warna / Perbaikan Cat",
+            label: "Perbaikan Warna / Perbaikan Cat",
+        },
+        { value: "Sedang Dikerjakan", label: "Sedang Dikerjakan" },
+        { value: "Masalah Kualitas", label: "Masalah Kualitas" },
+        { value: "Komponen Dipesan", label: "Komponen Dipesan" },
+        {
+            value: "Menunggu Informasi Lebih Lanjut",
+            label: "Menunggu Informasi Lebih Lanjut",
+        },
+        {
+            value: "Error Dalam Pengembangan",
+            label: "Error Dalam Pengembangan",
+        },
+        { value: "Lainnya", label: "Lainnya" },
+    ];
+
+    function buildRemarkCatOptions(selected) {
+        const sel = String(selected || "");
+        return REMARK_CATEGORIES.map((o) => {
+            const v = String(o.value || "");
+            const isSel = v === sel ? " selected" : "";
+            return `<option value="${esc(v)}"${isSel}>${esc(o.label)}</option>`;
+        }).join("");
+    }
+
+    const RMK_CAT_OPTIONS_DEFAULT = buildRemarkCatOptions("");
+
     const toKey = (s) => String(s ?? "").toLowerCase();
 
     tableBody.innerHTML = rowsAll
@@ -785,11 +820,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const meinh = (r.MEINH || "ST").toUpperCase();
 
             const ltxa1 = String(
-                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
+                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? "",
             ).trim();
             const wcInduk = r.ARBPL0 || r.ARBPL || IV_ARBPL || "-";
             const wcAnakRaw = String(
-                r.WC_CHILD || r.child_workcenter || ""
+                r.WC_CHILD || r.child_workcenter || "",
             ).trim();
             const wcAnakView = wcAnakRaw || "No WC group";
             const wcWithDesc = ltxa1 ? `${wcInduk} / ${ltxa1}` : wcInduk;
@@ -797,7 +832,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // plant
             const dispo = String(r.DISPO || "").toUpperCase();
             const werksRow = String(
-                r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? ""
+                r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? "",
             ).replace(/^0+/, "");
             const shouldPrefillMax =
                 ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
@@ -810,14 +845,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ssavdYMD && ssavdYMD.length === 8
                     ? `${ssavdYMD.slice(6, 8)}/${ssavdYMD.slice(
                           4,
-                          6
+                          6,
                       )}/${ssavdYMD.slice(0, 4)}`
                     : "";
             const sssldDMY =
                 sssldYMD && sssldYMD.length === 8
                     ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(
                           4,
-                          6
+                          6,
                       )}/${sssldYMD.slice(0, 4)}`
                     : "";
 
@@ -906,7 +941,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     </td>
 
     <td class="px-3 py-3 text-sm font-semibold text-slate-900">${esc(
-        r.AUFNR || "-"
+        r.AUFNR || "-",
     )}</td>
 
     <td class="align-middle">
@@ -928,13 +963,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   step="${meinh === "M3" ? "0.001" : "1"}"
   inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
   title="Maks: ${esc(String(maxAllow))} (sisa SPK=${esc(
-                String(sisaSPK)
-            )}, sisa SPX=${esc(String(qtySPX))})" />
+      String(sisaSPK),
+  )}, sisa SPX=${esc(String(qtySPX))})" />
 
 <div class="mt-1 text-[11px] text-slate-400">
   Maks: <b class="js-max-confirm">${esc(String(maxAllow))}</b> (${esc(
-                getUnitName(meinh)
-            )})
+      getUnitName(meinh),
+  )})
 </div>
     </td>
 
@@ -957,9 +992,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <div class="mt-1 text-[11px] text-slate-400">
   Maks: <b class="js-max-remark">${esc(String(maxAllow))}</b> (${esc(
-                  getUnitName(meinh)
-              )})
+      getUnitName(meinh),
+  )})
 </div>
+    </td>
+
+    <!-- Kategori Remark (WI mode) -->
+    <td class="px-3 py-3 text-sm text-slate-700 col-remark-cat">
+      <select
+        class="remark-cat-select w-48 px-2 py-1 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500">
+        ${RMK_CAT_OPTIONS_DEFAULT}
+      </select>
     </td>
 
     <!-- Pesan Remark (WI mode) -->
@@ -969,7 +1012,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         placeholder="Isi remark..."
         maxlength="500">
     </td>
-    `
+  `
             : ``
     }
 
@@ -981,7 +1024,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(ltimexStr)}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(
-        r.PERNR || IV_PERNR || "-"
+        r.PERNR || IV_PERNR || "-",
     )}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.SNAME || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.DISPO || "-")}</td>
@@ -994,12 +1037,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       ${isWiMode ? esc(wcAnakView) : ""}
     </td>
     <td class="px-3 py-3 text-sm text-slate-700 col-status-op">${esc(
-        statusOpView
+        statusOpView,
     )}</td>
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
-        soItem
+        soItem,
     )}</td>
   </tr>`;
         })
@@ -1021,6 +1064,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!isWiMode || !tr) return;
 
         const qtyInputEl = tr.querySelector('input[name="QTY_SPX"]');
+        const remarkCatEl = tr.querySelector(".remark-cat-select");
         const qtyRemarkEl = tr.querySelector('input[name="QTY_RMK"]');
         const remarkEl = tr.querySelector(".remark-input");
 
@@ -1028,7 +1072,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const baseMax =
             parseFloat(
-                qtyInputEl.dataset.maxBase || qtyRemarkEl.dataset.maxBase || "0"
+                qtyInputEl.dataset.maxBase ||
+                    qtyRemarkEl.dataset.maxBase ||
+                    "0",
             ) || 0;
 
         let qc =
@@ -1050,6 +1096,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (qr <= 0 && remarkEl) remarkEl.value = "";
             }
         }
+        // ✅ INI: kalau qty remark jadi 0, bersihin pasangan remark
+        if (qr <= 0) {
+            if (remarkEl) remarkEl.value = "";
+            if (remarkCatEl) remarkCatEl.value = "";
+        }
 
         const remainForRemark = Math.max(0, baseMax - qc);
         const remainForConfirm = Math.max(0, baseMax - qr);
@@ -1069,15 +1120,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // mutual lock
         if (remainForRemark <= 0) {
-            qtyRemarkEl.value = "0";
-            setDisabledInput(qtyRemarkEl, true);
-            if (remarkEl) {
-                remarkEl.value = "";
-                setDisabledInput(remarkEl, true);
+            if (remarkCatEl) {
+                remarkCatEl.value = "";
+                setDisabledInput(remarkCatEl, true);
             }
         } else {
-            setDisabledInput(qtyRemarkEl, false);
-            if (remarkEl) setDisabledInput(remarkEl, false);
+            // enable hanya kalau user memang sedang remark
+            const shouldEnableCat =
+                qr > 0 || (remarkEl && remarkEl.value.trim().length > 0);
+            if (remarkCatEl) setDisabledInput(remarkCatEl, !shouldEnableCat);
+            if (!shouldEnableCat && remarkCatEl) remarkCatEl.value = "";
         }
 
         if (remainForConfirm <= 0) {
@@ -1109,7 +1161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ) {
             syncRowQtyLimits(
                 tr,
-                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm"
+                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm",
             );
         }
 
@@ -1136,14 +1188,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         ) {
             syncRowQtyLimits(
                 tr,
-                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm"
+                t.matches('input[name="QTY_RMK"]') ? "remark" : "confirm",
             );
         }
 
         if (
             t.matches('input[name="QTY_SPX"]') ||
             t.matches('input[name="QTY_RMK"]') ||
-            t.classList.contains("remark-input")
+            t.classList.contains("remark-input") ||
+            t.classList.contains("remark-cat-select") // ✅ NEW
         ) {
             scheduleStateUpdate();
         }
@@ -1154,6 +1207,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const thWcAnak = document.querySelector("th.col-wc-anak");
     const thRemark = document.querySelector("th.col-remark");
     const thQtyRemark = document.querySelector("th.col-qty-remark");
+    const thRemarkCat = document.querySelector("th.col-remark-cat");
     const thStatusOp = document.querySelector("th.col-status-op");
 
     if (isWiMode) {
@@ -1161,6 +1215,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         document
             .querySelectorAll("td.col-status-op")
             .forEach((el) => (el.style.display = "none"));
+
+        if (thRemarkCat) thRemarkCat.classList.remove("hidden");
+        document
+            .querySelectorAll("td.col-remark-cat")
+            .forEach((el) => (el.style.display = ""));
         if (thQtyRemark) thQtyRemark.classList.remove("hidden");
         document
             .querySelectorAll("td.col-qty-remark")
@@ -1177,6 +1236,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         document
             .querySelectorAll("td.col-status-op")
             .forEach((el) => (el.style.display = ""));
+
+        if (thRemarkCat) thRemarkCat.classList.add("hidden");
+        document
+            .querySelectorAll("td.col-remark-cat")
+            .forEach((el) => (el.style.display = "none"));
 
         if (thQtyRemark) thQtyRemark.classList.add("hidden");
         document
@@ -1199,7 +1263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (isWCMode && headAUFNR) {
         const getOpDesc = (r) =>
             String(
-                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? ""
+                r.LTXA1 ?? r.ltxa1 ?? r.OPDESC ?? r.OPR_TXT ?? r.LTXA1X ?? "",
             ).trim();
         const uniqueDesc = [...new Set(rowsAll.map(getOpDesc).filter(Boolean))];
         if (uniqueDesc.length) {
@@ -1217,7 +1281,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (isWCMode) {
         document
             .querySelectorAll(
-                ".col-workcenter, .col-workcenter-desc, .col-wc-anak"
+                ".col-workcenter, .col-workcenter-desc, .col-wc-anak",
             )
             .forEach((el) => {
                 el.style.display = "none";
@@ -1239,7 +1303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function rowPassesStatusFilter(tr) {
         if (statusFilterMode !== "dspt") return true;
         const s = String(
-            tr.dataset.stats2 || tr.dataset.stats || ""
+            tr.dataset.stats2 || tr.dataset.stats || "",
         ).toUpperCase();
         return s.includes("DSPT");
     }
@@ -1248,7 +1312,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const d = new Date();
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
             2,
-            "0"
+            "0",
         )}${String(d.getDate()).padStart(2, "0")}`;
     }
 
@@ -1303,13 +1367,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             parseFloat((qtyInputEl?.value || "0").replace(",", ".")) || 0;
         const qtyRemark =
             parseFloat((qtyRemarkEl?.value || "0").replace(",", ".")) || 0;
+        const remarkCatEl = tr.querySelector(".remark-cat-select");
+        const remarkCategory = (remarkCatEl?.value || "").trim();
         const remarkText = (remarkEl?.value || "").trim();
 
         const baseMax =
             parseFloat(
                 qtyInputEl?.dataset.maxBase ||
                     qtyRemarkEl?.dataset.maxBase ||
-                    "0"
+                    "0",
             ) || 0;
 
         const maxConfirm =
@@ -1321,6 +1387,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             qtyConfirm,
             qtyRemark,
             remarkText,
+            remarkCategory,
             baseMax,
             maxConfirm,
             maxRemark,
@@ -1330,10 +1397,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // WI rule: Qty Remark <-> Pesan Remark wajib berpasangan
     function remarkPairValid(tr) {
         if (!isWiMode) return true;
-        const { qtyRemark, remarkText } = getRowNums(tr);
+        const { qtyRemark, remarkText, remarkCategory } = getRowNums(tr);
         const hasQty = qtyRemark > 0;
         const hasMsg = remarkText.length > 0;
-        return (hasQty && hasMsg) || (!hasQty && !hasMsg);
+        const hasCat = (remarkCategory || "").length > 0;
+
+        // Harus semuanya diisi kalau salah satu dipakai
+        return (hasQty && hasMsg && hasCat) || (!hasQty && !hasMsg && !hasCat);
     }
 
     function rowHasAction(tr) {
@@ -1453,7 +1523,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             b.classList.remove(
                 "bg-emerald-600",
                 "text-white",
-                "border-emerald-600"
+                "border-emerald-600",
             );
             b.classList.add("border-slate-300");
         });
@@ -1462,7 +1532,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btn.classList.add(
                 "bg-emerald-600",
                 "text-white",
-                "border-emerald-600"
+                "border-emerald-600",
             );
         }
     }
@@ -1601,7 +1671,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (isWiMode && tr) {
                     syncRowQtyLimits(
                         tr,
-                        this.name === "QTY_RMK" ? "remark" : "confirm"
+                        this.name === "QTY_RMK" ? "remark" : "confirm",
                     );
                 }
             });
@@ -1645,6 +1715,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const qtyInput = tr.querySelector('input[name="QTY_SPX"]');
         const qtyRemarkInput = tr.querySelector('input[name="QTY_RMK"]'); // WI only
+        const rowRemarkCatVal = (
+            tr.querySelector(".remark-cat-select")?.value || ""
+        ).trim();
+
         const cb = tr.querySelector(".row-checkbox");
 
         const rowRemarkVal = (
@@ -1677,6 +1751,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             meinh: tr.dataset.meinh || "ST",
             qtycur: qtyInput ? qtyInput.value || "0" : "0",
             qtyremarkcur: rowQtyRemarkVal,
+            remarkCategory: rowRemarkCatVal,
             // base max diambil dari data-max-base (lebih tepat)
             max: qtyInput
                 ? qtyInput.dataset.maxBase || qtyInput.dataset.max || "0"
@@ -1703,7 +1778,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div>
         <div class="text-[11px] text-slate-500">Work Center</div>
         <div class="font-semibold">${esc(
-            data.wc + (data.ltxa1 ? " / " + data.ltxa1 : "")
+            data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""),
         )}</div>
       </div>
     `;
@@ -1788,7 +1863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     <div class="mt-3">
       <label class="text-[11px] text-slate-500 block mb-1">Qty Input (${esc(
-          unitNamePopup
+          unitNamePopup,
       )})</label>
       <input id="row-detail-qty" type="number"
         inputmode="${unit === "M3" ? "decimal" : "numeric"}"
@@ -1801,7 +1876,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-max="${esc(data.max)}"
         data-meinh="${esc(data.meinh)}">
       <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-confirm">${esc(
-          data.max
+          data.max,
       )}</b> (${esc(unitNamePopup)})</div>
     </div>
 
@@ -1810,7 +1885,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ? `
       <div class="mt-3">
         <label class="text-[11px] text-slate-500 block mb-1">Qty Remark (${esc(
-            unitNamePopup
+            unitNamePopup,
         )})</label>
         <input id="row-detail-qty-remark" type="number"
           inputmode="${unit === "M3" ? "decimal" : "numeric"}"
@@ -1823,8 +1898,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           data-max="${esc(data.max)}"
           data-meinh="${esc(data.meinh)}">
         <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-remark">${esc(
-            data.max
+            data.max,
         )}</b> (${esc(unitNamePopup)})</div>
+      </div>
+
+      <div class="mt-3">
+        <label class="text-[11px] text-slate-500 block mb-1">Kategori Remark</label>
+        <select id="row-detail-remark-cat"
+            class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500">
+            ${buildRemarkCatOptions(data.remarkCategory)}
+        </select>
       </div>
 
       <div class="mt-3">
@@ -1844,6 +1927,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const modalQty = document.getElementById("row-detail-qty");
         const modalQtyRemark = document.getElementById("row-detail-qty-remark");
         const modalRemark = document.getElementById("row-detail-remark");
+        const modalRemarkCat = document.getElementById("row-detail-remark-cat");
         const lblMaxConfirm = document.getElementById("row-detail-max-confirm");
         const lblMaxRemark = document.getElementById("row-detail-max-remark");
         // ===== UX: saat fokus, "0" langsung hilang dan teks terseleksi =====
@@ -1873,7 +1957,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     qtyInput?.dataset.max ||
                     qtyRemarkInput?.dataset.max ||
                     data.max ||
-                    "0"
+                    "0",
             ) || 0;
 
         // Sync limit di modal (agar sum qty <= baseMax, mirip tabel)
@@ -1921,6 +2005,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     qcClamped = Math.max(0, baseMax - qrClamped);
                 } else {
                     qrClamped = Math.max(0, baseMax - qcClamped);
+                    if (qrClamped <= 0) {
+                        if (modalRemark) modalRemark.value = "";
+                        if (modalRemarkCat) modalRemarkCat.value = "";
+                    }
                     if (qrClamped <= 0 && modalRemark) modalRemark.value = "";
                 }
             }
@@ -1952,6 +2040,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     if (modalRemark) {
                         modalRemark.value = "";
                         setDisabledInput(modalRemark, true);
+                    }
+                    if (modalRemarkCat) {
+                        modalRemarkCat.value = "";
+                        setDisabledInput(modalRemarkCat, true);
                     }
                 } else {
                     setDisabledInput(modalQtyRemark, false);
@@ -1994,10 +2086,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (isWiMode && modalQtyRemark) {
             modalQtyRemark.addEventListener("input", () =>
-                syncModalLimits("remark")
+                syncModalLimits("remark"),
             );
             modalQtyRemark.addEventListener("change", () =>
-                syncModalLimits("remark")
+                syncModalLimits("remark"),
             );
             modalQtyRemark.addEventListener("blur", () => {
                 normalizeAndClamp(modalQtyRemark);
@@ -2049,7 +2141,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     [rowDetailClose, rowDetailCancel].forEach((btn) =>
-        btn?.addEventListener("click", closeRowDetail)
+        btn?.addEventListener("click", closeRowDetail),
     );
 
     rowDetailSelect?.addEventListener("click", () => {
@@ -2076,9 +2168,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const inputModalQty = document.getElementById("row-detail-qty");
         const inputModalQtyRemark = document.getElementById(
-            "row-detail-qty-remark"
+            "row-detail-qty-remark",
         );
         const inputModalRemark = document.getElementById("row-detail-remark");
+        const inputModalRemarkCat = document.getElementById(
+            "row-detail-remark-cat",
+        );
+        const catRemark = (inputModalRemarkCat?.value || "").trim();
 
         const rowQtyInput = currentRow.querySelector('input[name="QTY_SPX"]');
         const rowQtyRemark = currentRow.querySelector('input[name="QTY_RMK"]');
@@ -2087,7 +2183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!rowQtyInput || !inputModalQty) return;
 
         const unit = String(
-            inputModalQty.dataset.meinh || rowQtyInput.dataset.meinh || "ST"
+            inputModalQty.dataset.meinh || rowQtyInput.dataset.meinh || "ST",
         ).toUpperCase();
 
         const baseMax =
@@ -2095,7 +2191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 rowQtyInput.dataset.maxBase ||
                     rowQtyRemark?.dataset.maxBase ||
                     inputModalQty.dataset.maxBase ||
-                    "0"
+                    "0",
             ) || 0;
 
         // parse
@@ -2108,7 +2204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (isWiMode) {
             qRemark =
                 parseFloat(
-                    String(inputModalQtyRemark?.value || "0").replace(",", ".")
+                    String(inputModalQtyRemark?.value || "0").replace(",", "."),
                 ) || 0;
             msgRemark = (inputModalRemark?.value || "").trim();
         }
@@ -2151,12 +2247,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             const hasQtyR = qRemark > 0;
             const hasMsg = msgRemark.length > 0;
+            const hasCat = catRemark.length > 0;
 
-            // Pair rule
-            if ((hasQtyR && !hasMsg) || (!hasQtyR && hasMsg)) {
+            if (
+                (hasQtyR && (!hasMsg || !hasCat)) ||
+                (!hasQtyR && (hasMsg || hasCat))
+            ) {
                 if (warningMessage)
                     warningMessage.innerHTML =
-                        "Qty Remark dan Pesan Remark <b>wajib</b> diisi berpasangan.";
+                        "Qty Remark, Kategori Remark, dan Pesan Remark <b>wajib</b> diisi berpasangan.";
                 isWarningOpen = true;
                 pendingResetInput = hasQtyR
                     ? inputModalRemark
@@ -2184,6 +2283,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (rowQtyRemark && inputModalQtyRemark)
                 rowQtyRemark.value = String(qRemark);
             if (rowRemark && inputModalRemark) rowRemark.value = msgRemark;
+            const rowRemarkCatEl =
+                currentRow.querySelector(".remark-cat-select");
+            if (rowRemarkCatEl && inputModalRemarkCat)
+                rowRemarkCatEl.value = catRemark;
 
             // sinkron max dinamis di row (supaya disable/label ikut benar)
             syncRowQtyLimits(currentRow, "init");
@@ -2241,6 +2344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 qtyConfirm: nums.qtyConfirm,
                 qtyRemark: nums.qtyRemark,
+                remarkCategory: nums.remarkCategory,
                 remarkText: nums.remarkText,
 
                 // ✅ PENTING: WI max confirm & max remark beda (dinamis)
@@ -2255,34 +2359,36 @@ document.addEventListener("DOMContentLoaded", async () => {
             // 1) Pair rule
             const badPair = items.find(
                 (x) =>
-                    (x.qtyRemark > 0 && x.remarkText.length === 0) ||
-                    (x.qtyRemark <= 0 && x.remarkText.length > 0)
+                    (x.qtyRemark > 0 &&
+                        (x.remarkText.length === 0 || !x.remarkCategory)) ||
+                    (x.qtyRemark <= 0 &&
+                        (x.remarkText.length > 0 || !!x.remarkCategory)),
             );
             if (badPair) {
                 warning(
-                    "Qty Remark dan Pesan Remark <b>wajib</b> diisi berpasangan."
+                    "Qty Remark dan Pesan Remark <b>wajib</b> diisi berpasangan.",
                 );
                 return;
             }
 
             // 2) Minimal harus ada aksi
             const noAction = items.every(
-                (x) => x.qtyConfirm <= 0 && x.qtyRemark <= 0
+                (x) => x.qtyConfirm <= 0 && x.qtyRemark <= 0,
             );
             if (noAction) {
                 warning(
-                    "Isi <b>Qty Input</b> atau <b>Qty Remark</b> untuk item yang dipilih."
+                    "Isi <b>Qty Input</b> atau <b>Qty Remark</b> untuk item yang dipilih.",
                 );
                 return;
             }
 
             // 3) enforce sum <= baseMax (jaga-jaga)
             const badSum = items.find(
-                (x) => x.qtyConfirm + x.qtyRemark > x.baseMax
+                (x) => x.qtyConfirm + x.qtyRemark > x.baseMax,
             );
             if (badSum) {
                 warning(
-                    `Total <b>Qty Input + Qty Remark</b> tidak boleh melebihi <b>${badSum.baseMax}</b>.`
+                    `Total <b>Qty Input + Qty Remark</b> tidak boleh melebihi <b>${badSum.baseMax}</b>.`,
                 );
                 return;
             }
@@ -2339,7 +2445,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (confirmItems.length > 0) {
             const counts = confirmItems.reduce(
                 (acc, it) => ((acc[it.aufnr] = (acc[it.aufnr] || 0) + 1), acc),
-                {}
+                {},
             );
             const duplicates = Object.entries(counts).filter(([, n]) => n > 1);
             if (duplicates.length) {
@@ -2348,11 +2454,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                         .map(
                             ([a, n]) =>
                                 `<li><span class="font-mono">${esc(
-                                    a
-                                )}</span> &times; ${esc(String(n))} baris</li>`
+                                    a,
+                                )}</span> &times; ${esc(String(n))} baris</li>`,
                         )
                         .join(
-                            ""
+                            "",
                         )}</ul><br>Silakan konfirmasi satu per satu untuk setiap PRO.`;
                 warningModal?.classList.remove("hidden");
                 return;
@@ -2363,7 +2469,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const invalidConfirmMax = items.find(
             (x) =>
                 x.qtyConfirm > 0 &&
-                x.qtyConfirm > (isWiMode ? x.maxConfirm : x.maxConfirm)
+                x.qtyConfirm > (isWiMode ? x.maxConfirm : x.maxConfirm),
         );
         if (invalidConfirmMax) {
             const msg = `Qty Input melebihi batas. Isi kuantitas valid (>0 & ≤ ${invalidConfirmMax.maxConfirm}).`;
@@ -2374,7 +2480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         const invalidRemarkMax = items.find(
-            (x) => x.qtyRemark > 0 && x.qtyRemark > x.maxRemark
+            (x) => x.qtyRemark > 0 && x.qtyRemark > x.maxRemark,
         );
         if (invalidRemarkMax) {
             const msg = `Qty Remark melebihi batas. Isi kuantitas valid (>0 & ≤ ${invalidRemarkMax.maxRemark}).`;
@@ -2402,13 +2508,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   </div>
   <div class="mt-1 text-xs text-slate-500 flex gap-4">
     <span>Qty Input: <b class="font-mono">${esc(
-        String(x.qtyConfirm || 0)
+        String(x.qtyConfirm || 0),
     )}</b></span>
+    <span>Kategori: <b class="font-mono">${esc(x.remarkCategory || "-")}</b></span>
+
     <span>Qty Remark: <b class="font-mono">${esc(
-        String(x.qtyRemark || 0)
+        String(x.qtyRemark || 0),
     )}</b></span>
   </div>
-</li>`
+</li>`,
                 )
                 .join("");
         }
@@ -2437,7 +2545,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (pendingRemarkItems.length > 0) {
                 const remarkPayloadItems = pendingRemarkItems.map((x) => {
                     const row = x.row;
-                    const { qtyRemark, remarkText } = getRowNums(row);
+                    const { qtyRemark, remarkText, remarkCategory } =
+                        getRowNums(row);
 
                     return {
                         wi_code: row.dataset.wiCode || "",
@@ -2452,6 +2561,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                         remark: remarkText,
                         remark_qty: qtyRemark,
+                        tag: remarkCategory || "",
 
                         // metadata
                         werks: row.dataset.werks || null,
@@ -2489,7 +2599,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const confirmItemsPayload = pendingConfirmItems.map((x) => {
                     const row = x.row;
                     const qty = parseFloat(
-                        row.querySelector('input[name="QTY_SPX"]').value || "0"
+                        row.querySelector('input[name="QTY_SPX"]').value || "0",
                     );
 
                     const ssavd =
@@ -2550,7 +2660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 const cRes = await apiPost(
                     "/api/yppi019/confirm-async",
-                    payload
+                    payload,
                 );
                 const cJson = await safeJson(cRes);
                 if (!(cRes.status === 202)) {
