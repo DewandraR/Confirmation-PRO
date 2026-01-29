@@ -51,6 +51,7 @@ class WiDocumentController extends Controller
             foreach ($docs as $doc) {
                 $plantCode = $doc['plant_code'] ?? null;
 
+                // doc-level fallback (kalau item ssavd/sssld tidak ada)
                 $docDate = isset($doc['document_date'])
                     ? Carbon::parse($doc['document_date'])->format('Y-m-d')
                     : null;
@@ -66,7 +67,16 @@ class WiDocumentController extends Controller
                         if ($itemNik !== $nik) continue;
                     }
 
-                    // ✅ FIX: definisikan dulu
+                    // ✅ ambil start/finish per PRO (per item)
+                    $itemStart = isset($item['ssavd']) && trim((string)$item['ssavd']) !== ''
+                        ? Carbon::parse($item['ssavd'])->format('Y-m-d')
+                        : $docDate;
+
+                    $itemFinish = isset($item['sssld']) && trim((string)$item['sssld']) !== ''
+                        ? Carbon::parse($item['sssld'])->format('Y-m-d')
+                        : $expDate;
+
+                    // matnr normalize
                     $matNumber = $item['material_number'] ?? null;
                     if (is_string($matNumber)) {
                         $matNumber = trim($matNumber);
@@ -107,10 +117,11 @@ class WiDocumentController extends Controller
                         'ARBPL0'  => $item['workcenter_induk'] ?? null,
                         'WERKS'   => $plantCode,
 
-                        'SSAVD'   => $docDate,
-                        'SSSLD'   => $expDate,
-                        'GSTRP'   => $docDate,
-                        'GLTRP'   => $expDate,
+                        // ✅ INI YANG DIUBAH: pakai ssavd/sssld item
+                        'SSAVD'   => $itemStart,
+                        'SSSLD'   => $itemFinish,
+                        'GSTRP'   => $itemStart,
+                        'GLTRP'   => $itemFinish,
 
                         'LTIMEX'  => $item['calculated_tak_time'] ?? null,
                         'WI_CODE' => $doc['wi_code'] ?? null,
