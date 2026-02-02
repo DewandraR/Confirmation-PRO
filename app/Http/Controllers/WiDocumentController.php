@@ -11,7 +11,12 @@ class WiDocumentController extends Controller
     public function materialFromWi(Request $request)
     {
         // ✅ Ambil NIK dari body JSON ATAU query (biar kompatibel GET/POST)
-        $nik = trim((string)($request->input('nik') ?? $request->query('nik', '')));
+        $nik = trim((string)(
+            $request->input('nik')
+            ?? $request->query('nik')
+            ?? $request->input('pernr')
+            ?? $request->query('pernr', '')
+        ));
 
         // Ambil WI dari body JSON / query:
         $rawSingleIn = $request->input('wi_code', null);
@@ -51,7 +56,6 @@ class WiDocumentController extends Controller
             foreach ($docs as $doc) {
                 $plantCode = $doc['plant_code'] ?? null;
 
-                // doc-level fallback (kalau item ssavd/sssld tidak ada)
                 $docDate = isset($doc['document_date'])
                     ? Carbon::parse($doc['document_date'])->format('Y-m-d')
                     : null;
@@ -60,23 +64,24 @@ class WiDocumentController extends Controller
                     ? Carbon::parse($doc['expired_at'])->format('Y-m-d')
                     : null;
 
-                foreach ($doc['pro_items'] ?? [] as $item) {
+                // ✅ ambil item dari key yang benar
+                $items = $doc['history_wi_item'] ?? $doc['pro_items'] ?? [];
+                if (!is_array($items)) $items = [];
 
+                foreach ($items as $item) {
                     if ($nik !== '') {
                         $itemNik = trim((string)($item['nik'] ?? ''));
                         if ($itemNik !== $nik) continue;
                     }
 
-                    // ✅ ambil start/finish per PRO (per item)
-                    $itemStart = isset($item['ssavd']) && trim((string)$item['ssavd']) !== ''
+                    $itemStart = !empty($item['ssavd'])
                         ? Carbon::parse($item['ssavd'])->format('Y-m-d')
                         : $docDate;
 
-                    $itemFinish = isset($item['sssld']) && trim((string)$item['sssld']) !== ''
+                    $itemFinish = !empty($item['sssld'])
                         ? Carbon::parse($item['sssld'])->format('Y-m-d')
                         : $expDate;
 
-                    // matnr normalize
                     $matNumber = $item['material_number'] ?? null;
                     if (is_string($matNumber)) {
                         $matNumber = trim($matNumber);
@@ -95,7 +100,7 @@ class WiDocumentController extends Controller
                         'AUFNR'   => $item['aufnr'] ?? null,
                         'VORNR'   => $item['vornr'] ?? null,
                         'PERNR'   => $item['nik']   ?? null,
-                        'SNAME'   => $item['name']  ?? null,
+                        'SNAME'   => $item['operator_name'] ?? null,
                         'MEINH'   => $item['uom']   ?? 'ST',
 
                         'QTY_SPK'    => $assigned,
@@ -114,16 +119,23 @@ class WiDocumentController extends Controller
                         'KDAUF'   => $item['kdauf'] ?? null,
                         'KDPOS'   => $item['kdpos'] ?? null,
 
-                        'ARBPL0'  => $item['workcenter_induk'] ?? null,
+                        // ✅ supaya FE bisa tampil WC Induk/WC Anak
+                        'ARBPL0'  => $item['parent_wc'] ?? ($doc['workcenter'] ?? null),
+                        'WC_CHILD'=> $item['child_wc'] ?? null,
+
+                        // optional status utk filter non-WI (walau WI disembunyikan)
+                        'STATS2'  => $item['status_pro_wi'] ?? ($item['status'] ?? null),
+
                         'WERKS'   => $plantCode,
 
-                        // ✅ INI YANG DIUBAH: pakai ssavd/sssld item
                         'SSAVD'   => $itemStart,
                         'SSSLD'   => $itemFinish,
                         'GSTRP'   => $itemStart,
                         'GLTRP'   => $itemFinish,
 
-                        'LTIMEX'  => $item['calculated_tak_time'] ?? null,
+                        // ✅ typo fix: takt_time
+                        'LTIMEX'  => $item['calculated_takt_time'] ?? null,
+
                         'WI_CODE' => $doc['wi_code'] ?? null,
                     ];
                 }
@@ -241,7 +253,12 @@ class WiDocumentController extends Controller
     }
     public function getByNik(Request $request)
     {
-        $nik = trim((string)($request->input('nik') ?? $request->query('nik', '')));
+        $nik = trim((string)(
+            $request->input('nik')
+            ?? $request->query('nik')
+            ?? $request->input('pernr')
+            ?? $request->query('pernr', '')
+        ));
         if ($nik === '') {
             return response()->json(['status' => 'error', 'message' => 'nik wajib diisi'], 422);
         }
