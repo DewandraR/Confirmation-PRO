@@ -289,6 +289,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const rawList = p.get("aufnrs") || "";
     const single = p.get("aufnr") || "";
 
+    let LONGSHIFT = Number(p.get("longshift") || 0) ? 1 : 0;
+
     // MULTI WI SUPPORT
     const wiRaw =
         p.get("wi_codes") || // format baru: wi_codes=code1,code2
@@ -312,6 +314,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         isWiMode &&
         WI_CODES.length > 0 &&
         WI_CODES.some((code) => /^WIW/i.test(code));
+
+    let isWiBackdateMode = isWIWMode;
 
     const IV_PERNR = (p.get("pernr") || "").trim();
     const IV_ARBPL = p.get("arbpl") || "";
@@ -420,62 +424,70 @@ document.addEventListener("DOMContentLoaded", async () => {
     const budatInputText = document.getElementById("budat-input-text"); // visible dd/mm/yyyy
     const budatOpen = document.getElementById("budat-open");
 
-    const isBudatLocked =
-        LOCK_BUDAT_USERS.includes(CUR_SAP_USER) || (isWiMode && !isWIWMode);
+    function applyBudatRules() {
+        if (!budatInput || !budatInputText) return;
 
-    if (isBudatLocked) {
+        const allowBackdate = isWiMode && (isWIWMode || LONGSHIFT === 1);
+
+        const isBudatLocked =
+            LOCK_BUDAT_USERS.includes(CUR_SAP_USER) ||
+            (isWiMode && !allowBackdate);
+
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, "0");
         const dd = String(today.getDate()).padStart(2, "0");
-        const ymd = `${yyyy}-${mm}-${dd}`;
+        const todayYMD = `${yyyy}-${mm}-${dd}`;
 
-        if (budatInput) {
-            budatInput.value = ymd;
-            budatInput.setAttribute("max", ymd);
+        if (isBudatLocked) {
+            budatInput.value = todayYMD;
+            budatInput.setAttribute("max", todayYMD);
             budatInput.disabled = true;
-        }
-        if (budatInputText) {
+
             budatInputText.value = `${dd}/${mm}/${yyyy}`;
             budatInputText.readOnly = true;
             budatInputText.classList.add("bg-slate-100", "cursor-not-allowed");
+
+            if (budatOpen) {
+                budatOpen.disabled = true;
+                budatOpen.classList.add("opacity-60", "cursor-not-allowed");
+            }
+            return;
         }
+
+        // UNLOCK
+        budatInput.disabled = false;
+        budatInputText.readOnly = false;
+        budatInputText.classList.remove("bg-slate-100", "cursor-not-allowed");
         if (budatOpen) {
-            budatOpen.disabled = true;
-            budatOpen.classList.add("opacity-60", "cursor-not-allowed");
+            budatOpen.disabled = false;
+            budatOpen.classList.remove("opacity-60", "cursor-not-allowed");
+        }
+
+        // Jika mode backdate (WIW atau longshift), batasi hanya hari ini & kemarin
+        if (allowBackdate) {
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            const yY = yesterday.getFullYear();
+            const yM = String(yesterday.getMonth() + 1).padStart(2, "0");
+            const yD = String(yesterday.getDate()).padStart(2, "0");
+            const yesterdayYMD = `${yY}-${yM}-${yD}`;
+
+            budatInput.min = yesterdayYMD;
+            budatInput.max = todayYMD;
+
+            // kalau value sekarang di luar range → set hari ini
+            const cur = (budatInput.value || "").trim();
+            if (!cur || cur < yesterdayYMD || cur > todayYMD)
+                budatInput.value = todayYMD;
+
+            syncHiddenToText();
         }
     }
 
     // ===== WIW MODE: BUDAT hanya hari ini & kemarin =====
-    if (isWIWMode && budatInput && budatInputText) {
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-
-        const toYMD = (d) =>
-            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-                2,
-                "0",
-            )}-${String(d.getDate()).padStart(2, "0")}`;
-
-        const todayYMD = toYMD(today);
-        const yesterdayYMD = toYMD(yesterday);
-
-        // set range
-        budatInput.min = yesterdayYMD;
-        budatInput.max = todayYMD;
-        budatInput.disabled = false;
-
-        budatInputText.readOnly = false;
-        budatInputText.classList.remove("bg-slate-100", "cursor-not-allowed");
-
-        budatOpen.disabled = false;
-        budatOpen.classList.remove("opacity-60", "cursor-not-allowed");
-
-        // default: hari ini
-        budatInput.value = todayYMD;
-        syncHiddenToText();
-    }
+    applyBudatRules();
 
     /* ---------- Search / Filter controls ---------- */
     const searchInput = document.getElementById("searchInput");
@@ -561,7 +573,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        if (isWIWMode) {
+        if (isWIWMode || LONGSHIFT === 1) {
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(today.getDate() - 1);
@@ -575,9 +587,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             yesterday.setHours(0, 0, 0, 0);
 
             if (picked < yesterday || picked > today) {
-                warning(
-                    "Posting Date hanya boleh hari ini atau kemarin untuk WIW.",
-                );
+                warning("Posting Date hanya boleh hari ini atau kemarin.");
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
@@ -714,6 +724,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         content?.classList.remove("hidden");
     }
 
+    if (isWiMode && rowsAll.length) {
+        LONGSHIFT = rowsAll.some(
+            (r) => Number(r.LONGSHIFT ?? r.longshift ?? 0) === 1,
+        )
+            ? 1
+            : 0;
+        applyBudatRules(); // 🔥 ini yang bikin Posting Date kebuka kalau longshift=1
+    }
+
     // FRONT-END FILTER: tampilkan hanya NIK yang diinput (khusus WI mode)
     if (isWiMode) {
         const want = normNik(IV_PERNR);
@@ -809,6 +828,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     tableBody.innerHTML = rowsAll
         .map((r, i) => {
+            const rowLongshift = Number(r.LONGSHIFT ?? r.longshift ?? 0)
+                ? 1
+                : 0;
             const vornr = padVornr(r.VORNRX || r.VORNR || "0");
 
             const qtySPK = parseFloat(r.QTY_SPK ?? 0); // Qty_PRO
@@ -904,6 +926,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     data-vornr="${esc(vornr)}"
     data-pernr="${esc(r.PERNR || IV_PERNR || "")}"
     data-wi-code="${esc(wiCodeRow)}"
+    data-longshift="${esc(String(rowLongshift))}"
     data-meinh="${esc(r.MEINH || "ST")}"
     data-gstrp="${esc(toYYYYMMDD(r.GSTRP))}"
     data-gltrp="${esc(toYYYYMMDD(r.GLTRP))}"
@@ -2562,6 +2585,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                         remark: remarkText,
                         remark_qty: qtyRemark,
                         tag: remarkCategory || "",
+                        longshift:
+                            parseInt(row.dataset.longshift || "0", 10) || 0,
 
                         // metadata
                         werks: row.dataset.werks || null,
@@ -2580,6 +2605,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 });
 
                 const rRes = await apiPost("/api/yppi019/remark-async", {
+                    longshift: LONGSHIFT,
                     items: remarkPayloadItems,
                 });
                 const rJson = await safeJson(rRes);
@@ -2616,6 +2642,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                         operator_name: row.dataset.sname || null,
 
                         qty_confirm: qty,
+                        longshift:
+                            parseInt(row.dataset.longshift || "0", 10) || 0,
                         qty_pro: parseFloat(row.dataset.qtyspk || "0"),
                         meinh: row.dataset.meinh || "ST",
 
@@ -2655,9 +2683,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const payload = {
                     budat: pickedBudat,
                     wi_code: WI_CODES.length === 1 ? WI_CODE : null,
+                    longshift: LONGSHIFT,
                     items: confirmItemsPayload,
                 };
-
                 const cRes = await apiPost(
                     "/api/yppi019/confirm-async",
                     payload,

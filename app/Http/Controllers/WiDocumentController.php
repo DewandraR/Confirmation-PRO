@@ -127,6 +127,8 @@ class WiDocumentController extends Controller
                         'STATS2'  => $item['status_pro_wi'] ?? ($item['status'] ?? null),
 
                         'WERKS'   => $plantCode,
+                        
+                        'LONGSHIFT' => (int)($doc['longshift'] ?? $item['longshift'] ?? 0),
 
                         'SSAVD'   => $itemStart,
                         'SSSLD'   => $itemFinish,
