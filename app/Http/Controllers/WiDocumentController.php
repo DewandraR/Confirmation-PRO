@@ -123,6 +123,9 @@ class WiDocumentController extends Controller
                         'ARBPL0'  => $item['parent_wc'] ?? ($doc['workcenter'] ?? null),
                         'WC_CHILD'=> $item['child_wc'] ?? null,
 
+                        // STATS (DSPT REL etc) override status_pro_wi
+                        'STATS'   => $item['stats'] ?? null,
+
                         // optional status utk filter non-WI (walau WI disembunyikan)
                         'STATS2'  => $item['status_pro_wi'] ?? ($item['status'] ?? null),
 

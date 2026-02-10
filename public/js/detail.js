@@ -500,11 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fltPeriod = document.getElementById("fltPeriod");
     const fltAllDate = document.getElementById("fltAllDate");
     const fltDspt = document.getElementById("fltDspt");
-    // WI mode: DSPT tidak boleh tampil
-    if (isWiMode && fltDspt) {
-        fltDspt.classList.add("hidden");
-        if (statusFilterMode === "dspt") statusFilterMode = "all";
-    }
+
     const periodPicker = document.getElementById("periodPicker");
     const periodFrom = document.getElementById("periodFrom");
     const periodTo = document.getElementById("periodTo");
@@ -967,6 +963,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         r.AUFNR || "-",
     )}</td>
 
+    <!-- Status / Stats (NEW) -->
+    <td class="px-3 py-3 text-sm text-center font-semibold text-slate-700">
+      ${esc(r.STATS || r.STATS2 || "-")}
+    </td>
+
     <td class="align-middle">
       <div class="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-xs font-bold text-gray-700 mx-auto">
         ${Number.isFinite(qtySPK) ? esc(String(qtySPK)) : "-"}
@@ -1326,7 +1327,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function rowPassesStatusFilter(tr) {
         if (statusFilterMode !== "dspt") return true;
         const s = String(
-            tr.dataset.stats2 || tr.dataset.stats || "",
+            tr.dataset.stats || tr.dataset.stats2 || "",
         ).toUpperCase();
         return s.includes("DSPT");
     }

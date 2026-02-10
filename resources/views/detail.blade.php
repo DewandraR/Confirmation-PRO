@@ -129,12 +129,10 @@
                                         All date
                                     </button>
 
-                                    @if(!$isWiModeBlade)
                                     <button id="fltDspt" type="button"
                                         class="px-3 py-1.5 rounded-full border border-slate-300 text-sm font-semibold hover:bg-emerald-700">
-                                        Dispatch
+                                        DSPT
                                     </button>
-                                    @endif
 
 
                                     {{-- Range picker hanya saat Period aktif --}}
@@ -230,6 +228,9 @@
                                         <th
                                             class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[120px]">
                                             PRO</th>
+                                        <th
+                                            class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
+                                            STATUS</th>
 
                                         {{-- ====== TAMBAHAN BARU (sinkron dengan detail.js) ====== --}}
 
