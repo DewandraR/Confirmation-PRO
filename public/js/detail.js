@@ -433,7 +433,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const isBudatLocked =
             LOCK_BUDAT_USERS.includes(CUR_SAP_USER);
-            // (isWiMode && !allowBackdate) -> karena allowBackdate true, bagian ini false
 
         const today = new Date();
         const yyyy = today.getFullYear();
