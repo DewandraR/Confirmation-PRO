@@ -427,12 +427,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     function applyBudatRules() {
         if (!budatInput || !budatInputText) return;
 
-        // HARDCODE 10 Feb 2026: Paksa allowBackdate = true
-        // Aslinya: const allowBackdate = isWiMode && (isWIWMode || LONGSHIFT === 1);
-        const allowBackdate = true; 
+        const allowBackdate = isWiMode && (isWIWMode || LONGSHIFT === 1);
 
         const isBudatLocked =
-            LOCK_BUDAT_USERS.includes(CUR_SAP_USER);
+            LOCK_BUDAT_USERS.includes(CUR_SAP_USER) ||
+            (isWiMode && !allowBackdate);
 
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -466,16 +465,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         // Jika mode backdate (WIW atau longshift), batasi hanya hari ini & kemarin
-        // HACK: Kita paksa range genap 10 Feb 2026 - Hari ini
         if (allowBackdate) {
-            const minDateYMD = "2026-02-10"; // Hardcoded 10 Feb 2026
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
 
-            budatInput.min = minDateYMD;
+            const yY = yesterday.getFullYear();
+            const yM = String(yesterday.getMonth() + 1).padStart(2, "0");
+            const yD = String(yesterday.getDate()).padStart(2, "0");
+            const yesterdayYMD = `${yY}-${yM}-${yD}`;
+
+            budatInput.min = yesterdayYMD;
             budatInput.max = todayYMD;
 
             // kalau value sekarang di luar range → set hari ini
             const cur = (budatInput.value || "").trim();
-            if (!cur || cur < minDateYMD || cur > todayYMD)
+            if (!cur || cur < yesterdayYMD || cur > todayYMD)
                 budatInput.value = todayYMD;
 
             syncHiddenToText();
@@ -565,14 +569,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        // HACK: Validate range 10 Feb 2026 - Today
-        // Aslinya: if (isWIWMode || LONGSHIFT === 1) { ...
-        if (true) {
+        if (isWIWMode || LONGSHIFT === 1) {
             const today = new Date();
-            
-            // Hardcode 10 Feb 2026 check
-            // 2026-02-10 -> year 2026, month 1 (Feb), date 10
-            const minDate = new Date(2026, 1, 10); 
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
 
             // ✅ parse ymd sebagai LOCAL DATE (hindari bug UTC)
             const [yy, mm, dd] = ymd.split("-").map(Number);
@@ -580,10 +580,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             picked.setHours(0, 0, 0, 0);
             today.setHours(0, 0, 0, 0);
-            minDate.setHours(0, 0, 0, 0);
+            yesterday.setHours(0, 0, 0, 0);
 
-            if (picked < minDate || picked > today) {
-                warning("Posting Date hanya boleh hari ini atau 10 Febuari 2026.");
+            if (picked < yesterday || picked > today) {
+                warning("Posting Date hanya boleh hari ini atau kemarin.");
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
