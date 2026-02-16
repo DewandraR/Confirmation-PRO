@@ -467,7 +467,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Jika mode backdate (WIW atau longshift), batasi hanya hari ini & kemarin
         if (allowBackdate) {
             const minDate = new Date(today);
-            minDate.setDate(today.getDate() - 2);
+            // minDate.setDate(today.getDate() - 2);
 
             const yY = minDate.getFullYear();
             const yM = String(minDate.getMonth() + 1).padStart(2, "0");
@@ -572,7 +572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (isWiMode) {
             const today = new Date();
             const minDate = new Date(today);
-            minDate.setDate(today.getDate() - 2);
+            // minDate.setDate(today.getDate() - 2);
 
             // ✅ parse ymd sebagai LOCAL DATE (hindari bug UTC)
             const [yy, mm, dd] = ymd.split("-").map(Number);
@@ -583,7 +583,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             minDate.setHours(0, 0, 0, 0);
 
             if (picked < minDate || picked > today) {
-                warning("Posting Date hanya boleh hari ini, kemarin, atau H-2.");
+                warning("Posting Date hanya boleh hari ini.");
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
