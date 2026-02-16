@@ -427,7 +427,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function applyBudatRules() {
         if (!budatInput || !budatInputText) return;
 
-        const allowBackdate = isWiMode && (isWIWMode || LONGSHIFT === 1);
+        const allowBackdate = isWiMode;
 
         const isBudatLocked =
             LOCK_BUDAT_USERS.includes(CUR_SAP_USER) ||
@@ -569,7 +569,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        if (isWIWMode || LONGSHIFT === 1) {
+        if (isWiMode) {
             const today = new Date();
             const minDate = new Date(today);
             minDate.setDate(today.getDate() - 2);
