@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 () => {
                     try {
                         thenFn();
-                    } catch (_) {}
+                    } catch (_) { }
                 },
                 { once: true }
             );
@@ -597,10 +597,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (okAufnrs.length === 0) {
                         const lines = failures.length
                             ? failures
-                                  .map((f) => `${f.key} — ${f.msg}`)
-                                  .join("\n")
+                                .map((f) => `${f.key} — ${f.msg}`)
+                                .join("\n")
                             : firstErrMsg ||
-                              "PRO/WC tidak mengembalikan data dari SAP.";
+                            "PRO/WC tidak mengembalikan data dari SAP.";
 
                         // tampilkan SEMUA error per-PRO dalam satu alert
                         showError("Semua PRO gagal memuat data", lines);
@@ -690,18 +690,18 @@ document.addEventListener("DOMContentLoaded", () => {
         if (quaggaRunning) {
             try {
                 Quagga.stop();
-            } catch (_) {}
+            } catch (_) { }
             quaggaRunning = false;
         }
         if (detach && onDet) {
             try {
                 Quagga.offDetected(onDet);
-            } catch (_) {}
+            } catch (_) { }
             onDet = null;
         }
         try {
             Quagga.CameraAccess?.release?.();
-        } catch (_) {}
+        } catch (_) { }
         if (reader) reader.innerHTML = "";
         currentTrack = null;
         torchOn = false;
@@ -777,7 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     currentTrack =
                         Quagga.CameraAccess.getActiveStream()?.getVideoTracks?.()[0] ||
                         null;
-                } catch (_) {}
+                } catch (_) { }
                 onDet = (res) => {
                     if (committing) return;
                     const cr = res?.codeResult;
@@ -1263,9 +1263,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 "dd-opt relative px-0.5 py-0.5 cursor-pointer hover:bg-emerald-50 hover:text-emerald-700";
             li.innerHTML = `
         <span class="block w-full text-center">${text}</span>
-        <span class="check absolute right-3 top-1/2 -translate-y-1/2 ${
-            select.value === value ? "" : "hidden"
-        }">✓</span>
+        <span class="check absolute right-3 top-1/2 -translate-y-1/2 ${select.value === value ? "" : "hidden"
+                }">✓</span>
       `;
             return li;
         };
@@ -1543,9 +1542,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return `<span class="${base} bg-red-100 text-red-700">FAILED</span>`;
         if (st === "PROCESSING")
             return `<span class="${base} bg-amber-100 text-amber-800">PROCESSING</span>`;
-        return `<span class="${base} bg-slate-100 text-slate-700">${
-            st || "PENDING"
-        }</span>`;
+        return `<span class="${base} bg-slate-100 text-slate-700">${st || "PENDING"
+            }</span>`;
     }
     function fmtDT(s) {
         if (!s) return "-";
@@ -1587,8 +1585,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const url = pernrFromQS
             ? `/api/yppi019/confirm-monitor?pernr=${encodeURIComponent(
-                  pernrFromQS
-              )}&limit=100`
+                pernrFromQS
+            )}&limit=100`
             : `/api/yppi019/confirm-monitor?limit=100`;
 
         try {
@@ -1605,10 +1603,10 @@ document.addEventListener("DOMContentLoaded", () => {
             // filter berdasarkan SAP user (jika ada di meta)
             const data = CUR_SAP_USER
                 ? rows.filter(
-                      (v) =>
-                          String(v.sap_user || "").toLowerCase() ===
-                          CUR_SAP_USER
-                  )
+                    (v) =>
+                        String(v.sap_user || "").toLowerCase() ===
+                        CUR_SAP_USER
+                )
                 : rows;
 
             if (monitorMeta) {
@@ -1683,8 +1681,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <td class="px-3 py-2">
         <div class="truncate max-w-[60vw] sm:max-w-none" title="${(
-            x.status_message ?? ""
-        ).replace(/"/g, "&quot;")}">
+                            x.status_message ?? ""
+                        ).replace(/"/g, "&quot;")}">
             ${x.status_message ?? "-"}
         </div>
     </td>
@@ -1862,7 +1860,7 @@ document.addEventListener("DOMContentLoaded", () => {
         selMrp.value = ""; // balik ke "(Pilih Nama Bagian)"
         try {
             localStorage.removeItem("last_mrp_plant");
-        } catch {}
+        } catch { }
     }
 
     const inpDaterange = document.getElementById("hasil-daterange");
@@ -1935,7 +1933,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // kosongkan pilihan tanggal juga
             try {
                 flatpickrInstance.clear();
-            } catch {}
+            } catch { }
         }
     }
 
@@ -2002,7 +2000,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let data = null;
         try {
             data = await r.json();
-        } catch {}
+        } catch { }
         return {
             ok: r.ok && data && data.ok !== false,
             status: r.status,
@@ -2195,7 +2193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Simpan NIK terakhir kalau mode NIK
         try {
             if (pernr) localStorage.setItem("last_pernr", pernr);
-        } catch {}
+        } catch { }
 
         const from = dateToYmd(fromDate);
         const to = dateToYmd(toDate);

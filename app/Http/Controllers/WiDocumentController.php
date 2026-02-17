@@ -142,6 +142,10 @@ class WiDocumentController extends Controller
                         'LTIMEX'  => $item['calculated_takt_time'] ?? null,
 
                         'WI_CODE' => $doc['wi_code'] ?? null,
+                        
+                        'DOCUMENT_DATE' => $docDate,
+                        'EXPIRED_AT'    => $expDate,
+                        'MACHINING'     => (int)($doc['machining'] ?? $item['machining'] ?? 0),
                     ];
                 }
             }

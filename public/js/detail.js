@@ -284,6 +284,9 @@ window.onerror = function (msg, src, line, col) {
 document.addEventListener("DOMContentLoaded", async () => {
     const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
 
+    // Global data rows
+    let rowsAll = [];
+
     /* ---------- URL Params ---------- */
     const p = new URLSearchParams(location.search);
     const rawList = p.get("aufnrs") || "";
@@ -427,62 +430,122 @@ document.addEventListener("DOMContentLoaded", async () => {
     function applyBudatRules() {
         if (!budatInput || !budatInputText) return;
 
-        const allowBackdate = isWiMode;
-
-        const isBudatLocked =
-            LOCK_BUDAT_USERS.includes(CUR_SAP_USER) ||
-            (isWiMode && !allowBackdate);
-
+        // Default: kunci ke hari ini
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, "0");
         const dd = String(today.getDate()).padStart(2, "0");
         const todayYMD = `${yyyy}-${mm}-${dd}`;
 
-        if (isBudatLocked) {
-            budatInput.value = todayYMD;
-            budatInput.setAttribute("max", todayYMD);
-            budatInput.disabled = true;
-
-            budatInputText.value = `${dd}/${mm}/${yyyy}`;
-            budatInputText.readOnly = true;
-            budatInputText.classList.add("bg-slate-100", "cursor-not-allowed");
-
-            if (budatOpen) {
-                budatOpen.disabled = true;
-                budatOpen.classList.add("opacity-60", "cursor-not-allowed");
-            }
+        // Cek lock user
+        if (LOCK_BUDAT_USERS.includes(CUR_SAP_USER)) {
+            lockBudatTo(todayYMD);
             return;
         }
 
-        // UNLOCK
+        // Jika tidak ada data Rows (misal belum fetch), default ke hari ini saja (aman)
+        if (!rowsAll || rowsAll.length === 0) {
+            // Kecuali jika user memaksa WI mode tapi data belum ada, kita tunggu data dulu
+            // Tapi agar aman, set min=max=today dulu
+            budatInput.min = todayYMD;
+            budatInput.max = todayYMD;
+            budatInput.value = todayYMD;
+            syncHiddenToText();
+            return;
+        }
+
+        // Ambil flag dari row pertama (asumsi satu dokumen WI punya flag sama)
+        const row0 = rowsAll[0];
+        const isLongshift = Number(row0.LONGSHIFT ?? row0.longshift ?? 0) === 1;
+        const isMachining = Number(row0.MACHINING ?? row0.machining ?? 0) === 1;
+
+        // console.log("applyBudatRules", { isLongshift, isMachining, row0 });
+
+        let minDateYMD = todayYMD;
+        let maxDateYMD = todayYMD;
+
+        // MODE 2: MACHINING (Prioritas jika Machining=1)
+        // Rule: Range dari document_date s/d expaired_at
+        // NOTE: User requested these rules strictly for WI Mode (NIK or WI Code input)
+        // Since isMachining/isLongshift are derived from rowsAll which are populated by WI data,
+        // we essentially implicitly check isWiMode if we rely on rowsAll content for these flags.
+        // However, explicitly checking isWiMode is safer and clearer.
+
+        if (isWiMode && isMachining) {
+            // ... logic Machining ...
+            // Ambil dari row0 (backend sudah inject DOCUMENT_DATE & EXPIRED_AT)
+            // Format dari backend yyyy-mm-dd
+            const docDate = row0.DOCUMENT_DATE || todayYMD;
+            const expDate = row0.EXPIRED_AT || todayYMD;
+
+            minDateYMD = docDate;
+            maxDateYMD = expDate;
+        }
+        // MODE 3: LONGSHIFT ONLY (Longshift=1 && Machining=0)
+        // Rule: Hari ini dan Kemarin (H-1)
+        else if (isWiMode && isLongshift) {
+            const minD = new Date(today);
+            minD.setDate(today.getDate() - 1); // H-1
+
+            const mY = minD.getFullYear();
+            const mM = String(minD.getMonth() + 1).padStart(2, "0");
+            const mD = String(minD.getDate()).padStart(2, "0");
+            minDateYMD = `${mY}-${mM}-${mD}`;
+
+            maxDateYMD = todayYMD;
+        }
+        // MODE 1: BIASA / Default
+        // Rule: Hari ini saja
+        else {
+            minDateYMD = todayYMD;
+            maxDateYMD = todayYMD;
+        }
+
+        // Apply ke input
+        unlockBudat();
+        budatInput.min = minDateYMD;
+        budatInput.max = maxDateYMD;
+
+        // Validasi value sekarang
+        let cur = (budatInput.value || "").trim();
+        // Kalau kosong atau diluar range, set ke max (biasanya hari ini atau expired)
+        // Atau set ke today jika within range, atau maxDate jika today diluar range?
+        // Safe bet: set ke Today jika allow, else set ke Max.
+        if (!cur || cur < minDateYMD || cur > maxDateYMD) {
+            // Cek apakah today ada dalam range?
+            if (todayYMD >= minDateYMD && todayYMD <= maxDateYMD) {
+                budatInput.value = todayYMD;
+            } else {
+                // Jika today diluar range (misal machining expire kemarin), set ke maxDate
+                budatInput.value = maxDateYMD;
+            }
+        }
+
+        syncHiddenToText();
+    }
+
+    function lockBudatTo(ymd) {
+        budatInput.value = ymd;
+        budatInput.setAttribute("max", ymd);
+        budatInput.disabled = true;
+
+        budatInputText.value = ymdToDmy(ymd);
+        budatInputText.readOnly = true;
+        budatInputText.classList.add("bg-slate-100", "cursor-not-allowed");
+
+        if (budatOpen) {
+            budatOpen.disabled = true;
+            budatOpen.classList.add("opacity-60", "cursor-not-allowed");
+        }
+    }
+
+    function unlockBudat() {
         budatInput.disabled = false;
         budatInputText.readOnly = false;
         budatInputText.classList.remove("bg-slate-100", "cursor-not-allowed");
         if (budatOpen) {
             budatOpen.disabled = false;
             budatOpen.classList.remove("opacity-60", "cursor-not-allowed");
-        }
-
-        // Jika mode backdate (WIW atau longshift), batasi hanya hari ini & kemarin
-        if (allowBackdate) {
-            const minDate = new Date(today);
-            // minDate.setDate(today.getDate() - 2);
-
-            const yY = minDate.getFullYear();
-            const yM = String(minDate.getMonth() + 1).padStart(2, "0");
-            const yD = String(minDate.getDate()).padStart(2, "0");
-            const minDateYMD = `${yY}-${yM}-${yD}`;
-
-            budatInput.min = minDateYMD;
-            budatInput.max = todayYMD;
-
-            // kalau value sekarang di luar range → set hari ini
-            const cur = (budatInput.value || "").trim();
-            if (!cur || cur < minDateYMD || cur > todayYMD)
-                budatInput.value = todayYMD;
-
-            syncHiddenToText();
         }
     }
 
@@ -570,20 +633,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (isWiMode) {
-            const today = new Date();
-            const minDate = new Date(today);
-            // minDate.setDate(today.getDate() - 2);
+            // Validate against the input's min/max attributes which are set by applyBudatRules
+            const minAllowed = budatInput.min;
+            const maxAllowed = budatInput.max;
 
-            // ✅ parse ymd sebagai LOCAL DATE (hindari bug UTC)
-            const [yy, mm, dd] = ymd.split("-").map(Number);
-            const picked = new Date(yy, mm - 1, dd);
-
-            picked.setHours(0, 0, 0, 0);
-            today.setHours(0, 0, 0, 0);
-            minDate.setHours(0, 0, 0, 0);
-
-            if (picked < minDate || picked > today) {
-                warning("Posting Date hanya boleh hari ini.");
+            if (minAllowed && ymd < minAllowed) {
+                warning(`Posting Date tidak boleh sebelum ${ymdToDmy(minAllowed)}.`);
+                budatInputText.value = ymdToDmy(budatInput.value);
+                return;
+            }
+            if (maxAllowed && ymd > maxAllowed) {
+                warning(`Posting Date tidak boleh setelah ${ymdToDmy(maxAllowed)}.`);
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
@@ -613,7 +673,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     /* =========================
      FETCH DATA
      ========================= */
-    let rowsAll = [];
+    // rowsAll declared at top
     let failures = [];
 
     try {
