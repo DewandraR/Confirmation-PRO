@@ -638,12 +638,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const maxAllowed = budatInput.max;
 
             if (minAllowed && ymd < minAllowed) {
-                warning(`Posting Date tidak boleh sebelum ${ymdToDmy(minAllowed)}.`);
+                warning(
+                    `Posting Date tidak boleh sebelum ${ymdToDmy(minAllowed)}.`,
+                );
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
             if (maxAllowed && ymd > maxAllowed) {
-                warning(`Posting Date tidak boleh setelah ${ymdToDmy(maxAllowed)}.`);
+                warning(
+                    `Posting Date tidak boleh setelah ${ymdToDmy(maxAllowed)}.`,
+                );
                 budatInputText.value = ymdToDmy(budatInput.value);
                 return;
             }
@@ -665,7 +669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         e.preventDefault();
         try {
             budatInput?.showPicker && budatInput.showPicker();
-        } catch { }
+        } catch {}
     });
 
     syncHiddenToText();
@@ -693,7 +697,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     if (!res.ok) {
                         throw new Error(
                             (json && (json.error || json.message)) ||
-                            `WI ${code}: HTTP ${res.status}`,
+                                `WI ${code}: HTTP ${res.status}`,
                         );
                     }
 
@@ -711,7 +715,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (r.status === "fulfilled") rowsAll = rowsAll.concat(r.value);
                 else
                     failures.push(
-                        `WI ${WI_CODES[idx]}: ${r.reason?.message || "gagal diambil"
+                        `WI ${WI_CODES[idx]}: ${
+                            r.reason?.message || "gagal diambil"
                         }`,
                     );
             });
@@ -911,9 +916,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const werksRow = String(
                 r.WERKS ?? r.PWERK ?? r.PLANT ?? IV_WERKS ?? "",
             ).replace(/^0+/, "");
-            const shouldPrefillMax =
-                ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
-            const defaultQty = shouldPrefillMax ? maxAllow : 0;
+            // const shouldPrefillMax =
+            //     ["WE1", "WE2", "WM1"].includes(dispo) && werksRow === "1000";
+            // const defaultQty = shouldPrefillMax ? maxAllow : 0;
+            const defaultQty = maxAllow; // FIX: Always default to max qty
 
             // normalisasi SSAVD/SSSLD
             const ssavdYMD = toYYYYMMDD(r.SSAVD);
@@ -921,16 +927,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const ssavdDMY =
                 ssavdYMD && ssavdYMD.length === 8
                     ? `${ssavdYMD.slice(6, 8)}/${ssavdYMD.slice(
-                        4,
-                        6,
-                    )}/${ssavdYMD.slice(0, 4)}`
+                          4,
+                          6,
+                      )}/${ssavdYMD.slice(0, 4)}`
                     : "";
             const sssldDMY =
                 sssldYMD && sssldYMD.length === 8
                     ? `${sssldYMD.slice(6, 8)}/${sssldYMD.slice(
-                        4,
-                        6,
-                    )}/${sssldYMD.slice(0, 4)}`
+                          4,
+                          6,
+                      )}/${sssldYMD.slice(0, 4)}`
                     : "";
 
             const ltimexStr = fmtMinutes(r.LTIMEX);
@@ -944,11 +950,21 @@ document.addEventListener("DOMContentLoaded", async () => {
                 [r.KDAUF || "", kdposView || ""].filter(Boolean).join("/") ||
                 "-";
 
+            let matfg = String(r.MATFG ?? r.matfg ?? "").trim();
+            // Jika hanya angka, hilangkan leading zero
+            if (/^\d+$/.test(matfg)) {
+                matfg = matfg.replace(/^0+/, "");
+            }
+            const makfg = String(r.MAKFG ?? r.makfg ?? "").trim();
+            const deskripsiFG = [makfg, matfg].filter(Boolean).join(" "); // For search/sort logic only
+
             const searchStr = [
                 r.AUFNR,
                 r.MATNRX,
                 r.MAKTX,
                 r.MAKTX0,
+                matfg,
+                makfg,
                 ltxa1,
                 r.DISPO,
                 r.STEUS,
@@ -1013,13 +1029,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     </td>
 
     <td class="px-3 py-3 text-center bg-inherit border-r border-slate-200">
-      <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${i + 1
-                }</div>
+      <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-bold text-green-700 mx-auto">${
+          i + 1
+      }</div>
     </td>
 
     <td class="px-3 py-3 text-sm font-semibold text-slate-900">${esc(
-                    r.AUFNR || "-",
-                )}</td>
+        r.AUFNR || "-",
+    )}</td>
 
     <!-- Status / Stats (NEW) -->
     <td class="px-3 py-3 text-sm text-center font-semibold text-slate-700">
@@ -1045,18 +1062,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   step="${meinh === "M3" ? "0.001" : "1"}"
   inputmode="${meinh === "M3" ? "decimal" : "numeric"}"
   title="Maks: ${esc(String(maxAllow))} (sisa SPK=${esc(
-                    String(sisaSPK),
-                )}, sisa SPX=${esc(String(qtySPX))})" />
+      String(sisaSPK),
+  )}, sisa SPX=${esc(String(qtySPX))})" />
 
 <div class="mt-1 text-[11px] text-slate-400">
   Maks: <b class="js-max-confirm">${esc(String(maxAllow))}</b> (${esc(
-                    getUnitName(meinh),
-                )})
+      getUnitName(meinh),
+  )})
 </div>
     </td>
 
-    ${isWiMode
-                    ? `
+    ${
+        isWiMode
+            ? `
     <!-- Qty Remark (WI mode) -->
     <td class="px-3 py-3 text-sm text-slate-700 text-center col-qty-remark">
       <input type="number" name="QTY_RMK"
@@ -1073,8 +1091,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <div class="mt-1 text-[11px] text-slate-400">
   Maks: <b class="js-max-remark">${esc(String(maxAllow))}</b> (${esc(
-                        getUnitName(meinh),
-                    )})
+      getUnitName(meinh),
+  )})
 </div>
     </td>
 
@@ -1094,19 +1112,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         maxlength="500">
     </td>
   `
-                    : ``
-                }
+            : ``
+    }
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(ssavdDMY || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(sssldDMY || "-")}</td>
-    <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX0 || "-")}</td>
+    <td class="px-3 py-3 text-sm text-slate-700">
+        ${makfg ? `<div class="font-semibold text-slate-900">${esc(makfg)}</div>` : ""}
+        ${matfg ? `<div class="text-xs text-slate-500 font-mono">${esc(matfg)}</div>` : ""}
+        ${!makfg && !matfg ? "-" : ""}
+    </td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MATNRX || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.MAKTX || "-")}</td>
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(ltimexStr)}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(
-                    r.PERNR || IV_PERNR || "-",
-                )}</td>
+        r.PERNR || IV_PERNR || "-",
+    )}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.SNAME || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.DISPO || "-")}</td>
 
@@ -1118,13 +1140,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       ${isWiMode ? esc(wcAnakView) : ""}
     </td>
     <td class="px-3 py-3 text-sm text-slate-700 col-status-op">${esc(
-                    statusOpView,
-                )}</td>
+        statusOpView,
+    )}</td>
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(r.STEUS || "-")}</td>
     <td class="px-3 py-3 text-sm text-slate-700 font-mono whitespace-nowrap">${esc(
-                    soItem,
-                )}</td>
+        soItem,
+    )}</td>
   </tr>`;
         })
         .join("");
@@ -1154,8 +1176,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const baseMax =
             parseFloat(
                 qtyInputEl.dataset.maxBase ||
-                qtyRemarkEl.dataset.maxBase ||
-                "0",
+                    qtyRemarkEl.dataset.maxBase ||
+                    "0",
             ) || 0;
 
         let qc =
@@ -1455,8 +1477,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const baseMax =
             parseFloat(
                 qtyInputEl?.dataset.maxBase ||
-                qtyRemarkEl?.dataset.maxBase ||
-                "0",
+                    qtyRemarkEl?.dataset.maxBase ||
+                    "0",
             ) || 0;
 
         const maxConfirm =
@@ -1859,8 +1881,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div>
         <div class="text-[11px] text-slate-500">Work Center</div>
         <div class="font-semibold">${esc(
-                data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""),
-            )}</div>
+            data.wc + (data.ltxa1 ? " / " + data.ltxa1 : ""),
+        )}</div>
       </div>
     `;
 
@@ -1916,15 +1938,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       ${wcBlock}
 
-      ${!isWiMode
-                ? `
+      ${
+          !isWiMode
+              ? `
   <div>
     <div class="text-[11px] text-slate-500">Status Operations</div>
     <div class="font-semibold">${esc(data.statusop)}</div>
   </div>
 `
-                : ``
-            }
+              : ``
+      }
 
       <div>
         <div class="text-[11px] text-slate-500">Control Key</div>
@@ -1943,8 +1966,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     <div class="mt-3">
       <label class="text-[11px] text-slate-500 block mb-1">Qty Input (${esc(
-                unitNamePopup,
-            )})</label>
+          unitNamePopup,
+      )})</label>
       <input id="row-detail-qty" type="number"
         inputmode="${unit === "M3" ? "decimal" : "numeric"}"
         class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
@@ -1956,16 +1979,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         data-max="${esc(data.max)}"
         data-meinh="${esc(data.meinh)}">
       <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-confirm">${esc(
-                data.max,
-            )}</b> (${esc(unitNamePopup)})</div>
+          data.max,
+      )}</b> (${esc(unitNamePopup)})</div>
     </div>
 
-    ${isWiMode
-                ? `
+    ${
+        isWiMode
+            ? `
       <div class="mt-3">
         <label class="text-[11px] text-slate-500 block mb-1">Qty Remark (${esc(
-                    unitNamePopup,
-                )})</label>
+            unitNamePopup,
+        )})</label>
         <input id="row-detail-qty-remark" type="number"
           inputmode="${unit === "M3" ? "decimal" : "numeric"}"
           class="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 font-mono"
@@ -1977,8 +2001,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           data-max="${esc(data.max)}"
           data-meinh="${esc(data.meinh)}">
         <div class="mt-1 text-[11px] text-slate-500">Maks: <b id="row-detail-max-remark">${esc(
-                    data.max,
-                )}</b> (${esc(unitNamePopup)})</div>
+            data.max,
+        )}</b> (${esc(unitNamePopup)})</div>
       </div>
 
       <div class="mt-3">
@@ -1998,8 +2022,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           value="${esc(data.remark)}">
       </div>
     `
-                : ``
-            }
+            : ``
+    }
   `;
 
         // ====== FIX BUG: ambil element modal setelah innerHTML terpasang ======
@@ -2021,7 +2045,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // select all supaya angka lama ketimpa
                 try {
                     inputEl.select();
-                } catch { }
+                } catch {}
                 // kalau isinya 0, kosongkan biar user tinggal ketik
                 if (isZeroLike(inputEl.value)) inputEl.value = "";
             });
@@ -2032,11 +2056,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const baseMax =
             parseFloat(
                 qtyInput?.dataset.maxBase ||
-                qtyRemarkInput?.dataset.maxBase ||
-                qtyInput?.dataset.max ||
-                qtyRemarkInput?.dataset.max ||
-                data.max ||
-                "0",
+                    qtyRemarkInput?.dataset.maxBase ||
+                    qtyInput?.dataset.max ||
+                    qtyRemarkInput?.dataset.max ||
+                    data.max ||
+                    "0",
             ) || 0;
 
         // Sync limit di modal (agar sum qty <= baseMax, mirip tabel)
@@ -2268,9 +2292,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const baseMax =
             parseFloat(
                 rowQtyInput.dataset.maxBase ||
-                rowQtyRemark?.dataset.maxBase ||
-                inputModalQty.dataset.maxBase ||
-                "0",
+                    rowQtyRemark?.dataset.maxBase ||
+                    inputModalQty.dataset.maxBase ||
+                    "0",
             ) || 0;
 
         // parse
@@ -2587,13 +2611,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   </div>
   <div class="mt-1 text-xs text-slate-500 flex gap-4">
     <span>Qty Input: <b class="font-mono">${esc(
-                        String(x.qtyConfirm || 0),
-                    )}</b></span>
+        String(x.qtyConfirm || 0),
+    )}</b></span>
     <span>Kategori: <b class="font-mono">${esc(x.remarkCategory || "-")}</b></span>
 
     <span>Qty Remark: <b class="font-mono">${esc(
-                        String(x.qtyRemark || 0),
-                    )}</b></span>
+        String(x.qtyRemark || 0),
+    )}</b></span>
   </div>
 </li>`,
                 )

@@ -146,6 +146,10 @@ class WiDocumentController extends Controller
                         'DOCUMENT_DATE' => $docDate,
                         'EXPIRED_AT'    => $expDate,
                         'MACHINING'     => (int)($doc['machining'] ?? $item['machining'] ?? 0),
+                        
+                        // ✅ Tambahan: MATFG & MAKFG
+                        'matfg'         => $item['matfg'] ?? null,
+                        'makfg'         => $item['makfg'] ?? null,
                     ];
                 }
             }
