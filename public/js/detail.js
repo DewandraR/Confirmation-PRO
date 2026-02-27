@@ -870,6 +870,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             value: "Error Dalam Pengembangan",
             label: "Error Dalam Pengembangan",
         },
+        { value: "SERIAL NUMBER", label: "PRO Memiliki Serial Number" },
         { value: "Lainnya", label: "Lainnya" },
     ];
 
@@ -1173,6 +1174,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (!qtyInputEl || !qtyRemarkEl) return;
 
+        const isConfirmBlocked = [
+            "GD1",
+            "GF1",
+            "GF2",
+            "D22",
+            "D23",
+            "D24",
+        ].includes((tr.dataset.dispo || "").toUpperCase());
+
         const baseMax =
             parseFloat(
                 qtyInputEl.dataset.maxBase ||
@@ -1184,6 +1194,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             parseFloat(String(qtyInputEl.value || "0").replace(",", ".")) || 0;
         let qr =
             parseFloat(String(qtyRemarkEl.value || "0").replace(",", ".")) || 0;
+
+        if (isConfirmBlocked) {
+            qc = 0;
+            qtyInputEl.value = "0";
+            qtyInputEl.title =
+                "Konfirmasi diblokir karena Dispo: " +
+                (tr.dataset.dispo || "-");
+        }
 
         qc = Math.max(0, Math.min(qc, baseMax));
         qr = Math.max(0, Math.min(qr, baseMax));
@@ -1235,7 +1253,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!shouldEnableCat && remarkCatEl) remarkCatEl.value = "";
         }
 
-        if (remainForConfirm <= 0) {
+        if (isConfirmBlocked) {
+            qtyInputEl.value = "0";
+            setDisabledInput(qtyInputEl, true);
+        } else if (remainForConfirm <= 0) {
             qtyInputEl.value = "0";
             setDisabledInput(qtyInputEl, true);
         } else {
