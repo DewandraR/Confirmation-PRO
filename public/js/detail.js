@@ -1074,7 +1074,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     </td>
 
     ${
-        isWiMode
+        /* isWiMode
             ? `
     <!-- Qty Remark (WI mode) -->
     <td class="px-3 py-3 text-sm text-slate-700 text-center col-qty-remark">
@@ -1113,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         maxlength="500">
     </td>
   `
-            : ``
+            : */ ``
     }
 
     <td class="px-3 py-3 text-sm text-slate-700">${esc(ssavdDMY || "-")}</td>
@@ -2005,7 +2005,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     </div>
 
     ${
-        isWiMode
+        /* isWiMode
             ? `
       <div class="mt-3">
         <label class="text-[11px] text-slate-500 block mb-1">Qty Remark (${esc(
@@ -2043,7 +2043,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           value="${esc(data.remark)}">
       </div>
     `
-            : ``
+            : */ ``
     }
   `;
 
@@ -2665,7 +2665,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         confirmModal?.classList.add("hidden");
 
         try {
-            // 1) KIRIM REMARK (jika ada)
+            // 1) KIRIM REMARK (jika ada) - DIBISUKAN SEMENTARA
+            /*
             if (pendingRemarkItems.length > 0) {
                 const remarkPayloadItems = pendingRemarkItems.map((x) => {
                     const row = x.row;
@@ -2718,6 +2719,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     throw new Error(msg);
                 }
             }
+            */
 
             // 2) KIRIM CONFIRM (jika ada)
             if (pendingConfirmItems.length > 0) {

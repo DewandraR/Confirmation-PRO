@@ -189,45 +189,52 @@ class ConfirmProJob implements ShouldQueue
             $tag = (string)($payload['tag'] ?? '');
 
             try {
-                $res = Http::withToken($token)
-                    ->acceptJson()
-                    ->timeout(30)
-                    ->post($base . '/wi/pro/complete-remark', [
-                        'wi_code'    => $wiCode,
-                        'aufnr'      => $aufnr,
-                        'vornr'      => $vornr,
-                        'nik'        => $nik,
-                        'remark'     => $remark,
-                        'remark_qty' => $remarkQty,
-                        'tag'        => $tag,
-                    ]);
+                // $res = Http::withToken($token)
+                //     ->acceptJson()
+                //     ->timeout(30)
+                //     ->post($base . '/wi/pro/complete-remark', [
+                //         'wi_code'    => $wiCode,
+                //         'aufnr'      => $aufnr,
+                //         'vornr'      => $vornr,
+                //         'nik'        => $nik,
+                //         'remark'     => $remark,
+                //         'remark_qty' => $remarkQty,
+                //         'tag'        => $tag,
+                //     ]);
 
-                $j = $res->json();
-                $j = is_array($j) ? $j : []; // kalau body bukan JSON, jangan error
+                // $j = $res->json();
+                // $j = is_array($j) ? $j : []; // kalau body bukan JSON, jangan error
 
-                $apiStatus = strtolower((string)($j['status'] ?? ''));
-                $apiMsg    = (string)($j['message'] ?? $j['error'] ?? '');
+                // $apiStatus = strtolower((string)($j['status'] ?? ''));
+                // $apiMsg    = (string)($j['message'] ?? $j['error'] ?? '');
 
                 // kalau body bukan JSON, ambil body mentah
-                if ($apiMsg === '') {
-                    $apiMsg = trim((string)$res->body());
-                }
+                // if ($apiMsg === '') {
+                //     $apiMsg = trim((string)$res->body());
+                // }
 
-                if ($res->ok() && $apiStatus === 'success') {
-                    $rec->update([
-                        'status' => 'SUCCESS',
-                        'status_message' => $apiMsg !== '' ? $apiMsg : 'Remark berhasil ditambahkan',
-                        'processed_at' => now(),
-                    ]);
-                    return;
-                }
+                // if ($res->ok() && $apiStatus === 'success') {
+                //     $rec->update([
+                //         'status' => 'SUCCESS',
+                //         'status_message' => $apiMsg !== '' ? $apiMsg : 'Remark berhasil ditambahkan',
+                //         'processed_at' => now(),
+                //     ]);
+                //     return;
+                // }
+
+                // $rec->update([
+                //     'status' => 'FAILED',
+                //     'status_message' => \Illuminate\Support\Str::limit(
+                //         $apiMsg !== '' ? $apiMsg : "Remark gagal (HTTP {$res->status()})",
+                //         600
+                //     ),
+                //     'processed_at' => now(),
+                // ]);
+                // return;
 
                 $rec->update([
-                    'status' => 'FAILED',
-                    'status_message' => \Illuminate\Support\Str::limit(
-                        $apiMsg !== '' ? $apiMsg : "Remark gagal (HTTP {$res->status()})",
-                        600
-                    ),
+                    'status' => 'SUCCESS',
+                    'status_message' => 'Remark berhasil ditambahkan (Dummy - API Disabled)',
                     'processed_at' => now(),
                 ]);
                 return;
@@ -411,15 +418,21 @@ class ConfirmProJob implements ShouldQueue
                     $base  = rtrim(config('services.wi_api.base_url'), '/');
                     $token = config('services.wi_api.token');
 
-                    Http::withToken($token)
-                        ->acceptJson()
-                        ->post($base . '/wi/pro/complete', [
-                            'wi_code'       => $wiCode,
-                            'aufnr'         => $rec->aufnr,
-                            'confirmed_qty' => $confirmQty,
-                            'nik'           => $rec->operator_nik,
-                            'vornr'         => $this->padVornr($rec->vornr),
-                        ]);
+                    // Http::withToken($token)
+                    //     ->acceptJson()
+                    //     ->post($base . '/wi/pro/complete', [
+                    //         'wi_code'       => $wiCode,
+                    //         'aufnr'         => $rec->aufnr,
+                    //         'confirmed_qty' => $confirmQty,
+                    //         'nik'           => $rec->operator_nik,
+                    //         'vornr'         => $this->padVornr($rec->vornr),
+                    //     ]);
+                    
+                    // Log dummy since API is disabled
+                    Log::info('WI pro/complete skipped (Disabled)', [
+                        'monitor_id' => $rec->id,
+                        'wi_code'    => $wiCode,
+                    ]);
 
                 } catch (Throwable $e) {
                     Log::warning('WI pro/complete gagal', [

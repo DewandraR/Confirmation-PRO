@@ -720,7 +720,6 @@ class Yppi019DbApiController extends Controller
                 'Komponen Dipesan',
                 'Menunggu Informasi Lebih Lanjut',
                 'Error Dalam Pengembangan',
-                'Lainnya',
             ])],
 
             // ---- metadata display (opsional, tapi disarankan FE kirim) ----

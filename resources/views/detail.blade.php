@@ -244,7 +244,7 @@
                                             Qty Input
                                         </th>
 
-                                        <th
+                                        {{-- <th
                                             class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px] col-qty-remark hidden">
                                             Qty Remark
                                         </th>
@@ -257,7 +257,7 @@
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[220px] col-remark hidden">
                                             Remark
-                                        </th>
+                                        </th> --}}
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Start Date</th>
@@ -282,7 +282,7 @@
                                         <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[100px]">
                                             NIK Operator</th>
-                                        <th
+                         a               <th
                                             class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-green-400 min-w-[150px]">
                                             Nama Operator</th>
                                         <th
