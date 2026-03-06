@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Percayai semua proxy (solusi untuk Error 419 di production jika pakai HTTPS + Reverse Proxy)
+        $middleware->trustProxies(at: '*');
+        
         // Daftarkan group bawaan
         $middleware->web();
         $middleware->api();
